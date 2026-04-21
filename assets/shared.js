@@ -171,10 +171,9 @@ async function applyLiveStatusFromSheet() {
     let key;
     if (row) {
       key = sheetToKey[row.cls] || 'closed';
-      // Sheet-Notiz als Sub-Text
-      if (row.note) STATUS_STATES[key].sub = row.note;
-      else if (key === 'closed') STATUS_STATES[key].sub = 'laut Plan';
-      else if (key === 'open') STATUS_STATES[key].sub = 'bis 22:00';
+      // Sheet-Notiz als Sub-Text (sonst kein Sub-Text)
+      STATUS_STATES[key].sub = row.note || '';
+      if (key === 'open' && !row.note) STATUS_STATES[key].sub = 'bis 22:00';
     } else {
       // Kein Sheet-Eintrag: Sonntag=Ruhetag, sonst offen, vor 01.05. preseason
       const d = today;
