@@ -418,12 +418,16 @@
     /* Alle Tage sichtbar (Swipe statt Pfeile) */
     .ha-day:nth-child(n+6) { display: flex; }
     /* Selected-Ring raus wenn's auch "heute" ist — der Dot-Indikator reicht */
+    /* Kein Ring am heutigen Tag — der Dot reicht */
     .ha-day.today.selected { outline: none; box-shadow: none; }
-    /* Selected bei anderen Tagen: schlanker Inset-Ring */
-    .ha-day.selected:not(.today) { box-shadow: none; outline: 1.5px solid var(--ink); outline-offset: -1.5px; }
+    /* Selected (nicht heute): solider 2px Inset-Ring, klar sichtbar */
+    .ha-day.selected:not(.today) { box-shadow: none; outline: 2px solid var(--ink); outline-offset: -2px; }
+    .hero-ampel.on-dark .ha-day.selected:not(.today) { outline: 2px solid var(--paper); outline-offset: -2px; }
 
-    /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen */
-    .hero { padding-top: 142px; padding-bottom: 110px; min-height: auto; }
+    /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen.
+       min-height auf small-viewport — Erstanzeige ist komplett gelb bis zu den Wellen. */
+    .hero { padding-top: 142px; padding-bottom: 110px; min-height: 100svh; min-height: 100vh; }
+    @supports (min-height: 100svh) { .hero { min-height: 100svh; } }
     .hero-wave { height: 100px; min-height: 100px; }
     .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
     /* "Servus" als eigenständige Zeile oberhalb von "Amperstrand" — groß, fast so groß wie der Rest */
