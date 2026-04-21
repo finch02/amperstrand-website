@@ -94,6 +94,7 @@
   .strip-row span { display:inline-flex; align-items:center; gap: 60px; }
   .strip-row .sep { color: var(--yellow); }
   @keyframes marq { from { transform: translateX(0);} to { transform: translateX(-50%); } }
+  @media (max-width: 820px) { .strip-row { animation-duration: 20s; } }
 
   /* TEASER GRID */
   .teasers { padding: 140px var(--gutter) 60px; }
@@ -140,7 +141,11 @@
   .menu-preview .item .price { font-family: var(--font-mono); font-size: 13px; opacity: .7; }
   .menu-preview .menu-footnote { margin-top: auto; padding-top: 12px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .04em; color: var(--paper); opacity: .5; line-height: 1.5; }
   @media (max-width: 820px) {
-    .menu-preview { padding: 52px 22px 110px; }
+    /* Mehr Padding oben/unten + kompaktere Items, damit nichts überlappt */
+    .menu-preview { padding: 60px 22px 130px; gap: 4px; }
+    .menu-preview .item { font-size: 16px; padding: 3px 0; }
+    .menu-preview .item .price { font-size: 12px; }
+    .menu-preview .section-label { font-size: 10px; margin-top: 8px; }
   }
 
   /* Ampel (status traffic light) */
@@ -162,6 +167,11 @@
 
   @media (max-width: 820px) {
     .teaser.t-karte, .teaser.t-events { grid-column: span 12; }
+    /* Karte auf Mobile höher, damit die Menü-Liste + Titel nicht kollidieren */
+    .teaser.t-karte { aspect-ratio: auto; min-height: 540px; }
+    /* Events-Card: aspect-ratio mobilfreundlicher; "04" dezent rechts oben */
+    .teaser.t-events { aspect-ratio: 4/5; }
+    .teaser.t-events .big-num { font-size: clamp(56px, 16vw, 90px); right: 22px; bottom: auto; top: 48px; opacity: .85; }
     .teaser.t-oeff, .teaser.t-gesch, .teaser.t-krea { grid-column: span 12; aspect-ratio: 16/9; }
     .ampel-card { grid-template-columns: 1fr; padding: 36px 28px; }
     .ampel-days { grid-template-columns: repeat(7, 1fr); gap: 4px; }
