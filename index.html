@@ -252,7 +252,11 @@
     background: rgba(10,10,10,.08);
     position: relative;
     transition: background .2s var(--ease), transform .15s var(--ease);
+    /* Kein Double-Tap-Zoom auf Mobile; Browser soll den Tap direkt durchlassen */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
+  .hero-ampel, .ha-status, .ha-nav { touch-action: manipulation; }
   .ha-day:hover { transform: translateY(-1px); }
   .ha-day .wd { display: none; }
   .ha-day .d {
@@ -759,6 +763,8 @@
       const mobile = isMobile();
       const start = mobile ? 0 : winStart;
       const end = mobile ? TOTAL : winStart + WINDOW;
+      // Scroll-Position vor Re-Render merken (sonst springt Mobile bei jedem Tap zurück auf 0)
+      const prevScroll = heroMount.scrollLeft;
       const slice = out.slice(start, end);
       heroMount.innerHTML = slice.map((o, idx) => {
         const absIdx = start + idx;
@@ -784,6 +790,9 @@
           render();
         });
       });
+
+      // Scroll-Position nach Re-Render wiederherstellen (Mobile)
+      if (mobile) heroMount.scrollLeft = prevScroll;
     }
 
     prevBtn.addEventListener('click', () => {
