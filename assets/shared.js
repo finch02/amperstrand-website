@@ -159,8 +159,43 @@ function applyStatusPill() {
   });
 }
 
+// Map sheet status for today → STATUS_STATES key + override labels live
+async function applyLiveStatusFromSheet() {
+  // Tweaks-override nicht überschreiben (Session-scoped)
+  if (sessionStorage.getItem('amperstrand-state-manual')) return;
+  try {
+    const csv = await loadAmpelData();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const row = csv[dateKey(today)];
+    const sheetToKey = { green: 'open', red: 'closed', amber: 'weather', grey: 'preseason' };
+    let key;
+    if (row) {
+      key = sheetToKey[row.cls] || 'closed';
+      // Sheet-Notiz als Sub-Text
+      if (row.note) STATUS_STATES[key].sub = row.note;
+      else if (key === 'closed') STATUS_STATES[key].sub = 'laut Plan';
+      else if (key === 'open') STATUS_STATES[key].sub = 'bis 22:00';
+    } else {
+      // Kein Sheet-Eintrag: Sonntag=Ruhetag, sonst offen, vor 01.05. preseason
+      const d = today;
+      const mayStart = new Date(d.getFullYear(), 4, 1).getTime();
+      const dow = (d.getDay() + 6) % 7;
+      if (d.getTime() < mayStart) key = 'preseason';
+      else if (dow === 0) { key = 'closed'; STATUS_STATES.closed.sub = 'Ruhetag'; }
+      else key = 'open';
+    }
+    localStorage.setItem('amperstrand-state', key);
+    applyStatusPill();
+  } catch (e) {
+    console.warn('[Status] Live-Status konnte nicht aus Sheet geladen werden:', e);
+  }
+}
+window.applyLiveStatusFromSheet = applyLiveStatusFromSheet;
+
 window.setAmperstrandState = function(k) {
   if (!STATUS_STATES[k]) return;
+  // Manuelle Auswahl via Tweaks → Sheet-Auto-Update in dieser Session aussetzen
+  sessionStorage.setItem('amperstrand-state-manual', '1');
   localStorage.setItem('amperstrand-state', k);
   applyStatusPill();
 };
@@ -445,6 +480,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupReveals();
   applyStatusPill();
   mountTweaks();
+  // Live-Status aus Google Sheet ziehen (überschreibt Default-Pill)
+  applyLiveStatusFromSheet();
   // Fill current month into any [data-current-month] element (e.g. events teaser)
   document.querySelectorAll('[data-current-month]').forEach(el => {
     el.textContent = String(new Date().getMonth() + 1).padStart(2, '0');
