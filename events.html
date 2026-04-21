@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Events — Amperstrand</title>
+<link rel="stylesheet" href="assets/shared.css?v=6">
+<style>
+  .head { padding: 160px var(--gutter) 80px; background: var(--deep); color: var(--paper); position: relative; overflow: hidden; }
+  .head h1 { max-width: 16ch; color: var(--paper); }
+  .head .lead { margin-top: 32px; max-width: 52ch; opacity: .75; font-size: clamp(17px, 1.4vw, 21px); }
+  .head .eyebrow { color: var(--paper); opacity: .55; }
+  .head-wave { position: absolute; left:0; right:0; bottom:-1px; height: 120px; pointer-events:none; }
+  .head-wave svg { width:100%; height:100%; display:block; }
+
+  .event-grid { padding: 80px var(--gutter); }
+  .evs { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+  .event {
+    position: relative; border-radius: 24px; overflow: hidden;
+    padding: 28px 30px 30px; min-height: 320px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform .4s var(--ease);
+  }
+  .event:hover { transform: translateY(-3px); }
+  .event.e-lg { grid-column: span 6; min-height: 420px; }
+  .event.e-md { grid-column: span 6; }
+  .event.e-sm { grid-column: span 4; min-height: 300px; }
+  @media (max-width: 900px) { .event.e-lg, .event.e-md, .event.e-sm { grid-column: span 12; } }
+  .event.bg-ink { background: var(--ink); color: var(--paper); }
+  .event.bg-yel { background: var(--yellow); color: var(--ink); }
+  .event.bg-paper { background: var(--paper); color: var(--ink); border: 1px solid rgba(10,10,10,.1); }
+  .event.bg-deep { background: var(--deep); color: var(--paper); }
+  .ev-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .85; }
+  .ev-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(255,255,255,.12); }
+  .event.bg-paper .ev-status { background: rgba(10,10,10,.06); }
+  .ev-status .dot { width:6px; height:6px; border-radius:50%; }
+  .ev-status.active .dot { background: #4ade80; }
+  .ev-status.out .dot { background: #facc15; }
+  .ev-status.off .dot { background: #ef4444; }
+  .event h3 { font-size: clamp(28px, 3vw, 44px); letter-spacing: -.025em; line-height: 1.02; }
+  .event.e-lg h3 { font-size: clamp(40px, 4.4vw, 64px); }
+  .ev-when { font-family: var(--font-display); font-weight: 600; font-size: 17px; letter-spacing: -.01em; }
+  .ev-meta { display: flex; gap: 20px; font-size: 13px; opacity: .7; margin-top: 6px; font-family: var(--font-mono); }
+  .ev-desc { font-size: 14.5px; opacity: .75; max-width: 48ch; line-height: 1.5; margin-top: 12px; }
+  .ev-tags { display:flex; gap:6px; flex-wrap: wrap; margin-top: 14px; }
+  .ev-tag { font-family: var(--font-mono); font-size: 10px; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.12); text-transform: uppercase; letter-spacing: .04em; }
+  .event.bg-paper .ev-tag, .event.bg-yel .ev-tag { background: rgba(10,10,10,.08); }
+  .ev-bottom { display:flex; justify-content:space-between; align-items:flex-end; gap: 20px; flex-wrap: wrap; }
+  .ev-price { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -.01em; }
+  .ev-arrow { font-family: var(--font-mono); font-size: 12px; opacity: .7; }
+
+  .big-date { font-family: var(--font-display); font-weight: 800; font-size: clamp(120px, 18vw, 260px); line-height:.85; letter-spacing: -.06em; position: absolute; right: 20px; bottom: 0; opacity: .12; pointer-events:none; }
+  .event.bg-yel .big-date { opacity: .22; }
+
+  .archive { padding: 80px var(--gutter) 140px; background: var(--paper-2); }
+  .archive-list { margin-top: 40px; }
+  .arch {
+    display: grid; grid-template-columns: 120px 1.4fr 1fr 100px;
+    gap: 24px; align-items: center;
+    padding: 18px 0; border-bottom: 1px solid rgba(10,10,10,.1);
+    font-size: 15px;
+  }
+  .arch .date { font-family: var(--font-mono); font-size: 12px; opacity: .55; text-transform: uppercase; letter-spacing: .05em; }
+  .arch .title { font-family: var(--font-display); font-weight: 500; font-size: 19px; letter-spacing: -.01em; }
+  .arch .tags { font-size: 12px; opacity: .6; }
+  .arch .rating { font-family: var(--font-mono); font-size: 12px; opacity: .7; text-align: right; }
+  @media (max-width: 720px) { .arch { grid-template-columns: 1fr; gap: 4px; padding: 14px 0; } .arch .rating { text-align: left; } }
+</style>
+</head>
+<body data-page="events" data-tone="ink">
+<div data-mount-nav></div>
+
+<section class="head">
+  <div class="wrap">
+    <span class="eyebrow reveal">§ Events · Saison 2026</span>
+    <h1 class="reveal" style="margin-top: 18px;">Musik, Menschen,<br>Sommerstimmung.</h1>
+    <p class="lead reveal">Was bei uns so los ist. Eintritt meistens frei, Plätze nach Verfügbarkeit. Bei Regen wird verschoben.</p>
+  </div>
+  <div class="head-wave" aria-hidden="true">
+    <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+      <path d="M0 60 Q 240 20, 480 60 T 960 60 T 1440 60 L 1440 120 L 0 120 Z" fill="#fafaf7"/>
+    </svg>
+  </div>
+</section>
+
+<section class="event-grid">
+  <div class="wrap">
+    <div class="section-head reveal" style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;margin-bottom: 40px;">
+      <div>
+        <span class="eyebrow">§ Upcoming</span>
+        <h2 style="margin: 12px 0 0;">Das kommt bald.</h2>
+      </div>
+      <span class="mono" style="opacity:.55;">6 Events · Juli/August 2026</span>
+    </div>
+    <div class="evs">
+      <article class="event e-lg bg-yel reveal">
+        <div>
+          <div class="ev-top">
+            <span>12. Juli · Samstag</span>
+            <span class="ev-status active"><span class="dot"></span>Offen</span>
+          </div>
+          <h3 style="margin-top: 40px;">Sundowner mit<br>DJ Marlene S.</h3>
+          <p class="ev-desc">House und Disco zwischen 18 und 23 Uhr. Tanzfläche ist das Kiesbett, Bar ist unser Kiosk.</p>
+          <div class="ev-tags"><span class="ev-tag">DJ</span><span class="ev-tag">Open Air</span><span class="ev-tag">21+</span></div>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">18:00 – 23:00</div>
+            <div class="ev-meta"><span>Frei</span><span>Amperstrand Bühne</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+        <div class="big-date">12</div>
+      </article>
+
+      <article class="event e-md bg-ink reveal" data-delay="80">
+        <div>
+          <div class="ev-top">
+            <span>19. Juli · Samstag</span>
+            <span class="ev-status active"><span class="dot"></span>Offen</span>
+          </div>
+          <h3 style="margin-top: 32px;">Vintage-Flohmarkt.</h3>
+          <p class="ev-desc">25 Stände mit Bekleidung, Platten, DIY und Haushalt. Kaffee und Brezn von uns. Haustiere herzlich willkommen.</p>
+          <div class="ev-tags"><span class="ev-tag">Flohmarkt</span><span class="ev-tag">Vintage</span><span class="ev-tag">DIY</span></div>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">11:00 – 17:00</div>
+            <div class="ev-meta"><span>Frei</span><span>Wiese + Kiosk</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+      </article>
+
+      <article class="event e-sm bg-paper reveal" data-delay="120">
+        <div>
+          <div class="ev-top">
+            <span>26. Juli · Freitag</span>
+            <span class="ev-status out"><span class="dot"></span>Fast voll</span>
+          </div>
+          <h3 style="margin-top: 20px;">Kinder-Eistag.</h3>
+          <p class="ev-desc">Doppelkugel für 2€. Wasserbomben im Garten. 14–18 Uhr.</p>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">14:00 – 18:00</div>
+            <div class="ev-meta"><span>Familien</span></div>
+          </div>
+          <span class="ev-arrow">→</span>
+        </div>
+      </article>
+
+      <article class="event e-sm bg-deep reveal" data-delay="160">
+        <div>
+          <div class="ev-top">
+            <span>02. Aug · Samstag</span>
+            <span class="ev-status active"><span class="dot"></span>Offen</span>
+          </div>
+          <h3 style="margin-top: 20px;">Amper Acoustic Night.</h3>
+          <p class="ev-desc">Drei lokale Acts, eine Gitarre, eine Stunde Dämmerung.</p>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">19:00 – 22:00</div>
+            <div class="ev-meta"><span>Live</span><span>Frei</span></div>
+          </div>
+          <span class="ev-arrow">→</span>
+        </div>
+      </article>
+
+      <article class="event e-sm bg-yel reveal" data-delay="200">
+        <div>
+          <div class="ev-top">
+            <span>09. Aug · Samstag</span>
+            <span class="ev-status off"><span class="dot"></span>Abgesagt</span>
+          </div>
+          <h3 style="margin-top: 20px;">Stadtteil-Stammtisch.</h3>
+          <p class="ev-desc">Leider wetterbedingt verschoben. Neuer Termin folgt.</p>
+        </div>
+        <div class="ev-bottom">
+          <div class="ev-when" style="opacity:.5;">verschoben</div>
+          <span class="ev-arrow">Update →</span>
+        </div>
+      </article>
+
+      <article class="event e-md bg-ink reveal" data-delay="240">
+        <div>
+          <div class="ev-top">
+            <span>16. Aug · Samstag</span>
+            <span class="ev-status active"><span class="dot"></span>Offen</span>
+          </div>
+          <h3 style="margin-top: 32px;">Sommerfest mit dem Kreativquartier.</h3>
+          <p class="ev-desc">Alle Häuser öffnen. Workshops, Rätsel, Demokratiehütte, Live-Musik am Wasser bis 00:00.</p>
+          <div class="ev-tags"><span class="ev-tag">Kreativquartier</span><span class="ev-tag">All-Day</span><span class="ev-tag">Familien</span></div>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">14:00 – 00:00</div>
+            <div class="ev-meta"><span>Frei · Spende</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="archive">
+  <div class="wrap">
+    <div class="section-head reveal" style="margin-bottom:0;">
+      <span class="eyebrow">§ Archiv</span>
+      <h2 style="margin:12px 0 0;">Was schon war.</h2>
+    </div>
+    <div class="archive-list reveal">
+      <div class="arch"><div class="date">14. Jun 2026</div><div class="title">Saison-Opening</div><div class="tags">Live-Musik · Familien</div><div class="rating">voll ★</div></div>
+      <div class="arch"><div class="date">28. Jun 2026</div><div class="title">Sundowner mit DJ Hans-Peter</div><div class="tags">DJ · Open Air</div><div class="rating">voll ★</div></div>
+      <div class="arch"><div class="date">05. Jul 2026</div><div class="title">Summer Flohmarkt</div><div class="tags">Flohmarkt · Vintage</div><div class="rating">~120 Leute</div></div>
+      <div class="arch"><div class="date">21. Sep 2025</div><div class="title">Saison-Closing 2025</div><div class="tags">DJ · Suppe</div><div class="rating">~300 Leute</div></div>
+      <div class="arch"><div class="date">14. Aug 2025</div><div class="title">Malen am Wasser (Kids)</div><div class="tags">Familien · Workshop</div><div class="rating">ausgebucht</div></div>
+    </div>
+  </div>
+</section>
+
+<div data-mount-footer></div>
+<script src="assets/shared.js?v=6"></script>
+</body>
+</html>

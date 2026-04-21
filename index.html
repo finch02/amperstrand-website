@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Amperstrand — Stadtstrand an der Amper, Fürstenfeldbruck</title>
+<meta name="description" content="Stadtstrand. Mitten in Bruck. Kühle Getränke, Snacks, Eis, Events. Direkt an der Amper.">
+<link rel="stylesheet" href="assets/shared.css?v=6">
+<style>
+  /* HERO */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    background: var(--yellow);
+    color: var(--ink);
+    padding: 120px var(--gutter) 0;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  :root[data-herotone="paper"] .hero { background: var(--paper); }
+  :root[data-herotone="ink"] .hero { background: var(--ink); color: var(--paper); }
+  :root[data-herotone="ink"] .hero .hero-meta span,
+  :root[data-herotone="ink"] .hero .hero-sub { color: var(--paper); }
+  :root[data-herotone="ink"] .hero .status-hero { background: var(--paper); color: var(--ink); }
+  :root[data-herotone="ink"] .badge-kiosk { background: var(--yellow); color: var(--ink); }
+  :root[data-herotone="ink"] .eyebrow { color: var(--paper); opacity: .6; }
+
+  .hero-inner { max-width: var(--max); margin: 0 auto; width: 100%; flex: 1; display:flex; flex-direction:column; justify-content:center; padding-bottom: 8vh; }
+  .hero-eyebrow { display:flex; gap: 14px; align-items:center; margin-bottom: 24px; }
+  .hero-eyebrow .line { flex: 0 0 40px; height: 1px; background: var(--ink); opacity:.3; }
+  .hero h1 {
+    font-size: clamp(52px, 10vw, 160px);
+    letter-spacing: -0.045em;
+    line-height: .95;
+    max-width: 14ch;
+  }
+  .hero h1 .hand { font-family: var(--font-hand); font-weight: 500; font-size: 0.72em; line-height: 1; display: inline-block; transform: rotate(-2deg) translateY(-0.07em); margin-right: 0.15em; }
+  :root[data-hand="off"] .hero h1 .hand { font-family: var(--font-display); font-weight: 800; transform: none; font-size: 1em; }
+
+  .hero-sub {
+    margin-top: 32px;
+    font-size: clamp(17px, 1.5vw, 21px);
+    max-width: 520px;
+    line-height: 1.5;
+    opacity: .85;
+  }
+  .hero-meta {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    margin-top: 40px; font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; opacity: .7;
+  }
+  .hero-actions { margin-top: 40px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .status-hero {
+    display: inline-flex; align-items: baseline; gap: 12px;
+    background: var(--ink); color: var(--paper);
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-family: var(--font-display);
+  }
+  .status-hero strong { font-weight: 500; font-size: clamp(16px, 1.5vw, 19px); letter-spacing: -.01em; }
+  .status-hero span.sub { font-family: var(--font-mono); font-size: 10.5px; opacity: .55; text-transform: uppercase; letter-spacing: .08em; }
+
+  .badge-kiosk {
+    position: absolute; top: 96px; right: var(--gutter);
+    background: var(--ink); color: var(--paper);
+    padding: 8px 14px; border-radius: 999px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  @media (max-width: 820px) { .badge-kiosk { display: none; } }
+
+  /* Wave */
+  .hero-wave { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; height: 22vh; min-height: 180px; }
+  .hero-wave svg { width: 100%; height: 100%; display: block; }
+  .hero-wave .w { transform-origin: center; }
+  .hero-wave .w1 { animation: waveFloatA 5s ease-in-out infinite; }
+  .hero-wave .w2 { animation: waveFloatB 4.2s ease-in-out -1.3s infinite; }
+  .hero-wave .w3 { animation: waveFloatC 6.4s ease-in-out -2.7s infinite; }
+  @keyframes waveFloatA { 0%,100% { transform: translate(0, 0); } 25% { transform: translate(-1.5%, -6px); } 55% { transform: translate(-3%, 4px); } 80% { transform: translate(-1%, -2px); } }
+  @keyframes waveFloatB { 0%,100% { transform: translate(0, 0); } 30% { transform: translate(-2.5%, 5px); } 60% { transform: translate(-1%, -7px); } 85% { transform: translate(-2%, 3px); } }
+  @keyframes waveFloatC { 0%,100% { transform: translate(0, 0); } 20% { transform: translate(-1%, 4px); } 50% { transform: translate(-2.2%, -5px); } 75% { transform: translate(-3%, 6px); } }
+
+  /* ENGRAVED INFO STRIP */
+  .strip {
+    background: var(--ink); color: var(--paper);
+    padding: 48px var(--gutter);
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2.2vw, 28px);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+  }
+  .strip-row { display:flex; gap: 60px; white-space: nowrap; animation: marq 40s linear infinite; }
+  .strip-row span { display:inline-flex; align-items:center; gap: 60px; }
+  .strip-row .sep { color: var(--yellow); }
+  @keyframes marq { from { transform: translateX(0);} to { transform: translateX(-50%); } }
+
+  /* TEASER GRID */
+  .teasers { padding: 140px var(--gutter) 60px; }
+  .teaser-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; margin-top: 64px; }
+  .teaser {
+    position: relative; overflow: hidden; border-radius: 24px;
+    aspect-ratio: 4/5;
+    background: var(--stone);
+    transition: transform .5s var(--ease);
+  }
+  .teaser:hover { transform: translateY(-4px); }
+  .teaser .ph { position: absolute; inset: 0; }
+  .teaser .label {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 24px 26px;
+    background: linear-gradient(to bottom, rgba(0,0,0,.0) 40%, rgba(0,0,0,.55));
+    color: var(--paper);
+  }
+  .teaser .label .top { display:flex; justify-content:space-between; font-family: var(--font-mono); font-size: 11px; text-transform:uppercase; letter-spacing:.06em; }
+  .teaser .label h3 { font-size: clamp(22px, 2.4vw, 34px); }
+  .teaser .label .arrow { display: inline-flex; align-items:center; gap: 6px; font-size: 14px; margin-top: 8px; opacity: .8; }
+
+  .teaser.t-karte { grid-column: span 6; background: var(--ink); }
+  .teaser.t-events { grid-column: span 6; background: var(--yellow); }
+  .teaser.t-oeff { grid-column: span 4; aspect-ratio: 1/1; background: var(--paper); border: 1px solid rgba(10,10,10,.08); }
+  .teaser.t-gesch { grid-column: span 4; aspect-ratio: 1/1; background: var(--deep); }
+  .teaser.t-krea { grid-column: span 4; aspect-ratio: 1/1; background: var(--stone); }
+
+  .teaser.t-karte .label, .teaser.t-gesch .label { color: var(--paper); }
+  .teaser.t-events .label, .teaser.t-oeff .label, .teaser.t-krea .label { color: var(--ink); background: none; }
+  .teaser.t-karte .label { background: none; }
+  .teaser.t-karte h3 { color: var(--paper); }
+  .teaser.t-events h3 { color: var(--ink); }
+
+  .teaser.t-events .big-num { position:absolute; right:24px; bottom:24px; font-family:var(--font-display); font-size: clamp(80px, 12vw, 180px); font-weight:800; letter-spacing:-.04em; color: var(--ink); line-height: 1; }
+
+  /* Menu preview in teaser */
+  .menu-preview { position: absolute; inset: 0; padding: 26px; display:flex; flex-direction:column; gap: 6px; font-family: var(--font-display); }
+  .menu-preview .section-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--paper); opacity: .45; margin-top: 10px; padding-bottom: 2px; }
+  .menu-preview .section-label:first-child { margin-top: 0; }
+  .menu-preview .item { display:flex; justify-content:space-between; align-items:baseline; font-size: 17px; font-weight: 500; letter-spacing:-.01em; border-bottom: 1px dashed rgba(250,250,247,.18); padding: 4px 0; color: var(--paper); }
+  .menu-preview .item .dots { flex:1; border-bottom: 1px dotted rgba(250,250,247,.22); margin: 0 10px; height: 0; align-self:center; }
+  .menu-preview .item .price { font-family: var(--font-mono); font-size: 13px; opacity: .7; }
+  .menu-preview .menu-footnote { margin-top: auto; padding-top: 12px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .04em; color: var(--paper); opacity: .5; line-height: 1.5; }
+
+  /* Ampel (status traffic light) */
+  .ampel-sec { padding: 80px var(--gutter) 120px; }
+  .ampel-card { background: var(--ink); color: var(--paper); border-radius: 32px; overflow: hidden; padding: 56px 48px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+  .ampel-card h2 { color: var(--paper); max-width: 11ch; }
+  .ampel-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+  .ampel-day { padding: 18px 10px; text-align: center; border-radius: 14px; background: rgba(250,250,247,.04); position: relative; }
+  .ampel-day .wd { font-family: var(--font-mono); font-size: 11px; opacity: .55; text-transform: uppercase; letter-spacing:.06em; }
+  .ampel-day .d { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin: 4px 0 10px; }
+  .ampel-day .light { width: 10px; height: 10px; border-radius: 50%; margin: 0 auto; }
+  .ampel-day.green .light { background: #4ade80; }
+  .ampel-day.amber .light { background: #facc15; }
+  .ampel-day.red .light { background: #ef4444; }
+  .ampel-day.grey .light { background: rgba(250,250,247,.2); }
+  .ampel-day.today { background: var(--yellow); color: var(--ink); }
+  .ampel-day.today .wd { opacity: .7; }
+  .ampel-hint { font-size: 14px; opacity: .55; margin-top: 20px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .05em; font-size: 11.5px; }
+
+  @media (max-width: 820px) {
+    .teaser.t-karte, .teaser.t-events { grid-column: span 12; }
+    .teaser.t-oeff, .teaser.t-gesch, .teaser.t-krea { grid-column: span 12; aspect-ratio: 16/9; }
+    .ampel-card { grid-template-columns: 1fr; padding: 36px 28px; }
+    .ampel-days { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .ampel-day { padding: 12px 4px; }
+    .ampel-day .d { font-size: 16px; }
+  }
+
+  /* HERO AMPEL — zentriert im Viewport, unter der Nav */
+  .hero-ampel {
+    position: fixed;
+    top: 90px;
+    left: 0; right: 0;
+    margin-inline: auto;
+    width: max-content;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px 12px 22px;
+    background: rgba(10,10,10,.06);
+    border-radius: 999px;
+    color: var(--ink);
+    text-decoration: none;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .ha-status {
+    display: inline-grid;
+    grid-template-columns: 14px 1fr;
+    align-items: center;
+    gap: 12px;
+    width: 150px;
+    font-family: var(--font-mono); font-size: 17px; letter-spacing: .01em; text-transform: none; font-weight: 600;
+  }
+  .ha-status .pulse {
+    width: 14px; height: 14px; border-radius: 50%;
+    position: relative;
+  }
+  .ha-status .lbl {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  .ha-status .lbl .lbl-day { display: block; font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: -.01em; text-transform: none; opacity: 1; margin-bottom: 2px; }
+  .ha-status .lbl .lbl-sub { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; opacity: .6; }
+  .ha-status .pulse::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 1px solid currentColor; opacity: .4;
+    animation: haPulse 2.2s ease-out infinite;
+  }
+  @keyframes haPulse { 0% { transform: scale(.6); opacity: .6; } 100% { transform: scale(1.6); opacity: 0; } }
+  .hero-ampel[data-state="open"] .ha-status { color: #2d7a3e; }
+  .hero-ampel[data-state="open"] .ha-status .pulse { background: #2d7a3e; }
+  .hero-ampel[data-state="limited"] .ha-status { color: #a06c10; }
+  .hero-ampel[data-state="limited"] .ha-status .pulse { background: #d9a61a; }
+  .hero-ampel[data-state="limited"] .ha-status .pulse::after { animation: none; display:none; }
+  .hero-ampel[data-state="closed"] .ha-status { color: rgba(10,10,10,.55); }
+  .hero-ampel[data-state="closed"] .ha-status .pulse { background: rgba(10,10,10,.4); }
+  .hero-ampel[data-state="closed"] .ha-status .pulse::after { display:none; }
+
+  .ha-head, .ha-link { display: none; }
+  .ha-status { color: inherit; text-decoration: none; }
+  .ha-nav {
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; background: transparent;
+    color: var(--ink);
+    font-family: var(--font-display); font-size: 22px; font-weight: 500;
+    cursor: pointer; border-radius: 8px;
+    opacity: .55;
+    transition: opacity .15s var(--ease), background .15s var(--ease);
+  }
+  .ha-nav:hover { opacity: 1; background: rgba(10,10,10,.06); }
+  .ha-nav:disabled { opacity: .2; cursor: default; background: transparent; }
+  :root[data-herotone="ink"] .ha-nav { color: var(--paper); }
+  :root[data-herotone="ink"] .ha-nav:hover { background: rgba(245,241,232,.08); }
+  .ha-days {
+    display: inline-flex; gap: 4px;
+  }
+  .ha-day {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    border: 0; padding: 0;
+    font: inherit; cursor: pointer;
+    border-radius: 12px;
+    background: rgba(10,10,10,.08);
+    position: relative;
+    transition: background .2s var(--ease), transform .15s var(--ease);
+  }
+  .ha-day:hover { transform: translateY(-1px); }
+  .ha-day .wd { display: none; }
+  .ha-day .d {
+    font-family: var(--font-mono); font-size: 14px; font-weight: 600;
+    color: rgba(10,10,10,.75);
+    position: relative; z-index: 1;
+  }
+  .ha-day .light {
+    position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+    width: 5px; height: 5px; border-radius: 50%;
+    display: none;
+  }
+  /* GEÖFFNET — sattes Grün, volle Sättigung */
+  .ha-day.green { background: #7dc88a; }
+  .ha-day.green .d { color: #0a2a12; }
+  /* WETTERABHÄNGIG — Amber */
+  .ha-day.amber { background: #f1c247; }
+  .ha-day.amber .d { color: #3a2906; }
+  /* GESCHLOSSEN — deutlich durchgestrichen */
+  .ha-day.red { background: rgba(10,10,10,.04); border: 1px dashed rgba(10,10,10,.35); }
+  .ha-day.red .d { color: rgba(10,10,10,.55); text-decoration: line-through; text-decoration-thickness: 2.5px; }
+  .ha-day.red .wd { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  /* PRE-SEASON — gedämpftes Gelb, klar unterscheidbar von grün */
+  .ha-day.grey { background: rgba(180,145,40,.18); }
+  .ha-day.grey .d { color: rgba(10,10,10,.4); }
+  /* HEUTE — diskretes Label neben der Kachel */
+  .ha-day.today::before {
+    content: '';
+    position: absolute; top: -5px; right: -5px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ink);
+    border: 2px solid var(--yellow);
+  }
+  :root[data-herotone="paper"] .ha-day.today::before { border-color: var(--paper); }
+  :root[data-herotone="ink"] .ha-day.today::before { background: var(--paper); border-color: var(--ink); }
+  /* SELECTED (user hat Kachel angeklickt) — schwarzer Ring */
+  .ha-day.selected { box-shadow: 0 0 0 2px var(--ink); }
+
+  /* paper/ink hero tones — Varianten */
+  :root[data-herotone="paper"] .ha-day { background: rgba(10,10,10,.06); }
+  :root[data-herotone="paper"] .ha-day.green { background: #7dc88a; }
+  :root[data-herotone="paper"] .ha-day.amber { background: #f1c247; }
+
+  :root[data-herotone="ink"] .hero-ampel { color: var(--paper); background: rgba(245,241,232,.08); }
+  :root[data-herotone="ink"] .ha-day { background: rgba(245,241,232,.1); }
+  :root[data-herotone="ink"] .ha-day .d { color: rgba(245,241,232,.75); }
+  :root[data-herotone="ink"] .ha-day.green { background: #7dc88a; }
+  :root[data-herotone="ink"] .ha-day.green .d { color: #0a2a12; }
+  :root[data-herotone="ink"] .ha-day.amber { background: #f1c247; }
+  :root[data-herotone="ink"] .ha-day.amber .d { color: #3a2906; }
+  :root[data-herotone="ink"] .ha-day.red { background: transparent; border: 1px dashed rgba(245,241,232,.3); }
+  :root[data-herotone="ink"] .ha-day.red .d { color: rgba(245,241,232,.4); }
+  :root[data-herotone="ink"] .ha-day.grey { background: transparent; border: 1px solid rgba(245,241,232,.2); }
+  :root[data-herotone="ink"] .ha-day.grey .d { color: rgba(245,241,232,.4); }
+  :root[data-herotone="ink"] .ha-day.today { box-shadow: none; }
+  :root[data-herotone="ink"] .ha-day.today::before { color: rgba(245,241,232,.6); }
+  :root[data-herotone="ink"] .ha-day.selected { box-shadow: 0 0 0 2px var(--paper); }
+  :root[data-herotone="ink"] .hero-ampel[data-state="open"] .ha-status { color: #7dd094; }
+  :root[data-herotone="ink"] .hero-ampel[data-state="open"] .ha-status .pulse { background: #7dd094; }
+  :root[data-herotone="ink"] .hero-ampel[data-state="limited"] .ha-status { color: #e3c56a; }
+  :root[data-herotone="ink"] .hero-ampel[data-state="closed"] .ha-status { color: rgba(245,241,232,.55); }
+  :root[data-herotone="ink"] .hero-ampel[data-state="closed"] .ha-status .pulse { background: rgba(245,241,232,.4); }
+
+  /* Durchgehend sichtbare Ampel — invertiert auf dunklen Sektionen */
+  .hero-ampel.on-dark { background: rgba(245,241,232,.1); color: var(--paper); }
+  .hero-ampel.on-dark .ha-day { background: rgba(245,241,232,.12); }
+  .hero-ampel.on-dark .ha-day .d { color: rgba(245,241,232,.8); }
+  .hero-ampel.on-dark .ha-day.green { background: #7dc88a; }
+  .hero-ampel.on-dark .ha-day.green .d { color: #0a2a12; }
+  .hero-ampel.on-dark .ha-day.amber { background: #f1c247; }
+  .hero-ampel.on-dark .ha-day.amber .d { color: #3a2906; }
+  .hero-ampel.on-dark .ha-day.red { background: transparent; border: 1px dashed rgba(245,241,232,.3); }
+  .hero-ampel.on-dark .ha-day.red .d { color: rgba(245,241,232,.45); }
+  .hero-ampel.on-dark .ha-day.grey { background: rgba(245,241,232,.06); }
+  .hero-ampel.on-dark .ha-day.grey .d { color: rgba(245,241,232,.4); }
+  .hero-ampel.on-dark .ha-day.today::before { background: var(--paper); border-color: rgba(10,10,10,.8); }
+  .hero-ampel.on-dark .ha-day.selected { box-shadow: 0 0 0 2px var(--paper); }
+  .hero-ampel.on-dark .ha-nav { color: var(--paper); }
+  .hero-ampel.on-dark .ha-nav:hover { background: rgba(245,241,232,.08); }
+  .hero-ampel.on-dark[data-state="open"] .ha-status { color: #7dd094; }
+  .hero-ampel.on-dark[data-state="open"] .ha-status .pulse { background: #7dd094; }
+  .hero-ampel.on-dark[data-state="limited"] .ha-status { color: #e3c56a; }
+  .hero-ampel.on-dark[data-state="limited"] .ha-status .pulse { background: #e3c56a; }
+  .hero-ampel.on-dark[data-state="closed"] .ha-status { color: rgba(245,241,232,.65); }
+  .hero-ampel.on-dark[data-state="closed"] .ha-status .pulse { background: rgba(245,241,232,.45); }
+  .hero-ampel { transition: background .3s var(--ease), color .3s var(--ease); }
+
+  @media (max-width: 820px) {
+    .hero-ampel {
+      top: auto;
+      bottom: 20px;
+      left: 16px;
+      right: 16px;
+      margin-inline: 0;
+      width: auto;
+      max-width: calc(100vw - 32px);
+      gap: 8px;
+      padding: 8px 10px;
+      justify-content: space-between;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+    .ha-status {
+      width: auto;
+      min-width: 0;
+      grid-template-columns: 10px 1fr;
+      gap: 8px;
+      font-size: 14px;
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .ha-status .pulse { width: 10px; height: 10px; }
+    .ha-status .lbl { display: block; overflow: hidden; }
+    .ha-status .lbl .lbl-day { font-size: 13px; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ha-status .lbl .lbl-sub { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ha-nav { width: 24px; height: 24px; font-size: 18px; flex-shrink: 0; }
+    .ha-days { gap: 2px; flex-shrink: 0; overflow: hidden; }
+    .ha-day { width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0; }
+    .ha-day .d { font-size: 10px; }
+    /* Auf Mobile nur 5 Tage zeigen, damit's reinpasst */
+    .ha-day:nth-child(n+6) { display: none; }
+  }
+
+  /* INSTAGRAM STRIP */
+  .ig { padding: 100px var(--gutter) 140px; background: var(--paper-2); }
+  .ig-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 40px; }
+  .ig-grid .tile { aspect-ratio: 1; border-radius: 4px; overflow: hidden; }
+  .ig-grid .tile:nth-child(1) { grid-column: span 2; grid-row: span 2; aspect-ratio: 1/1; }
+  @media (max-width: 820px) { .ig-grid { grid-template-columns: repeat(3, 1fr); } .ig-grid .tile:nth-child(1) { grid-column: span 2; grid-row: span 2; } }
+
+  /* KQ TEASER */
+  .kq { padding: 120px var(--gutter); background: var(--deep); color: var(--paper); overflow: hidden; position: relative; }
+  .kq .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+  .kq h2 { color: var(--paper); max-width: 14ch; }
+  .kq p { opacity: .75; max-width: 44ch; font-size: 17px; }
+  .kq-partners { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kq-partner { padding: 20px; border: 1px solid rgba(250,250,247,.12); border-radius: 16px; }
+  .kq-partner h4 { font-family: var(--font-display); font-size: 17px; letter-spacing:-.01em; margin-bottom: 6px; }
+  .kq-partner .meta { font-family: var(--font-mono); font-size: 11px; opacity: .5; text-transform: uppercase; letter-spacing: .06em; }
+  @media (max-width: 820px) { .kq .wrap { grid-template-columns: 1fr; } }
+
+  /* SECTION DIVIDER WAVE */
+  .divider-wave { height: 80px; background: var(--paper); }
+  .divider-wave svg { width: 100%; height: 100%; display: block; }
+
+</style>
+</head>
+<body data-page="index" data-tone="yellow">
+<div data-mount-nav></div>
+
+<!-- HERO -->
+<section class="hero" data-screen-label="01 Hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow reveal">
+      <span class="line"></span>
+      <span class="eyebrow">Fürstenfeldbruck · Bayern · 48.18°N</span>
+    </div>
+
+    <h1 class="reveal">
+      <span class="hand">Servus</span>
+      Amperstrand.<br>
+      Dein Stadtstrand.
+    </h1>
+
+    <p class="hero-sub reveal" data-delay="120">
+      Direkt an der Amper, irgendwo zwischen Feierabend und „nur noch ein Getränk“.<br>
+      Ohne Plan. Ohne Druck. Genau richtig.
+    </p>
+
+    <div class="hero-actions reveal" data-delay="220">
+      <span class="status-hero">
+        <strong data-status-label>Jetzt geöffnet</strong>
+        <span class="sub" data-status-sub>bis 22:00</span>
+      </span>
+      <a href="karte.html" class="btn ghost">Karte ansehen <span class="arrow">→</span></a>
+    </div>
+
+    <div class="hero-meta reveal" data-delay="320">
+      <span>Saison 2026 · 01. Mai — 30. Sep</span>
+      <span>·</span>
+      <span>Bullachstraße 30 · 82256 FFB</span>
+    </div>
+  </div>
+
+  <!-- HERO AMPEL · zentriert unter der Nav -->
+  <div class="hero-ampel reveal" id="heroAmpelWrap" data-state="closed" data-delay="380" role="group" aria-label="Öffnungsstatus">
+    <a href="oeffnungszeiten.html" class="ha-status" aria-label="Zu Öffnungszeiten">
+      <span class="pulse" aria-hidden="true"></span>
+      <span class="lbl" id="heroAmpelLabel">Geschlossen</span>
+    </a>
+    <button class="ha-nav prev" id="heroAmpelPrev" aria-label="Frühere Tage" type="button">‹</button>
+    <div class="ha-days" id="heroAmpel"></div>
+    <button class="ha-nav next" id="heroAmpelNext" aria-label="Spätere Tage" type="button">›</button>
+  </div>
+
+  <!-- Wellen (responding to tweak data-wave) -->
+  <div class="hero-wave" aria-hidden="true">
+    <svg viewBox="0 0 1440 220" preserveAspectRatio="none">
+      <g class="w w1">
+        <path d="M-100 120 Q 180 60, 360 120 T 720 120 T 1080 120 T 1540 120" fill="none" stroke="#0a0a0a" stroke-width="1.4" opacity=".9"/>
+      </g>
+      <g class="w w2">
+        <path d="M-100 140 Q 180 88, 360 140 T 720 140 T 1080 140 T 1540 140" fill="none" stroke="#0a0a0a" stroke-width="1" opacity=".55"/>
+      </g>
+      <g class="w w3">
+        <path d="M-100 160 Q 180 120, 360 160 T 720 160 T 1080 160 T 1540 160" fill="none" stroke="#0a0a0a" stroke-width=".8" opacity=".3"/>
+      </g>
+      <g class="w w1">
+        <path d="M-100 180 Q 180 150, 360 180 T 720 180 T 1080 180 T 1540 180" fill="none" stroke="#0a0a0a" stroke-width=".6" opacity=".2"/>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<!-- MARQUEE STRIP -->
+<section class="strip" aria-hidden="true">
+  <div class="strip-row">
+    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Elephant Pretzels&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;Sundowner · DJ Sets · Flohmarkt&nbsp;<span class="sep">✦</span>&nbsp;</span>
+    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Elephant Pretzels&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;Sundowner · DJ Sets · Flohmarkt&nbsp;<span class="sep">✦</span>&nbsp;</span>
+  </div>
+</section>
+
+<!-- TEASER GRID -->
+<section class="teasers">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">§ 01 · Orientierung</span>
+      <h2>Alles, was du heute wissen musst.</h2>
+      <p class="lead">Eine kleine Karte für einen entspannten Abend am Wasser. Klick dich durch — oder komm einfach vorbei.</p>
+    </div>
+
+    <div class="teaser-grid">
+      <a href="karte.html" class="teaser t-karte reveal">
+        <div class="menu-preview">
+          <div class="section-label">Bier & Radler</div>
+          <div class="item"><span>Augustiner Helles</span><span class="dots"></span><span class="price">3,50</span></div>
+          <div class="item"><span>Gösser Radler</span><span class="dots"></span><span class="price">3,50</span></div>
+          <div class="item"><span>Desperados</span><span class="dots"></span><span class="price">4,00</span></div>
+
+          <div class="section-label">Aperitifs</div>
+          <div class="item"><span>Aperol Spritz</span><span class="dots"></span><span class="price">4,50</span></div>
+          <div class="item"><span>Wild Berry Lillet</span><span class="dots"></span><span class="price">4,50</span></div>
+
+          <div class="section-label">Snacks</div>
+          <div class="item"><span>Kesselnüsse Paprika</span><span class="dots"></span><span class="price">2,00</span></div>
+          <div class="item"><span>Elephant Pretzels</span><span class="dots"></span><span class="price">2,50</span></div>
+
+          <div class="menu-footnote">Cocktails alle einheitlich 6,00 · Softdrinks ab 1,50</div>
+        </div>
+        <div class="label">
+          <div class="top"><span>Karte</span><span>Auszug</span></div>
+          <div>
+            <h3>Kühl, salzig, süß.</h3>
+            <span class="arrow">→ Volle Karte ansehen</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="events.html" class="teaser t-events reveal" data-delay="80">
+        <div class="label">
+          <div class="top"><span>Events</span><span>Sommer 26</span></div>
+          <div>
+            <h3>Musik, Menschen,<br>Sommerstimmung.</h3>
+            <span class="arrow">→ Was diesen Monat läuft</span>
+          </div>
+        </div>
+        <div class="big-num" data-current-month>07</div>
+      </a>
+
+      <a href="oeffnungszeiten.html" class="teaser t-oeff reveal" data-delay="140">
+        <div class="label">
+          <div class="top"><span>Öffnungszeiten</span><span>Live</span></div>
+          <div>
+            <div style="font-family:var(--font-mono);font-size:11px;opacity:.6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Gerade</div>
+            <h3 data-status-label>Jetzt geöffnet</h3>
+            <span class="arrow">→ 7-Tage Ampel</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="geschichte.html" class="teaser t-gesch reveal" data-delay="200">
+        <div class="label">
+          <div class="top"><span>Geschichte</span><span>2021 —</span></div>
+          <div>
+            <h3>Wie aus einer<br>Wiese ein Strand wurde.</h3>
+            <span class="arrow">→ Story & FAQ</span>
+          </div>
+        </div>
+      </a>
+
+      <a href="kreativquartier.html" class="teaser t-krea reveal" data-delay="260">
+        <div class="label">
+          <div class="top"><span>Kreativquartier</span><span>Aumühle/Lände</span></div>
+          <div>
+            <h3>Wir sind nicht allein<br>hier draußen.</h3>
+            <span class="arrow">→ Unsere Nachbar:innen</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- AMPEL SECTION -->
+<section class="ampel-sec">
+  <div class="wrap">
+    <div class="ampel-card reveal">
+      <div>
+        <span class="eyebrow" style="color: var(--paper); opacity: .55;">§ 02 · Ampel</span>
+        <h2 style="margin: 14px 0 16px;">Offen oder zu?<br>Schau nach.</h2>
+        <p style="opacity: .7; max-width: 40ch; font-size: 16px;">Wir sind bei schönem Wetter für dich da. Die Ampel zeigt dir, wie's aussieht — heute und die nächsten sechs Tage.</p>
+        <p class="ampel-hint">Daten aus unserem Sheet · aktualisiert 21.04.2026 09:14</p>
+      </div>
+      <div>
+        <div class="ampel-days" id="ampelDays"></div>
+        <div style="display:flex; gap: 16px; margin-top: 18px; font-family: var(--font-mono); font-size: 11px; opacity:.6; text-transform:uppercase;">
+          <span style="display:inline-flex;gap:6px;align-items:center;"><span style="width:8px;height:8px;background:#4ade80;border-radius:50%;display:inline-block"></span>Offen</span>
+          <span style="display:inline-flex;gap:6px;align-items:center;"><span style="width:8px;height:8px;background:#facc15;border-radius:50%;display:inline-block"></span>Unsicher / Wetter</span>
+          <span style="display:inline-flex;gap:6px;align-items:center;"><span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:inline-block"></span>Zu</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTAGRAM -->
+<section class="ig">
+  <div class="wrap">
+    <div class="section-head reveal" style="display:flex;justify-content:space-between;align-items:flex-end;gap:40px;flex-wrap:wrap;margin-bottom:10px;">
+      <div>
+        <span class="eyebrow">§ 03 · Instagram</span>
+        <h2 style="margin: 14px 0 0;">@amperstrand.ffb</h2>
+      </div>
+      <a href="https://instagram.com" class="btn ghost">Auf Instagram folgen <span class="arrow">→</span></a>
+    </div>
+    <div class="ig-grid reveal">
+      <div class="tile ph" data-label="Sundowner · Juli"></div>
+      <div class="tile ph yellow" data-label="Aperol"></div>
+      <div class="tile ph dark" data-label="Flohmarkt"></div>
+      <div class="tile ph" data-label="Kids"></div>
+      <div class="tile ph dark" data-label="Livemusik"></div>
+      <div class="tile ph yellow" data-label="Eis"></div>
+      <div class="tile ph" data-label="Amper"></div>
+      <div class="tile ph dark" data-label="Abend"></div>
+      <div class="tile ph yellow" data-label="Laugenbrezn"></div>
+    </div>
+  </div>
+</section>
+
+<!-- KQ TEASER -->
+<section class="kq">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow" style="color: var(--paper); opacity: .5;">§ 04 · Nachbarschaft</span>
+      <h2 style="margin: 14px 0 20px;">Wir sind Teil vom Kreativquartier Aumühle/Lände.</h2>
+      <p>Gleich nebenan: Escape Rooms, Demokratie-Hütten, Ateliers. Lauft ein paar Schritte weiter — es lohnt sich.</p>
+      <a href="kreativquartier.html" class="btn alt" style="margin-top: 12px;">Nachbar:innen ansehen <span class="arrow">→</span></a>
+    </div>
+    <div class="kq-partners">
+      <div class="kq-partner">
+        <div class="meta">Escape Room</div>
+        <h4>Riddle Machine</h4>
+        <p style="font-size: 14px; opacity: .65; margin: 0;">Rätseln für Teams. Eine Minute zu Fuß.</p>
+      </div>
+      <div class="kq-partner">
+        <div class="meta">Fr 16–19</div>
+        <h4>Bündnis für Demokratie</h4>
+        <p style="font-size: 14px; opacity: .65; margin: 0;">Demokratie-Hütte. Reden, zuhören, dasein.</p>
+      </div>
+      <div class="kq-partner">
+        <div class="meta">Werkstatt</div>
+        <h4>Atelier Aumühle</h4>
+        <p style="font-size: 14px; opacity: .65; margin: 0;">Offene Türen. Tropfender Farbgeruch.</p>
+      </div>
+      <div class="kq-partner">
+        <div class="meta">Soon</div>
+        <h4>Weitere Partner</h4>
+        <p style="font-size: 14px; opacity: .65; margin: 0;">Das Quartier wächst. Wir auch.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div data-mount-footer></div>
+
+<script src="assets/shared.js?v=6"></script>
+<script>
+  // Build Ampel 7-day strip — daten kommen live aus Google Sheet (via shared.js)
+  (async function(){
+    const TOTAL = 21; // Fenster: 21 Tage ab heute
+    const WINDOW = 7;
+    const out = await window.buildAmpelWindow({ totalDays: TOTAL });
+
+    // Seitenfüllende 7-Tage-Ampel
+    const firstWeek = out.slice(0, 7).map(o => `
+      <div class="ampel-day ${o.cls} ${o.isToday?'today':''}">
+        <div class="wd">${o.isToday ? 'heute' : o.wd}</div>
+        <div class="d">${o.d}</div>
+        <div class="light"></div>
+      </div>`).join('');
+    const ampelDays = document.getElementById('ampelDays');
+    if (ampelDays) ampelDays.innerHTML = firstWeek;
+
+    // Hero-Ampel: Fenster + Prev/Next
+    const heroMount = document.getElementById('heroAmpel');
+    const wrap = document.getElementById('heroAmpelWrap');
+    const lbl = document.getElementById('heroAmpelLabel');
+    const prevBtn = document.getElementById('heroAmpelPrev');
+    const nextBtn = document.getElementById('heroAmpelNext');
+    if (!heroMount || !wrap || !lbl) return;
+
+    const stateMap = {
+      green:  ['open',    o => `Geöffnet · ${o.sub.replace('Geöffnet ','')}`],
+      amber:  ['limited', o => 'Wetterabhängig'],
+      red:    ['closed',  o => 'Ruhetag'],
+      grey:   ['closed',  o => 'Saison ab 01.05.']
+    };
+
+    let winStart = 0;   // Index des ersten sichtbaren Tages
+    let selected = 0;   // Index des hervorgehobenen Tages (default = heute)
+
+    function fmtLabel(o) {
+      const stateLabels = { green: 'Geöffnet', amber: 'Wetterabhängig', red: 'Geschlossen', grey: 'Vor Saisonstart' };
+      // Sheet-Notiz priorisieren, sonst Default-Label
+      const statusText = (o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || 'Geschlossen');
+      const dayText = o.isToday ? 'Heute' : `${o.wd}, ${o.d}. ${o.m}`;
+      return `<span class="lbl-day">${dayText}</span><span class="lbl-sub">${statusText}</span>`;
+    }
+
+    function render() {
+      const slice = out.slice(winStart, winStart + WINDOW);
+      heroMount.innerHTML = slice.map((o, idx) => {
+        const absIdx = winStart + idx;
+        return `
+        <button class="ha-day ${o.cls} ${o.isToday?'today':''} ${absIdx===selected?'selected':''}" data-idx="${absIdx}" type="button" aria-label="${o.wd} ${o.d}">
+          <div class="wd">${o.isToday ? 'heute' : o.wd}</div>
+          <div class="d">${o.d}</div>
+          <div class="light"></div>
+        </button>`;
+      }).join('');
+
+      const sel = out[selected];
+      const [state] = stateMap[sel.cls] || ['closed'];
+      wrap.dataset.state = state;
+      lbl.innerHTML = fmtLabel(sel);
+
+      prevBtn.disabled = winStart === 0;
+      nextBtn.disabled = winStart + WINDOW >= TOTAL;
+
+      heroMount.querySelectorAll('.ha-day').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selected = parseInt(btn.dataset.idx, 10);
+          render();
+        });
+      });
+    }
+
+    prevBtn.addEventListener('click', () => {
+      winStart = Math.max(0, winStart - WINDOW);
+      render();
+    });
+    nextBtn.addEventListener('click', () => {
+      winStart = Math.min(TOTAL - WINDOW, winStart + WINDOW);
+      render();
+    });
+
+    render();
+  })();
+
+  // Ampel-Kontrast: wechsle on-dark je nach Sektion unter der Pill
+  (function(){
+    const pill = document.getElementById('heroAmpelWrap');
+    if (!pill) return;
+    // Sektionen mit dunklem Hintergrund
+    const darkSelectors = ['.strip', '.kq'];
+    const darkEls = darkSelectors.flatMap(s => [...document.querySelectorAll(s)]);
+    if (!darkEls.length) return;
+    const update = () => {
+      const r = pill.getBoundingClientRect();
+      const probeY = r.top + r.height / 2;
+      let onDark = false;
+      for (const el of darkEls) {
+        const er = el.getBoundingClientRect();
+        if (er.top <= probeY && er.bottom >= probeY) { onDark = true; break; }
+      }
+      pill.classList.toggle('on-dark', onDark);
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+  })();
+  window.__onTweakChange = (s) => {
+    const wavewrap = document.querySelector('.hero-wave');
+    if (!wavewrap) return;
+    let strokeCol = '#0a0a0a';
+    // adapt to herotone
+    if (s.herotone === 'ink') strokeCol = '#fafaf7';
+    const mode = s.wave;
+    if (mode === 'lines') {
+      wavewrap.innerHTML = `
+        <svg viewBox="0 0 1440 220" preserveAspectRatio="none">
+          <g class="w w1"><path d="M-100 120 Q 180 60, 360 120 T 720 120 T 1080 120 T 1540 120" fill="none" stroke="${strokeCol}" stroke-width="1.4" opacity=".9"/></g>
+          <g class="w w2"><path d="M-100 140 Q 180 88, 360 140 T 720 140 T 1080 140 T 1540 140" fill="none" stroke="${strokeCol}" stroke-width="1" opacity=".55"/></g>
+          <g class="w w3"><path d="M-100 160 Q 180 120, 360 160 T 720 160 T 1080 160 T 1540 160" fill="none" stroke="${strokeCol}" stroke-width=".8" opacity=".3"/></g>
+        </svg>`;
+    } else if (mode === 'ink') {
+      wavewrap.innerHTML = `
+        <svg viewBox="0 0 1440 220" preserveAspectRatio="none">
+          <g class="w w1"><path d="M-100 90 C 240 30, 480 150, 720 90 S 1200 30, 1540 90" fill="none" stroke="${strokeCol}" stroke-width="12" stroke-linecap="round"/></g>
+          <g class="w w2"><path d="M-100 150 C 240 90, 480 210, 720 150 S 1200 90, 1540 150" fill="none" stroke="${strokeCol}" stroke-width="6" stroke-linecap="round" opacity=".5"/></g>
+        </svg>`;
+    } else if (mode === 'blob') {
+      wavewrap.innerHTML = `
+        <svg viewBox="0 0 1440 220" preserveAspectRatio="none">
+          <g class="w w1"><path d="M-10 140 Q 280 60, 560 140 T 1120 140 T 1460 140 L 1460 240 L -10 240 Z" fill="${strokeCol}" opacity=".88"/></g>
+          <g class="w w2"><path d="M-10 170 Q 280 110, 560 170 T 1120 170 T 1460 170 L 1460 240 L -10 240 Z" fill="${strokeCol}" opacity=".55"/></g>
+        </svg>`;
+    }
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Geschichte — Amperstrand</title>
+<link rel="stylesheet" href="assets/shared.css?v=6">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+<style>
+  .head { padding: 160px var(--gutter) 80px; }
+  .head h1 { max-width: 12ch; }
+  .head .lead { margin-top: 32px; max-width: 56ch; font-size: clamp(17px, 1.5vw, 22px); opacity: .75; }
+
+  .story { padding: 60px var(--gutter) 100px; }
+  .story .block { display: grid; grid-template-columns: 1fr 1.3fr; gap: 80px; margin-bottom: 80px; align-items: start; }
+  @media (max-width: 900px) { .story .block { grid-template-columns: 1fr; gap: 24px; } }
+  .story .year { font-family: var(--font-display); font-weight: 800; font-size: clamp(64px, 10vw, 140px); letter-spacing: -.05em; line-height: .85; opacity: .15; }
+  .story h3 { font-size: clamp(28px, 3vw, 40px); letter-spacing: -.02em; margin-bottom: 16px; }
+  .story p { font-size: 17px; line-height: 1.65; opacity: .8; max-width: 60ch; }
+
+  .story-img { width: 100%; aspect-ratio: 16/9; border-radius: 16px; margin-bottom: 32px; }
+
+  .map-sec { padding: 60px var(--gutter); background: var(--paper-2); }
+  .map-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; }
+  @media (max-width: 900px) { .map-grid { grid-template-columns: 1fr; } }
+  .map-box {
+    aspect-ratio: 4/3; border-radius: 24px; overflow: hidden; position: relative;
+    background: var(--paper); border: 1px solid rgba(10,10,10,.08);
+    box-shadow: 0 20px 40px -24px rgba(10,10,10,.15);
+  }
+  #leafletMap { position: absolute; inset: 0; z-index: 1; }
+  .map-overlay {
+    position: absolute; left: 20px; top: 20px; z-index: 400;
+    background: var(--ink); color: var(--paper);
+    padding: 14px 16px; border-radius: 12px;
+    font-family: var(--font-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .06em;
+    box-shadow: 0 8px 20px rgba(0,0,0,.18);
+    pointer-events: none;
+    max-width: 220px; line-height: 1.5;
+  }
+  .map-overlay .t { opacity: .55; margin-bottom: 4px; }
+  .map-overlay .a { color: var(--paper); font-family: var(--font-display); font-size: 14px; font-weight: 500; letter-spacing: -.005em; text-transform: none; }
+  .map-actions {
+    position: absolute; right: 16px; bottom: 16px; z-index: 400;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .map-actions a {
+    background: var(--paper); color: var(--ink);
+    padding: 10px 14px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: .06em;
+    text-decoration: none; font-weight: 500;
+    box-shadow: 0 6px 16px rgba(0,0,0,.12);
+    transition: transform .2s, background .2s;
+    border: 1px solid rgba(10,10,10,.08);
+  }
+  .map-actions a:hover { transform: translateY(-1px); background: var(--yellow); }
+  .map-pin-wrap {
+    display: flex; flex-direction: column; align-items: center; transform: translateY(-8px);
+    filter: drop-shadow(0 8px 14px rgba(0,0,0,.25));
+  }
+  .map-pin-wrap .lbl {
+    background: var(--ink); color: var(--paper);
+    font-family: var(--font-mono); font-size: 10px;
+    padding: 4px 8px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: .06em;
+    white-space: nowrap; margin-bottom: 6px;
+  }
+  .map-pin-wrap .dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--yellow); border: 4px solid var(--ink);
+  }
+  .map-pin-wrap .stem {
+    width: 2px; height: 8px; background: var(--ink);
+  }
+  /* Leaflet overrides to fit our brand */
+  .leaflet-container { background: #eeece2; font-family: var(--font-body); }
+  .leaflet-control-attribution {
+    background: rgba(250,250,247,.75) !important;
+    font-family: var(--font-mono) !important; font-size: 9.5px !important;
+    letter-spacing: .02em !important;
+  }
+  .leaflet-control-attribution a { color: var(--ink) !important; }
+  .leaflet-control-zoom a {
+    background: var(--paper) !important; color: var(--ink) !important;
+    border: 1px solid rgba(10,10,10,.08) !important;
+    font-family: var(--font-display) !important; font-weight: 500;
+  }
+  .leaflet-control-zoom a:hover { background: var(--yellow) !important; }
+  .travel h3 { margin-bottom: 18px; font-size: 22px; }
+  .travel-item { padding: 18px 0; border-bottom: 1px dashed rgba(10,10,10,.12); }
+  .travel-item .mode { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing:.06em; opacity:.55; margin-bottom: 6px; }
+  .travel-item p { margin: 0; font-size: 15px; opacity: .8; }
+
+  .faq { padding: 100px var(--gutter); }
+  .faq h2 { max-width: 14ch; }
+  .faq-list { margin-top: 50px; border-top: 1px solid rgba(10,10,10,.12); }
+  .faq-item { border-bottom: 1px solid rgba(10,10,10,.12); }
+  .faq-item summary { padding: 24px 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; cursor: pointer; list-style: none; font-family: var(--font-display); font-size: clamp(20px, 2.2vw, 26px); font-weight: 500; letter-spacing: -.01em; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary .num { font-family: var(--font-mono); font-size: 12px; opacity: .4; width: 36px; flex-shrink: 0; }
+  .faq-item summary .q { flex: 1; }
+  .faq-item summary .plus { width: 28px; height: 28px; border: 1px solid rgba(10,10,10,.25); border-radius: 50%; position: relative; transition: transform .3s var(--ease), background .2s; flex-shrink: 0; }
+  .faq-item summary .plus::before, .faq-item summary .plus::after { content:''; position: absolute; background: var(--ink); }
+  .faq-item summary .plus::before { left: 7px; right: 7px; top: 50%; height: 1.5px; transform: translateY(-50%); }
+  .faq-item summary .plus::after { top: 7px; bottom: 7px; left: 50%; width: 1.5px; transform: translateX(-50%); transition: transform .3s var(--ease); }
+  .faq-item[open] summary .plus::after { transform: translateX(-50%) scaleY(0); }
+  .faq-item[open] summary .plus { background: var(--yellow); border-color: var(--yellow); }
+  .faq-answer { padding: 4px 0 32px 52px; font-size: 16.5px; line-height: 1.65; opacity: .82; max-width: 68ch; }
+  @media (max-width: 720px) { .faq-answer { padding-left: 0; } .faq-item summary .num { display: none; } }
+
+  .contact { padding: 100px var(--gutter) 140px; background: var(--ink); color: var(--paper); position: relative; overflow: hidden; }
+  .contact .eyebrow { color: var(--paper); opacity: .55; }
+  .contact h2 { color: var(--paper); max-width: 14ch; }
+  .contact .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 60px; margin-top: 50px; align-items: start; }
+  @media (max-width: 900px) { .contact .grid { grid-template-columns: 1fr; } }
+  .contact-info p { opacity: .75; font-size: 16px; max-width: 40ch; }
+  .contact-info .row { margin-bottom: 18px; }
+  .contact-info .label { font-family: var(--font-mono); font-size: 11px; opacity: .55; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .contact-info a { text-decoration: underline; text-underline-offset: 4px; }
+  .form { display: grid; gap: 16px; }
+  .field { display: grid; gap: 6px; }
+  .field label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .5; }
+  .field input, .field textarea, .field select {
+    background: transparent; border: 0; border-bottom: 1px solid rgba(250,250,247,.25);
+    padding: 12px 0; font-family: var(--font-body); font-size: 17px; color: var(--paper);
+    outline: none; transition: border-color .2s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--yellow); }
+  .field textarea { min-height: 120px; resize: vertical; }
+  .field-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width:620px){ .field-2 { grid-template-columns: 1fr; } }
+  .check { display: flex; gap: 12px; font-size: 13px; opacity: .75; align-items: flex-start; line-height: 1.5; }
+  .check input { margin-top: 3px; }
+  .submit { margin-top: 8px; justify-self: start; }
+</style>
+</head>
+<body data-page="geschichte" data-tone="paper">
+<div data-mount-nav></div>
+
+<section class="head">
+  <div class="wrap">
+    <span class="eyebrow reveal">§ Geschichte · EST. 2021</span>
+    <h1 class="reveal" style="margin-top: 18px;">Ein Kiosk an der Amper.</h1>
+    <p class="lead reveal">Kühle Getränke, salzige Snacks, leckeres Eis. Ein Ort zum Abschalten — ohne Reservierung, ohne Dresscode, ohne Stress.</p>
+  </div>
+</section>
+
+<section class="story">
+  <div class="wrap">
+    <div class="block reveal">
+      <div class="year">2025</div>
+      <div>
+        <div class="ph yellow story-img" data-label="Eröffnung · 2021"></div>
+        <h3>Wie alles anfing.</h3>
+        <p>2025 eröffnete der Amperstrand als Stadtstrand von Fürstenfeldbruck — ein kleiner Kiosk direkt an der Amper, im Kreativquartier an der Bullachstraße. Die Idee war einfach: ein Ort draußen, an dem man sich ohne großes Tamtam trifft, ein Bier trinkt und auf's Wasser schaut.</p>
+      </div>
+    </div>
+    <div class="block reveal">
+      <div class="year">Wir</div>
+      <div>
+        <div class="ph story-img" data-label="Kiosk · Ehrenamtlich"></div>
+        <h3>Kein Restaurant, kein Club.</h3>
+        <p>Wir sind ein Kiosk. Keine Küche, keine Bedienung am Tisch, keine Reservierungen. Bestellung am Tresen, Platz suchst du dir selbst — bei schönem Wetter draußen auf der Liegewiese, bei kühleren Abenden mit Decke und Jacke.</p>
+      </div>
+    </div>
+    <div class="block reveal">
+      <div class="year">heute</div>
+      <div>
+        <div class="ph dark story-img" data-label="Abend an der Amper"></div>
+        <h3>Gleich geblieben.</h3>
+        <p>In der zweiten Saison steht das Konzept wie am ersten Tag: Donnerstag bis Sonntag offen, solange das Wetter mitspielt. Wenn's regnet, bleiben wir zu. Wenn die Sonne scheint, ist Bruck am Amperstrand.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="map-sec">
+  <div class="wrap">
+    <span class="eyebrow reveal">§ Hier findest du uns</span>
+    <h2 class="reveal" style="margin: 14px 0 40px;">Bullachstraße 30 · 82256 Fürstenfeldbruck.</h2>
+    <div class="map-grid">
+      <div class="map-box reveal">
+        <div id="leafletMap"></div>
+        <div class="map-overlay">
+          <div class="t">Amperstrand</div>
+          <div class="a">Bullachstraße 30<br>82256 Fürstenfeldbruck</div>
+        </div>
+        <div class="map-actions">
+          <a href="https://www.google.com/maps/dir/?api=1&destination=Bullachstra%C3%9Fe+30,+82256+F%C3%BCrstenfeldbruck" target="_blank" rel="noopener">Route →</a>
+          <a href="https://www.openstreetmap.org/?mlat=48.1764&mlon=11.2567#map=17/48.1764/11.2567" target="_blank" rel="noopener">Größer ↗</a>
+        </div>
+      </div>
+      <div class="travel">
+        <div class="reveal">
+          <h3>Anfahrt</h3>
+          <div class="travel-item">
+            <div class="mode">Zu Fuß · ab Bahnhof FFB</div>
+            <p>Über die Lände direkt an der Amper entlang. 12 Minuten, schönster Weg.</p>
+          </div>
+          <div class="travel-item">
+            <div class="mode">Fahrrad</div>
+            <p>Amper-Radweg. Stellplätze am Kiosk. Schloss mitbringen.</p>
+          </div>
+          <div class="travel-item">
+            <div class="mode">ÖPNV · aus München</div>
+            <p>S4 bis Fürstenfeldbruck (29 Min von Pasing), dann zu Fuß weiter.</p>
+          </div>
+          <div class="travel-item">
+            <div class="mode">Auto</div>
+            <p>Parken an der Lände oder am Volksfestplatz. Keine eigenen Plätze.</p>
+          </div>
+          <div class="travel-item">
+            <div class="mode">Barrierefrei</div>
+            <p>Ebenerdiger Zugang, Behinderten-WC im Kreativquartier nebenan.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="wrap">
+    <span class="eyebrow reveal">§ Häufige Fragen</span>
+    <h2 class="reveal" style="margin: 14px 0 0;">Elf ehrliche Antworten.</h2>
+    <div class="faq-list" id="faqList"></div>
+  </div>
+</section>
+
+<section class="contact" id="kontakt">
+  <div class="wrap">
+    <span class="eyebrow">§ Kontakt</span>
+    <h2 style="margin: 14px 0 0;">Schreib uns eine Nachricht.</h2>
+    <div class="grid">
+      <div class="contact-info">
+        <p>Buchungen, Event-Anfragen, Ideen, Kritik — wir lesen alles. Antwort innerhalb von drei Tagen.</p>
+        <div class="row">
+          <div class="label">E-Mail</div>
+          <a href="mailto:hello@amperstrand-ffb.de">hello@amperstrand-ffb.de</a>
+        </div>
+        <div class="row">
+          <div class="label">Instagram</div>
+          <a href="https://instagram.com">@amperstrand.ffb</a>
+        </div>
+        <div class="row">
+          <div class="label">Post</div>
+          <div style="opacity:.75;">AMPERSTRAND Gastro & Event GbR<br>Bullachstraße 30<br>82256 Fürstenfeldbruck</div>
+        </div>
+      </div>
+      <form class="form" onsubmit="event.preventDefault(); alert('Demo-Prototyp — nicht gesendet.');">
+        <div class="field-2">
+          <div class="field"><label>Name</label><input type="text" required placeholder="Dein Name"></div>
+          <div class="field"><label>E-Mail</label><input type="email" required placeholder="du@beispiel.de"></div>
+        </div>
+        <div class="field">
+          <label>Betreff</label>
+          <select>
+            <option>Private Buchung</option>
+            <option>Event-Kooperation</option>
+            <option>Feedback</option>
+            <option>Presse</option>
+            <option>Etwas anderes</option>
+          </select>
+        </div>
+        <div class="field"><label>Nachricht</label><textarea placeholder="Worum geht's?"></textarea></div>
+        <label class="check"><input type="checkbox" required> <span>Ich habe die <a href="datenschutz.html" style="text-decoration:underline;text-underline-offset:3px;">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner Daten zu diesem Zweck zu.</span></label>
+        <button type="submit" class="btn alt submit">Absenden <span class="arrow">→</span></button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<div data-mount-footer></div>
+<script src="assets/shared.js?v=6"></script>
+<script>
+const FAQ = [
+  { q:'Was ist der Amperstrand eigentlich?', a:'Ein Kiosk mit Sitzgelegenheiten an der Amper, mitten in Fürstenfeldbruck. Wir schenken Getränke aus und verkaufen kleine Snacks. Kein Restaurant, kein Club — eher ein entspannter Treffpunkt unter freiem Himmel.'},
+  { q:'Welche Getränke gibt es?', a:'Softdrinks (Spezi, Cola, Bionade, Lemon/Orange Soda), Bier & Radler (Augustiner Helles, Augustiner Alkoholfrei, Gösser Radler, Desperados), Weinschorle weiß und rosé, Aperol Spritz, Wild Berry Lillet sowie kukki-Cocktails. Alles auf der Seite Karte.'},
+  { q:'Und zu essen?', a:'Seit dieser Saison steht für dich der Foodtruck „Dschungelhunger" dauerhaft bereit. Snacks für zwischendurch haben wir: Kesselnüsse, Erdnüsse, Elephant Pretzels und Fonzies.'},
+  { q:'Welche Öffnungszeiten?', a:'Donnerstag und Freitag 17–22 Uhr, Samstag und Sonntag 15–22 Uhr. Montag, Dienstag, Mittwoch: Ruhetag. Bei schlechtem Wetter kann spontan zu sein — schau auf die Ampel oder Instagram.'},
+  { q:'Welche Zahlungsmöglichkeiten habt ihr?', a:'Bar und Karte. Barzahlung wird bevorzugt.'},
+  { q:'Wo genau seid ihr?', a:'Bullachstraße 30, 82256 Fürstenfeldbruck — direkt an der Amper, im Kreativquartier. Siehe Anfahrt oben.'},
+  { q:'Wie komme ich am besten hin?', a:'Zu Fuß oder mit dem Rad entlang der Amper — der schönste Weg. Mit der S4 ab München bis Fürstenfeldbruck, dann zu Fuß weiter. Mit dem Auto am Volksfestplatz parken, eigene Plätze haben wir nicht.'},
+  { q:'Kann man reservieren?', a:'Nein. „Erste:r kommt, erste:r sitzt." Bei gutem Wetter ist abends was los — komm einfach etwas früher.'},
+  { q:'Kann man private Events feiern?', a:'Ja, immer gerne! Auch an Ruhetagen (Mo–Mi) lässt sich was machen. Geburtstag, kleiner Firmenausflug, Sommerfest — schreib uns übers Formular.'},
+  { q:'Wie ist das bei schlechtem Wetter?', a:'Wir sind draußen, ohne Dach. Bei Regen oder Sturm bleiben wir geschlossen, auch kurzfristig. Die aktuelle Wetter-Ampel findest du auf der Startseite.'},
+  { q:'Dürfen Hunde mit?', a:'Ja, an der Leine, gerne. Wasser stellen wir hin.'},
+];
+document.getElementById('faqList').innerHTML = FAQ.map((f, i) => `
+  <details class="faq-item reveal">
+    <summary>
+      <span class="num">${String(i+1).padStart(2,'0')}</span>
+      <span class="q">${f.q}</span>
+      <span class="plus"></span>
+    </summary>
+    <div class="faq-answer">${f.a}</div>
+  </details>
+`).join('');
+</script>
+</body>
+</html>

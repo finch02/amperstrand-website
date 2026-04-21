@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kreativquartier-Partner — Amperstrand</title>
+<link rel="stylesheet" href="assets/shared.css?v=6">
+<style>
+  .head { padding: 160px var(--gutter) 80px; }
+  .head h1 { max-width: 14ch; }
+  .head .lead { margin-top: 28px; max-width: 56ch; font-size: clamp(17px, 1.5vw, 21px); opacity: .78; }
+
+  .map-strip { padding: 20px var(--gutter) 80px; }
+  .map-strip .box { aspect-ratio: 16/6; border-radius: 24px; background: var(--paper-2); position: relative; overflow: hidden; border: 1px solid rgba(10,10,10,.08); }
+  .map-strip svg { width: 100%; height: 100%; display: block; }
+  .map-strip .pin { position: absolute; transform: translate(-50%, -100%); text-align: center; }
+  .map-strip .pin .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--yellow); border: 3px solid var(--ink); margin: 0 auto; }
+  .map-strip .pin.amper .dot { background: #7dd3fc; }
+  .map-strip .pin .lbl { margin-top: 4px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; background: var(--ink); color: var(--paper); padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
+  .map-strip .pin.amper .lbl { background: var(--paper); color: var(--ink); border:1px solid rgba(10,10,10,.15); }
+
+  .partners { padding: 40px var(--gutter) 100px; }
+  .p-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .pcard {
+    padding: 32px; border-radius: 24px; min-height: 340px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform .4s var(--ease);
+    position: relative; overflow: hidden;
+  }
+  .pcard:hover { transform: translateY(-3px); }
+  .pcard.lg { grid-column: span 4; min-height: 420px; }
+  .pcard.md { grid-column: span 3; }
+  .pcard.sm { grid-column: span 2; min-height: 280px; }
+  @media (max-width: 900px) { .pcard { grid-column: span 6 !important; } }
+  .pcard.ink { background: var(--ink); color: var(--paper); }
+  .pcard.yel { background: var(--yellow); color: var(--ink); }
+  .pcard.paper { background: var(--paper); color: var(--ink); border: 1px solid rgba(10,10,10,.1); }
+  .pcard.deep { background: var(--deep); color: var(--paper); }
+  .pcard .meta { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .75; display:flex; justify-content:space-between; }
+  .pcard h3 { font-size: clamp(26px, 2.8vw, 40px); margin: 20px 0 12px; letter-spacing: -.02em; }
+  .pcard.lg h3 { font-size: clamp(36px, 4vw, 56px); }
+  .pcard p { font-size: 15px; line-height: 1.55; opacity: .78; max-width: 48ch; margin: 0 0 16px; }
+  .pcard .cta { font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+  .pcard .cta::after { content: ' →'; }
+
+  .pcard .ornament {
+    position: absolute; right: -40px; bottom: -40px; width: 220px; height: 220px;
+    opacity: .08; pointer-events: none;
+  }
+  .pcard.lg .ornament { width: 280px; height: 280px; opacity: .1; }
+  .pcard.yel .ornament, .pcard.paper .ornament { opacity: .22; }
+
+  .quote {
+    padding: 120px var(--gutter); background: var(--paper-2);
+    text-align: center;
+  }
+  .quote blockquote { font-family: var(--font-display); font-size: clamp(28px, 4vw, 48px); letter-spacing: -.025em; line-height: 1.2; max-width: 24ch; margin: 0 auto; font-weight: 500; }
+  .quote cite { display: block; margin-top: 24px; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; font-style: normal; }
+</style>
+</head>
+<body data-page="kreativquartier" data-tone="paper">
+<div data-mount-nav></div>
+
+<section class="head">
+  <div class="wrap">
+    <span class="eyebrow reveal">§ Kreativquartier · Aumühle/Lände</span>
+    <h1 class="reveal" style="margin-top: 18px;">Nicht allein hier draußen.</h1>
+    <p class="lead reveal">Wir sind Teil eines kleinen Quartiers aus Menschen, die alle am Wasser was aufgemacht haben. Rätseln, Reden, Ateliers, Gärtnern — lauf ein paar Schritte weiter.</p>
+  </div>
+</section>
+
+<section class="map-strip">
+  <div class="wrap">
+    <div class="box reveal">
+      <svg viewBox="0 0 1200 450" preserveAspectRatio="xMidYMid slice">
+        <rect width="1200" height="450" fill="#fafaf7"/>
+        <!-- Amper river -->
+        <path d="M-20 300 C 200 240, 420 340, 640 290 S 1040 260, 1220 310" stroke="#7dd3fc" stroke-width="42" fill="none" opacity=".45"/>
+        <path d="M-20 300 C 200 240, 420 340, 640 290 S 1040 260, 1220 310" stroke="#0a0a0a" stroke-width=".5" fill="none"/>
+        <text x="80" y="285" font-family="JetBrains Mono, monospace" font-size="11" fill="#0a0a0a" opacity=".5">AMPER</text>
+        <!-- Quartier blocks -->
+        <rect x="120" y="80" width="180" height="110" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
+        <rect x="360" y="60" width="140" height="130" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
+        <rect x="560" y="100" width="170" height="90" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
+        <rect x="780" y="80" width="180" height="120" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
+        <rect x="200" y="360" width="160" height="70" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
+        <rect x="520" y="360" width="230" height="70" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
+        <!-- Paths -->
+        <line x1="0" y1="230" x2="1200" y2="240" stroke="#0a0a0a" stroke-width=".5" opacity=".2"/>
+        <line x1="500" y1="0" x2="520" y2="450" stroke="#0a0a0a" stroke-width=".5" opacity=".2"/>
+      </svg>
+      <div class="pin" style="left: 48%; top: 60%;"><div class="dot"></div><div class="lbl">Amperstrand</div></div>
+      <div class="pin" style="left: 28%; top: 40%;"><div class="dot"></div><div class="lbl">Riddle Machine</div></div>
+      <div class="pin" style="left: 60%; top: 32%;"><div class="dot"></div><div class="lbl">Demokratie-Hütte</div></div>
+      <div class="pin" style="left: 78%; top: 38%;"><div class="dot"></div><div class="lbl">Atelier Aumühle</div></div>
+      <div class="pin amper" style="left: 92%; top: 58%;"><div class="dot"></div><div class="lbl">Amper →</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="partners">
+  <div class="wrap">
+    <span class="eyebrow reveal">§ Wer noch hier ist</span>
+    <h2 class="reveal" style="margin: 14px 0 40px;">Die Nachbar:innen.</h2>
+    <div class="p-grid">
+      <a class="pcard lg ink reveal" href="#">
+        <div>
+          <div class="meta"><span>Riddle Machine</span><span>Escape Room</span></div>
+          <h3>Rätseln bis der Kopf raucht.</h3>
+          <p>Drei Räume, ein Team, eine Stunde. Riddle Machine betreibt seit 2019 den wohl liebevollsten Escape Room im Münchner Westen. Eine Minute zu Fuß vom Strand, perfekt vor dem Sundowner.</p>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;">
+          <span class="cta">riddlemachine.de</span>
+          <span class="mono" style="opacity:.5;">Mi–So · 14–22</span>
+        </div>
+        <svg class="ornament" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="16"/></svg>
+      </a>
+      <a class="pcard md yel reveal" href="#" data-delay="80">
+        <div>
+          <div class="meta"><span>Bündnis für Demokratie</span><span>Fr 16–19</span></div>
+          <h3>Demokratie-Hütte.</h3>
+          <p>Jeden Freitag offen: Kaffee, Kekse, Zeit für ein Gespräch. Keine Agenda, nur ein Zelt und Leute, die zuhören.</p>
+        </div>
+        <span class="cta">buendnis-ffb.de</span>
+        <svg class="ornament" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 70 Q 30 30, 50 70 T 90 70"/><path d="M10 80 Q 30 50, 50 80 T 90 80"/></svg>
+      </a>
+      <a class="pcard md paper reveal" href="#" data-delay="160">
+        <div>
+          <div class="meta"><span>Atelier Aumühle</span><span>Offenes Haus</span></div>
+          <h3>Ateliers &amp;<br>offene Werkstatt.</h3>
+          <p>Sechs Künstler:innen teilen sich die alte Mühle. Türen sind tagsüber offen. Farbe, Ton, Siebdruck — sieh's dir an.</p>
+        </div>
+        <span class="cta">Besuch anmelden</span>
+      </a>
+      <a class="pcard sm deep reveal" href="#" data-delay="200">
+        <div>
+          <div class="meta"><span>Gemeinschaftsgarten</span><span>Sa 10–14</span></div>
+          <h3>Grüne Ecke.</h3>
+          <p>Hochbeete, Insektenhotel, viel Tomaten. Mitgärtnern willkommen.</p>
+        </div>
+      </a>
+      <a class="pcard sm paper reveal" href="#" data-delay="240">
+        <div>
+          <div class="meta"><span>Repair-Café</span><span>Jd. 3. Sa</span></div>
+          <h3>Was kaputt ist, wird repariert.</h3>
+          <p>Schraubende Nachbar:innen, Kaffee von uns.</p>
+        </div>
+      </a>
+      <a class="pcard sm ink reveal" href="#" data-delay="280">
+        <div>
+          <div class="meta"><span>Lände-Bühne</span><span>Events</span></div>
+          <h3>Kleine Freilicht-Bühne.</h3>
+          <p>Für Lesungen, Musik, Kino unter freiem Himmel.</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="quote">
+  <blockquote class="reveal">
+    „Ein Ort ist nicht nur ein Ort — er ist die Leute, die drumrum was machen."
+  </blockquote>
+  <cite>— Kreativquartier Aumühle/Lände</cite>
+</section>
+
+<div data-mount-footer></div>
+<script src="assets/shared.js?v=6"></script>
+</body>
+</html>
