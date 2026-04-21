@@ -417,7 +417,8 @@
     .ha-day.selected:not(.today) { box-shadow: 0 0 0 1.5px var(--ink); }
 
     /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen */
-    .hero { padding-top: 162px; padding-bottom: 140px; }
+    .hero { padding-top: 130px; padding-bottom: 110px; min-height: auto; }
+    .hero-wave { height: 100px; min-height: 100px; }
     .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
     /* "Servus" als eigenständige Zeile oberhalb von "Amperstrand" — groß, fast so groß wie der Rest */
     .hero h1 .hand { display: block; font-size: 1em; margin: 0 0 16px; transform: rotate(-3deg); line-height: 1; }
@@ -425,10 +426,10 @@
     .hero-inner { justify-content: flex-start; padding-bottom: 0; }
     .hero-eyebrow { margin-bottom: 20px; }
     .hero-sub { margin-top: 16px; font-size: 15px; line-height: 1.45; }
-    .hero-meta { margin-top: 16px; }
+    .hero-meta { margin-top: 22px; }
     /* Wellen kleiner auf Mobile — hero padding-bottom hält sie unter dem Content */
     .hero-wave { height: 120px; min-height: 120px; }
-    .hero-actions { margin-top: 20px; gap: 10px; flex-wrap: nowrap; }
+    .hero-actions { margin-top: 22px; gap: 10px; flex-wrap: nowrap; }
     /* Beide Buttons füllen 50/50 die Breite; identische Höhe + Schriftgröße */
     .hero-actions > * {
       flex: 1 1 0;
