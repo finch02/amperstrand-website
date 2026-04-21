@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f9cf2c">
 <title>Amperstrand — Stadtstrand an der Amper, Fürstenfeldbruck</title>
 <meta name="description" content="Stadtstrand. Mitten in Bruck. Kühle Getränke, Snacks, Eis, Events. Direkt an der Amper.">
-<link rel="stylesheet" href="assets/shared.css?v=8">
+<link rel="stylesheet" href="assets/shared.css?v=9">
 <style>
   /* HERO */
   .hero {
@@ -417,7 +418,7 @@
     .ha-day.selected:not(.today) { box-shadow: 0 0 0 1.5px var(--ink); }
 
     /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen */
-    .hero { padding-top: 130px; padding-bottom: 110px; min-height: auto; }
+    .hero { padding-top: 142px; padding-bottom: 110px; min-height: auto; }
     .hero-wave { height: 100px; min-height: 100px; }
     .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
     /* "Servus" als eigenständige Zeile oberhalb von "Amperstrand" — groß, fast so groß wie der Rest */
@@ -426,10 +427,10 @@
     .hero-inner { justify-content: flex-start; padding-bottom: 0; }
     .hero-eyebrow { margin-bottom: 20px; }
     .hero-sub { margin-top: 16px; font-size: 15px; line-height: 1.45; }
-    .hero-meta { margin-top: 22px; }
-    /* Wellen kleiner auf Mobile — hero padding-bottom hält sie unter dem Content */
-    .hero-wave { height: 120px; min-height: 120px; }
-    .hero-actions { margin-top: 22px; gap: 10px; flex-wrap: nowrap; }
+    /* Buttons näher am Subtitle, SAISON-Meta weiter unten → Buttons sitzen mittig */
+    .hero-actions { margin-top: 14px; gap: 10px; flex-wrap: nowrap; }
+    /* Meta: enger Zeilenabstand, wenn SAISON + BULLACHSTR auf 2 Zeilen wrappen */
+    .hero-meta { margin-top: 28px; row-gap: 4px; column-gap: 18px; }
     /* Beide Buttons füllen 50/50 die Breite; identische Höhe + Schriftgröße */
     .hero-actions > * {
       flex: 1 1 0;
@@ -722,7 +723,7 @@
 
 <div data-mount-footer></div>
 
-<script src="assets/shared.js?v=8"></script>
+<script src="assets/shared.js?v=9"></script>
 <script>
   // Build Ampel 7-day strip — daten kommen live aus Google Sheet (via shared.js)
   (async function(){

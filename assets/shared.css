@@ -41,6 +41,11 @@ body {
   line-height: 1.55;
   text-wrap: pretty;
 }
+/* Nur Landing-Page (data-tone="yellow") matcht Body-Hintergrund zur Hero-Farbe,
+   damit iOS Safari Rubber-Band-Overscroll keine weißen Balken zeigt.
+   Alle anderen Subpages behalten ihren Paper-Default. */
+body[data-tone="yellow"] { background: var(--yellow); }
+html:has(body[data-tone="yellow"]) { background: var(--yellow); }
 
 /* Typography */
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; margin: 0; }
