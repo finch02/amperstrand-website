@@ -426,9 +426,10 @@
 
     /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen.
        min-height auf small-viewport — Erstanzeige ist komplett gelb bis zu den Wellen. */
-    .hero { padding-top: 142px; padding-bottom: 110px; min-height: 100svh; min-height: 100vh; }
+    .hero { padding-top: 142px; padding-bottom: 150px; min-height: 100svh; min-height: 100vh; }
     @supports (min-height: 100svh) { .hero { min-height: 100svh; } }
-    .hero-wave { height: 100px; min-height: 100px; }
+    /* Wellen auseinandergezogen — höher, damit die Kurven breiter atmen */
+    .hero-wave { height: 150px; min-height: 150px; }
     .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
     /* "Servus" als eigenständige Zeile oberhalb von "Amperstrand" — groß, fast so groß wie der Rest */
     .hero h1 .hand { display: block; font-size: 1em; margin: 0 0 16px; transform: rotate(-3deg); line-height: 1; }
