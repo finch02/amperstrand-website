@@ -304,7 +304,8 @@
   :root[data-herotone="paper"] .ha-day.today::before { border-color: var(--paper); }
   :root[data-herotone="ink"] .ha-day.today::before { background: var(--paper); border-color: var(--ink); }
   /* SELECTED (user hat Kachel angeklickt) — schwarzer Ring */
-  .ha-day.selected { box-shadow: 0 0 0 2px var(--ink); }
+  /* Highlight als INSET-Outline (liegt innen am Rand) — kein Clipping im scroll-overflow */
+  .ha-day.selected { box-shadow: none; outline: 2px solid var(--ink); outline-offset: -2px; }
 
   /* paper/ink hero tones — Varianten */
   :root[data-herotone="paper"] .ha-day { background: rgba(10,10,10,.06); }
@@ -324,7 +325,7 @@
   :root[data-herotone="ink"] .ha-day.grey .d { color: rgba(245,241,232,.4); }
   :root[data-herotone="ink"] .ha-day.today { box-shadow: none; }
   :root[data-herotone="ink"] .ha-day.today::before { color: rgba(245,241,232,.6); }
-  :root[data-herotone="ink"] .ha-day.selected { box-shadow: 0 0 0 2px var(--paper); }
+  :root[data-herotone="ink"] .ha-day.selected { box-shadow: none; outline: 2px solid var(--paper); outline-offset: -2px; }
   :root[data-herotone="ink"] .hero-ampel[data-state="open"] .ha-status { color: #7dd094; }
   :root[data-herotone="ink"] .hero-ampel[data-state="open"] .ha-status .pulse { background: #7dd094; }
   :root[data-herotone="ink"] .hero-ampel[data-state="limited"] .ha-status { color: #e3c56a; }
@@ -344,7 +345,11 @@
   .hero-ampel.on-dark .ha-day.grey { background: rgba(245,241,232,.06); }
   .hero-ampel.on-dark .ha-day.grey .d { color: rgba(245,241,232,.4); }
   .hero-ampel.on-dark .ha-day.today::before { background: var(--paper); border-color: rgba(10,10,10,.8); }
-  .hero-ampel.on-dark .ha-day.selected { box-shadow: 0 0 0 2px var(--paper); }
+  .hero-ampel.on-dark .ha-day.selected { box-shadow: none; outline: 2px solid var(--paper); outline-offset: -2px; }
+  /* Bei heute+selected reicht der Dot-Indicator — kein zusätzlicher Rahmen */
+  .ha-day.today.selected,
+  .hero-ampel.on-dark .ha-day.today.selected,
+  :root[data-herotone="ink"] .ha-day.today.selected { outline: none; box-shadow: none; }
   .hero-ampel.on-dark .ha-nav { color: var(--paper); }
   .hero-ampel.on-dark .ha-nav:hover { background: rgba(245,241,232,.08); }
   .hero-ampel.on-dark[data-state="open"] .ha-status { color: #7dd094; }
@@ -413,9 +418,9 @@
     /* Alle Tage sichtbar (Swipe statt Pfeile) */
     .ha-day:nth-child(n+6) { display: flex; }
     /* Selected-Ring raus wenn's auch "heute" ist — der Dot-Indikator reicht */
-    .ha-day.today.selected { box-shadow: none; }
-    /* Selected bei anderen Tagen: schlanker Ring */
-    .ha-day.selected:not(.today) { box-shadow: 0 0 0 1.5px var(--ink); }
+    .ha-day.today.selected { outline: none; box-shadow: none; }
+    /* Selected bei anderen Tagen: schlanker Inset-Ring */
+    .ha-day.selected:not(.today) { box-shadow: none; outline: 1.5px solid var(--ink); outline-offset: -1.5px; }
 
     /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen */
     .hero { padding-top: 142px; padding-bottom: 110px; min-height: auto; }
