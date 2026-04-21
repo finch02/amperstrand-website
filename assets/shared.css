@@ -41,10 +41,6 @@ body {
   line-height: 1.55;
   text-wrap: pretty;
 }
-/* Landing-Page (data-tone="yellow"): nur HTML-Hintergrund gelb — damit iOS
-   Safari Rubber-Band-Overscroll oben gelb zeigt (nahtlos zum Hero), aber
-   alle Sektionen im Body behalten ihre eigene Farbe (z.B. .teasers weiß). */
-html:has(body[data-tone="yellow"]) { background: var(--yellow); }
 
 /* Typography */
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; margin: 0; }
