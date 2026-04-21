@@ -413,10 +413,20 @@
     .hero-actions { margin-top: 40px; }
     .hero-meta { margin-top: 36px; }
     .hero-actions { margin-top: 28px; gap: 10px; flex-wrap: nowrap; }
-    /* Beide Buttons kompakter, damit sie nebeneinander passen — Full-Label versteckt, Short-Label sichtbar */
-    .hero-actions .status-hero { padding: 10px 18px; flex-shrink: 0; white-space: nowrap; }
-    .hero-actions .status-hero strong { font-size: 14px; white-space: nowrap; }
-    .hero-actions .btn.ghost { padding: 10px 18px; font-size: 14px; flex-shrink: 0; white-space: nowrap; gap: 8px; }
+    /* Beide Buttons füllen 50/50 die Breite; identische Höhe + Schriftgröße */
+    .hero-actions > * {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 48px;
+      padding: 12px 16px;
+      font-size: 14px;
+      justify-content: center;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .hero-actions .status-hero { gap: 10px; }
+    .hero-actions .status-hero strong { font-size: 14px; font-weight: 500; white-space: nowrap; }
+    .hero-actions .btn.ghost { gap: 8px; }
     .hero-actions .btn.ghost .nl-full { display: none; }
     .hero-actions .btn.ghost .nl-short { display: inline; }
   }
