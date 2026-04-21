@@ -41,6 +41,9 @@ body {
   line-height: 1.55;
   text-wrap: pretty;
 }
+/* Landing-Page: Body gelb, damit iOS-Rubber-Band oben gelb statt weiß zeigt.
+   Alle weißen Sektionen auf der Homepage haben ihre eigene paper-bg-Regel. */
+body[data-tone="yellow"] { background: var(--yellow); }
 
 /* Typography */
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; margin: 0; }
