@@ -69,12 +69,10 @@ section { position: relative; }
 }
 .nav.on-yellow.solid { background: rgba(249, 207, 44, 0.82); border-bottom-color: rgba(10,10,10,.1); }
 .nav.on-ink { color: var(--paper); }
-.nav.on-ink .nav-logo .dot { background: var(--paper); }
 .nav.on-ink .nav-links a { color: var(--paper); }
 .nav.on-ink .nav-links a.active::after { background: var(--paper); }
 .nav.on-ink.solid { background: rgba(14, 26, 43, 0.82); border-bottom-color: rgba(250,250,247,.1); }
-.nav-logo { display: flex; align-items: center; gap: 12px; font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -0.025em; }
-.nav-logo .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+.nav-logo { display: flex; align-items: center; font-family: var(--font-display); font-weight: 800; font-size: 24px; letter-spacing: -0.025em; }
 .nav-links { display: flex; gap: 28px; align-items: center; font-size: 14px; font-weight: 500; }
 .nav-links a { position: relative; padding: 4px 0; color: var(--ink); opacity: .78; transition: opacity .2s; }
 .nav-links a:hover { opacity: 1; }

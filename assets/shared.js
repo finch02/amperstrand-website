@@ -242,8 +242,9 @@ function setupReveals() {
 // ============ FOOTER + NAV INJECTION ============
 const NAV_HTML = (active) => `
   <nav class="nav" data-nav>
-    <a href="index.html" class="nav-logo"><span class="dot"></span>amperstrand.</a>
+    <a href="index.html" class="nav-logo">amperstrand.</a>
     <div class="nav-links">
+      <a href="index.html" data-k="home">Home</a>
       <a href="oeffnungszeiten.html" data-k="oeffnungszeiten">Öffnungszeiten</a>
       <a href="karte.html" data-k="karte">Karte</a>
       <a href="events.html" data-k="events">Events</a>
@@ -259,6 +260,7 @@ const NAV_HTML = (active) => `
   </nav>
   <div class="nav-overlay" data-nav-overlay aria-hidden="true">
     <div class="nav-overlay-inner">
+      <a href="index.html" data-k="home"><span class="mono">00</span><span>Home</span></a>
       <a href="oeffnungszeiten.html" data-k="oeffnungszeiten"><span class="mono">01</span><span>Öffnungszeiten</span></a>
       <a href="karte.html" data-k="karte"><span class="mono">02</span><span>Karte</span></a>
       <a href="events.html" data-k="events"><span class="mono">03</span><span>Events</span></a>

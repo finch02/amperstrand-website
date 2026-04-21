@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Amperstrand — Stadtstrand an der Amper, Fürstenfeldbruck</title>
 <meta name="description" content="Stadtstrand. Mitten in Bruck. Kühle Getränke, Snacks, Eis, Events. Direkt an der Amper.">
-<link rel="stylesheet" href="assets/shared.css?v=6">
+<link rel="stylesheet" href="assets/shared.css?v=7">
 <style>
   /* HERO */
   .hero {
@@ -90,11 +90,11 @@
     letter-spacing: -0.01em;
     overflow: hidden;
   }
-  .strip-row { display:flex; gap: 60px; white-space: nowrap; animation: marq 40s linear infinite; }
+  .strip-row { display:flex; gap: 60px; white-space: nowrap; animation: marq 25s linear infinite; }
   .strip-row span { display:inline-flex; align-items:center; gap: 60px; }
   .strip-row .sep { color: var(--yellow); }
   @keyframes marq { from { transform: translateX(0);} to { transform: translateX(-50%); } }
-  @media (max-width: 820px) { .strip-row { animation-duration: 20s; } }
+  @media (max-width: 820px) { .strip-row { animation-duration: 12s; } }
 
   /* TEASER GRID */
   .teasers { padding: 140px var(--gutter) 60px; }
@@ -484,7 +484,7 @@
 
 </style>
 </head>
-<body data-page="index" data-tone="yellow">
+<body data-page="home" data-tone="yellow">
 <div data-mount-nav></div>
 
 <!-- HERO -->
@@ -722,7 +722,7 @@
 
 <div data-mount-footer></div>
 
-<script src="assets/shared.js?v=6"></script>
+<script src="assets/shared.js?v=7"></script>
 <script>
   // Build Ampel 7-day strip — daten kommen live aus Google Sheet (via shared.js)
   (async function(){
@@ -832,7 +832,7 @@
     const pill = document.getElementById('heroAmpelWrap');
     if (!pill) return;
     // Sektionen mit dunklem Hintergrund
-    const darkSelectors = ['.strip', '.kq'];
+    const darkSelectors = ['.strip', '.kq', '.teaser.t-karte', '.teaser.t-gesch', '.ampel-card'];
     const darkEls = darkSelectors.flatMap(s => [...document.querySelectorAll(s)]);
     if (!darkEls.length) return;
     const update = () => {
