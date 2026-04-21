@@ -49,6 +49,7 @@
     margin-top: 40px; font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; opacity: .7;
   }
   .hero-actions { margin-top: 40px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-actions .btn.ghost .nl-short { display: none; }
 
   .status-hero {
     display: inline-flex; align-items: baseline; gap: 12px;
@@ -340,7 +341,7 @@
   .hero-ampel { transition: background .3s var(--ease), color .3s var(--ease); }
 
   @media (max-width: 820px) {
-    /* Mobile: Ampel oben (wie Desktop), schlanker Pill, Single-Row */
+    /* Mobile: Ampel oben (wie Desktop), schlanker Pill, Single-Row mit Swipe */
     .hero-ampel {
       top: 76px;
       bottom: auto;
@@ -350,8 +351,8 @@
       width: auto;
       max-width: calc(100vw - 24px);
       gap: 10px;
-      padding: 7px 10px 7px 16px;
-      justify-content: space-between;
+      padding: 7px 14px;
+      justify-content: flex-start;
       flex-wrap: nowrap;
       overflow: hidden;
     }
@@ -360,27 +361,50 @@
       min-width: 0;
       grid-template-columns: 10px 1fr;
       gap: 9px;
-      flex-shrink: 1;
+      flex-shrink: 0;
       overflow: hidden;
     }
     .ha-status .pulse { width: 10px; height: 10px; }
     .ha-status .lbl { display: block; overflow: hidden; }
     .ha-status .lbl .lbl-day { font-size: 13px; margin-bottom: 1px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
     .ha-status .lbl .lbl-sub { font-size: 9.5px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    /* Pfeile auf Mobile raus — macht Platz für größere Tage */
+    /* Pfeile auf Mobile raus — durchwischen statt klicken */
     .ha-nav { display: none; }
-    .ha-days { gap: 4px; flex-shrink: 0; }
+    /* .ha-days wird zum horizontal-scrollbaren Container; alle 21 Tage werden gerendert */
+    .ha-days {
+      gap: 4px;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .ha-days::-webkit-scrollbar { display: none; }
     .ha-day {
       width: 36px; height: 36px;
       border-radius: 10px;
       flex-shrink: 0;
+      scroll-snap-align: start;
     }
     .ha-day .d { font-size: 13px; font-weight: 700; }
-    /* Auf Mobile 5 Tage — Rest in Saison per Detail-Seite */
-    .ha-day:nth-child(n+6) { display: none; }
+    /* Alle Tage sichtbar (Swipe statt Pfeile) */
+    .ha-day:nth-child(n+6) { display: flex; }
 
-    /* Hero bekommt mehr Top-Padding, damit FFB-Meta nicht von Ampel verdeckt wird */
-    .hero { padding-top: 150px; }
+    /* Hero: kleineres H1, weniger Top-Padding — Wellen bleiben im Viewport */
+    .hero { padding-top: 130px; }
+    .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
+    .hero-inner { padding-bottom: 4vh; }
+    .hero-sub { margin-top: 24px; }
+    .hero-meta { margin-top: 28px; }
+    .hero-actions { margin-top: 28px; gap: 10px; flex-wrap: nowrap; }
+    /* Beide Buttons kompakter, damit sie nebeneinander passen — Full-Label versteckt, Short-Label sichtbar */
+    .hero-actions .status-hero { padding: 10px 18px; flex-shrink: 0; white-space: nowrap; }
+    .hero-actions .status-hero strong { font-size: 14px; white-space: nowrap; }
+    .hero-actions .btn.ghost { padding: 10px 18px; font-size: 14px; flex-shrink: 0; white-space: nowrap; gap: 8px; }
+    .hero-actions .btn.ghost .nl-full { display: none; }
+    .hero-actions .btn.ghost .nl-short { display: inline; }
   }
   @media (max-width: 380px) {
     /* Sehr schmale Phones: noch kompakter */
@@ -389,6 +413,9 @@
     .ha-day { width: 32px; height: 32px; border-radius: 9px; }
     .ha-day .d { font-size: 12px; }
     .ha-days { gap: 3px; }
+    .hero-actions .status-hero { padding: 9px 14px; }
+    .hero-actions .status-hero strong { font-size: 13px; }
+    .hero-actions .btn.ghost { padding: 9px 14px; font-size: 13px; }
   }
 
   /* INSTAGRAM STRIP */
@@ -442,7 +469,7 @@
         <strong data-status-label>Jetzt geöffnet</strong>
         <span class="sub" data-status-sub>bis 22:00</span>
       </span>
-      <a href="https://ed45c9e2.sibforms.com/serve/MUIFAP6z6enBTDiLxqzJtD6MH3-Ar-N442_7MGbolrkDpj4bv2ZsWkIrLU9xXttf7Sd-AWMA-J1jin8xiZNPcDMcG-pKuCXrelC-sTE3uxj0hh_wGLIZ1mJRM3NC9xNrObGzMdbVV2w0k0q-DagtqtXwlLwQez6Uzi6_fpQBMiGMoO7ugUxAbLnRF_HXrNsUgBQjv7Ej0NMtY2WK" target="_blank" rel="noopener" class="btn ghost">Newsletter abonnieren <span class="arrow">→</span></a>
+      <a href="https://ed45c9e2.sibforms.com/serve/MUIFAP6z6enBTDiLxqzJtD6MH3-Ar-N442_7MGbolrkDpj4bv2ZsWkIrLU9xXttf7Sd-AWMA-J1jin8xiZNPcDMcG-pKuCXrelC-sTE3uxj0hh_wGLIZ1mJRM3NC9xNrObGzMdbVV2w0k0q-DagtqtXwlLwQez6Uzi6_fpQBMiGMoO7ugUxAbLnRF_HXrNsUgBQjv7Ej0NMtY2WK" target="_blank" rel="noopener" class="btn ghost"><span class="nl-full">Newsletter abonnieren</span><span class="nl-short">Newsletter</span> <span class="arrow">→</span></a>
     </div>
 
     <div class="hero-meta reveal" data-delay="320">
@@ -697,10 +724,16 @@
       return `<span class="lbl-day">${dayText}</span><span class="lbl-sub">${statusText}</span>`;
     }
 
+    const isMobile = () => window.matchMedia('(max-width: 820px)').matches;
+
     function render() {
-      const slice = out.slice(winStart, winStart + WINDOW);
+      // Auf Mobile alle 21 Tage rendern (Swipe-Scroll); Desktop fenstert mit Prev/Next
+      const mobile = isMobile();
+      const start = mobile ? 0 : winStart;
+      const end = mobile ? TOTAL : winStart + WINDOW;
+      const slice = out.slice(start, end);
       heroMount.innerHTML = slice.map((o, idx) => {
-        const absIdx = winStart + idx;
+        const absIdx = start + idx;
         return `
         <button class="ha-day ${o.cls} ${o.isToday?'today':''} ${absIdx===selected?'selected':''}" data-idx="${absIdx}" type="button" aria-label="${o.wd} ${o.d}">
           <div class="wd">${o.isToday ? 'heute' : o.wd}</div>
@@ -732,6 +765,16 @@
     nextBtn.addEventListener('click', () => {
       winStart = Math.min(TOTAL - WINDOW, winStart + WINDOW);
       render();
+    });
+
+    // Bei Viewport-Wechsel Mobile↔Desktop neu rendern
+    let lastMobile = isMobile();
+    window.addEventListener('resize', () => {
+      const nowMobile = isMobile();
+      if (nowMobile !== lastMobile) {
+        lastMobile = nowMobile;
+        render();
+      }
     });
 
     render();
