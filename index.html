@@ -370,11 +370,14 @@
     .ha-status .lbl .lbl-sub { font-size: 9.5px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     /* Pfeile auf Mobile raus — durchwischen statt klicken */
     .ha-nav { display: none; }
-    /* .ha-days wird zum horizontal-scrollbaren Container; alle 21 Tage werden gerendert */
+    /* .ha-days füllt die volle verfügbare Breite; 5 Tiles passen, Rest scrollt */
     .ha-days {
-      gap: 4px;
+      gap: 5px;
       flex: 1 1 auto;
       min-width: 0;
+      /* Vertikales Padding, damit der "today"-Dot (top:-5px right:-5px) nicht geclippt wird */
+      padding: 7px 0 3px;
+      margin: -7px 0 -3px;
       overflow-x: auto;
       overflow-y: hidden;
       scroll-snap-type: x proximity;
@@ -383,21 +386,32 @@
     }
     .ha-days::-webkit-scrollbar { display: none; }
     .ha-day {
-      width: 36px; height: 36px;
+      /* Jedes Tile nimmt 1/5 der sichtbaren Breite (5 Tiles füllen exakt) */
+      flex: 0 0 calc((100% - 4 * 5px) / 5);
+      aspect-ratio: 1;
+      width: auto; height: auto;
       border-radius: 10px;
-      flex-shrink: 0;
       scroll-snap-align: start;
     }
-    .ha-day .d { font-size: 13px; font-weight: 700; }
+    .ha-day .d { font-size: 14px; font-weight: 700; }
     /* Alle Tage sichtbar (Swipe statt Pfeile) */
     .ha-day:nth-child(n+6) { display: flex; }
+    /* Selected-Ring raus wenn's auch "heute" ist — der Dot-Indikator reicht */
+    .ha-day.today.selected { box-shadow: none; }
+    /* Selected bei anderen Tagen: schlanker Ring */
+    .ha-day.selected:not(.today) { box-shadow: 0 0 0 1.5px var(--ink); }
 
-    /* Hero: kleineres H1, weniger Top-Padding — Wellen bleiben im Viewport */
-    .hero { padding-top: 130px; }
+    /* Hero: kleineres H1, mehr Breath */
+    .hero { padding-top: 162px; padding-bottom: 24px; }
     .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
-    .hero-inner { padding-bottom: 4vh; }
-    .hero-sub { margin-top: 24px; }
-    .hero-meta { margin-top: 28px; }
+    /* "Servus" als eigenständige Zeile oberhalb von "Amperstrand" — großzügig */
+    .hero h1 .hand { display: block; font-size: 0.85em; margin: 0 0 14px; transform: rotate(-3deg); line-height: 1; }
+    /* Content mit deutlichem Rhythmus */
+    .hero-inner { justify-content: flex-start; padding-bottom: 0; }
+    .hero-eyebrow { margin-bottom: 36px; }
+    .hero-sub { margin-top: 32px; }
+    .hero-actions { margin-top: 40px; }
+    .hero-meta { margin-top: 36px; }
     .hero-actions { margin-top: 28px; gap: 10px; flex-wrap: nowrap; }
     /* Beide Buttons kompakter, damit sie nebeneinander passen — Full-Label versteckt, Short-Label sichtbar */
     .hero-actions .status-hero { padding: 10px 18px; flex-shrink: 0; white-space: nowrap; }
@@ -408,11 +422,12 @@
   }
   @media (max-width: 380px) {
     /* Sehr schmale Phones: noch kompakter */
-    .hero-ampel { padding: 6px 8px 6px 14px; gap: 8px; }
+    .hero-ampel { padding: 6px 12px; gap: 8px; }
     .ha-status { gap: 8px; }
-    .ha-day { width: 32px; height: 32px; border-radius: 9px; }
-    .ha-day .d { font-size: 12px; }
-    .ha-days { gap: 3px; }
+    .ha-day { border-radius: 9px; }
+    .ha-day .d { font-size: 13px; }
+    .ha-days { gap: 4px; }
+    .ha-day { flex: 0 0 calc((100% - 4 * 4px) / 5); }
     .hero-actions .status-hero { padding: 9px 14px; }
     .hero-actions .status-hero strong { font-size: 13px; }
     .hero-actions .btn.ghost { padding: 9px 14px; font-size: 13px; }
