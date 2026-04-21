@@ -357,11 +357,12 @@
       overflow: hidden;
     }
     .ha-status {
-      width: auto;
+      /* Feste Breite — so bleibt die Ampel identisch groß, egal welcher Tag/Status */
+      flex: 0 0 128px;
+      width: 128px;
       min-width: 0;
       grid-template-columns: 10px 1fr;
       gap: 9px;
-      flex-shrink: 0;
       overflow: hidden;
     }
     .ha-status .pulse { width: 10px; height: 10px; }
