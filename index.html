@@ -347,9 +347,6 @@
   .hero-ampel.on-dark .ha-day.today::before { background: var(--paper); border-color: rgba(10,10,10,.8); }
   .hero-ampel.on-dark .ha-day.selected { box-shadow: none; outline: 2px solid var(--paper); outline-offset: -2px; }
   /* Bei heute+selected reicht der Dot-Indicator — kein zusätzlicher Rahmen */
-  .ha-day.today.selected,
-  .hero-ampel.on-dark .ha-day.today.selected,
-  :root[data-herotone="ink"] .ha-day.today.selected { outline: none; box-shadow: none; }
   .hero-ampel.on-dark .ha-nav { color: var(--paper); }
   .hero-ampel.on-dark .ha-nav:hover { background: rgba(245,241,232,.08); }
   .hero-ampel.on-dark[data-state="open"] .ha-status { color: #7dd094; }
@@ -371,7 +368,7 @@
       width: auto;
       max-width: calc(100vw - 24px);
       gap: 10px;
-      padding: 7px 14px;
+      padding: 7px 14px 7px 20px;
       justify-content: flex-start;
       flex-wrap: nowrap;
       overflow: hidden;
@@ -418,11 +415,9 @@
     /* Alle Tage sichtbar (Swipe statt Pfeile) */
     .ha-day:nth-child(n+6) { display: flex; }
     /* Selected-Ring raus wenn's auch "heute" ist — der Dot-Indikator reicht */
-    /* Kein Ring am heutigen Tag — der Dot reicht */
-    .ha-day.today.selected { outline: none; box-shadow: none; }
-    /* Selected (nicht heute): solider 2px Inset-Ring, klar sichtbar */
-    .ha-day.selected:not(.today) { box-shadow: none; outline: 2px solid var(--ink); outline-offset: -2px; }
-    .hero-ampel.on-dark .ha-day.selected:not(.today) { outline: 2px solid var(--paper); outline-offset: -2px; }
+    /* Selected (auch heute): inset box-shadow — rendert zuverlässig, kein Clipping */
+    .ha-day.selected { outline: none; box-shadow: inset 0 0 0 2px var(--ink); }
+    .hero-ampel.on-dark .ha-day.selected { outline: none; box-shadow: inset 0 0 0 2px var(--paper); }
 
     /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen.
        min-height auf small-viewport — Erstanzeige ist komplett gelb bis zu den Wellen. */

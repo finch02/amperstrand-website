@@ -179,6 +179,24 @@ section { position: relative; }
   pointer-events: auto;
   transform: translateY(0);
 }
+.nav-overlay-close {
+  position: absolute;
+  top: 18px;
+  right: var(--gutter);
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  border: 1px solid rgba(250,250,247,.25);
+  border-radius: 50%;
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.nav-overlay-close:hover,
+.nav-overlay-close:focus-visible { background: rgba(250,250,247,.08); border-color: rgba(250,250,247,.5); outline: none; }
 .nav-overlay-inner {
   flex: 1;
   display: flex;

@@ -259,6 +259,7 @@ const NAV_HTML = (active) => `
     </div>
   </nav>
   <div class="nav-overlay" data-nav-overlay aria-hidden="true">
+    <button class="nav-overlay-close" aria-label="Menü schließen" data-nav-close type="button">✕</button>
     <div class="nav-overlay-inner">
       <a href="index.html" data-k="home"><span class="mono">00</span><span>Home</span></a>
       <a href="oeffnungszeiten.html" data-k="oeffnungszeiten"><span class="mono">01</span><span>Öffnungszeiten</span></a>
@@ -346,6 +347,8 @@ function mountNavFooter(activeKey) {
       burger.classList.toggle('active', open);
       document.body.style.overflow = open ? 'hidden' : '';
     });
+    // X-Button im Overlay schließt ebenfalls
+    overlay.querySelector('[data-nav-close]')?.addEventListener('click', close);
     overlay.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   }
