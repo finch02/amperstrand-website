@@ -259,7 +259,7 @@ const NAV_HTML = (active) => `
     </div>
   </nav>
   <div class="nav-overlay" data-nav-overlay aria-hidden="true">
-    <button class="nav-overlay-close" aria-label="Menü schließen" data-nav-close type="button">✕</button>
+    <button class="nav-overlay-close" aria-label="Menü schließen" data-nav-close type="button"><span></span><span></span></button>
     <div class="nav-overlay-inner">
       <a href="index.html" data-k="home"><span class="mono">00</span><span>Home</span></a>
       <a href="oeffnungszeiten.html" data-k="oeffnungszeiten"><span class="mono">01</span><span>Öffnungszeiten</span></a>

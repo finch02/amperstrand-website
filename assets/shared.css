@@ -181,20 +181,26 @@ section { position: relative; }
 }
 .nav-overlay-close {
   position: absolute;
-  top: 18px;
+  top: 14px;
   right: var(--gutter);
-  width: 44px; height: 44px;
+  width: 46px; height: 46px;
   display: flex; align-items: center; justify-content: center;
   background: transparent;
   border: 1px solid rgba(250,250,247,.25);
   border-radius: 50%;
-  color: var(--paper);
-  font-family: var(--font-body);
-  font-size: 18px;
-  line-height: 1;
+  padding: 0;
   cursor: pointer;
   transition: background .2s, border-color .2s;
 }
+.nav-overlay-close span {
+  position: absolute;
+  width: 20px;
+  height: 2.5px;
+  background: var(--paper);
+  border-radius: 2px;
+}
+.nav-overlay-close span:first-child { transform: rotate(45deg); }
+.nav-overlay-close span:last-child { transform: rotate(-45deg); }
 .nav-overlay-close:hover,
 .nav-overlay-close:focus-visible { background: rgba(250,250,247,.08); border-color: rgba(250,250,247,.5); outline: none; }
 .nav-overlay-inner {
