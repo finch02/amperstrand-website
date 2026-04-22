@@ -368,19 +368,21 @@
       width: auto;
       max-width: calc(100vw - 24px);
       gap: 10px;
-      padding: 7px 14px 7px 40px;
+      padding: 7px 14px 7px 18px;
       justify-content: flex-start;
       flex-wrap: nowrap;
       overflow: hidden;
     }
     .ha-status {
-      /* Feste Breite — so bleibt die Ampel identisch groß, egal welcher Tag/Status */
+      /* Feste Breite — so bleibt die Ampel identisch groß, egal welcher Tag/Status.
+         Kein overflow hidden — das würde den Pulse-Ring links clippen. Text-Ellipsis
+         passiert im .lbl-Kind. */
       flex: 0 0 128px;
       width: 128px;
       min-width: 0;
       grid-template-columns: 10px 1fr;
       gap: 9px;
-      overflow: hidden;
+      overflow: visible;
     }
     .ha-status .pulse { width: 10px; height: 10px; }
     .ha-status .lbl { display: block; overflow: hidden; }
