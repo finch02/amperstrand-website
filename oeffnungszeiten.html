@@ -19,7 +19,8 @@
     position: relative; overflow: hidden;
   }
   .status-big h2 { color: var(--paper); font-size: clamp(56px, 9vw, 132px); letter-spacing: -.045em; line-height: .95; }
-  .status-big .sub { font-family: var(--font-mono); font-size: 13px; opacity: .55; text-transform:uppercase; letter-spacing: .05em; margin-top: 16px; }
+  .status-big .sub { font-family: var(--font-mono); font-size: 13px; opacity: .55; text-transform:uppercase; letter-spacing: .05em; margin-top: 24px; }
+  .status-big .sub:empty { display: none; }
   .status-big .big-dot { width: 120px; height: 120px; border-radius: 50%; }
   .status-big .big-dot.green { background: #4ade80; box-shadow: 0 0 80px rgba(74,222,128,.4); }
   .status-big .big-dot.amber { background: #facc15; box-shadow: 0 0 80px rgba(250,204,21,.4); }
@@ -90,7 +91,7 @@
         <span class="eyebrow" style="color: var(--paper); opacity: .55;">Jetzt gerade</span>
         <h2 data-status-label>Jetzt geöffnet</h2>
         <div class="sub" data-status-sub>bis 22:00</div>
-        <div class="sub" style="margin-top:6px;">Stand: Dienstag, 21.04.2026 · 09:14</div>
+        <div class="sub">Stand: Dienstag, 21.04.2026 · 09:14</div>
       </div>
       <div class="big-dot green" data-status-dot></div>
       <div class="corner-wave" aria-hidden="true">
