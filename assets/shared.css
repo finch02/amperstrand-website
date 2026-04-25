@@ -85,7 +85,7 @@ section { position: relative; }
     -webkit-backdrop-filter: none;
   }
   .nav.on-yellow, .nav.on-yellow.solid { background: var(--yellow); border-bottom-color: rgba(10,10,10,.1); }
-  .nav.on-ink, .nav.on-ink.solid { background: var(--ink); border-bottom-color: rgba(250,250,247,.1); }
+  .nav.on-ink, .nav.on-ink.solid { background: var(--deep); border-bottom-color: rgba(250,250,247,.1); }
 }
 .nav.on-ink { color: var(--paper); }
 .nav.on-ink .nav-links a { color: var(--paper); }
