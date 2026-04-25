@@ -289,7 +289,7 @@ const FOOTER_HTML = `
             Stadtstrand an der Amper.<br>
             Bullachstraße 30, 82256 Fürstenfeldbruck.
           </p>
-          <p style="opacity:.7; font-size:15px;"><a href="https://instagram.com" style="display:inline-flex;gap:6px;align-items:center;text-decoration:underline;text-underline-offset:4px;">Instagram →</a></p>
+          <p style="opacity:.7; font-size:15px;"><a href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener" style="display:inline-flex;gap:6px;align-items:center;text-decoration:underline;text-underline-offset:4px;">Instagram →</a></p>
         </div>
         <div class="footer-col">
           <h4>Seiten</h4>
