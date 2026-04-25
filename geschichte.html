@@ -12,6 +12,11 @@
   .head { padding: 160px var(--gutter) 80px; }
   .head h1 { max-width: 12ch; }
   .head .lead { margin-top: 32px; max-width: 56ch; font-size: clamp(17px, 1.5vw, 22px); opacity: .75; }
+  @media (max-width: 820px) {
+    .head { padding: 120px var(--gutter) 60px; }
+    .head h1 { font-size: clamp(34px, 9vw, 52px); letter-spacing: -.03em; line-height: 1.02; max-width: 100%; }
+    .head .lead { margin-top: 20px; font-size: 15px; line-height: 1.45; }
+  }
 
   .story { padding: 60px var(--gutter) 100px; }
   .story .block { display: grid; grid-template-columns: 1fr 1.3fr; gap: 80px; margin-bottom: 80px; align-items: start; }
