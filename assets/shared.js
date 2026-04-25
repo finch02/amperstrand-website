@@ -11,7 +11,7 @@ function mapSheetStatus(raw) {
   if (!s) return null;
   if (s.startsWith('geöff') || s === 'open' || s === 'offen' || s === 'auf') return 'green';
   if (s.startsWith('gesch') || s === 'closed' || s === 'zu') return 'red';
-  if (s.startsWith('wetter') || s.startsWith('evtl') || s.includes('unsicher') || s === 'amber') return 'amber';
+  if (s.startsWith('wetter') || s.startsWith('evtl') || s.startsWith('viell') || s.includes('unsicher') || s === 'amber') return 'amber';
   if (s.startsWith('ruhe')) return 'red';
   return 'amber'; // unbekannter Wert: vorsichtig gelb
 }

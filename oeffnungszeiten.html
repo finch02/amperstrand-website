@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#fafaf7">
 <title>Öffnungszeiten — Amperstrand</title>
-<link rel="stylesheet" href="assets/shared.css?v=11">
+<link rel="stylesheet" href="assets/shared.css?v=12">
 <style>
   .head { padding: 160px var(--gutter) 60px; }
   .head h1 { max-width: none; letter-spacing: -.045em; }
@@ -119,7 +119,11 @@
           <tr data-day="5"><td>Samstag</td><td>15:00 – 22:00</td></tr>
           <tr data-day="6"><td>Sonntag</td><td>15:00 – 22:00</td></tr>
         </table>
-        <p class="mono" style="margin-top: 20px; opacity: .5;">Feiertage: in der Regel wie Sonntag. Kurzfristige Änderungen → Instagram.</p>
+        <p class="mono" style="margin-top: 20px; opacity: .5; line-height: 1.7;">
+          Feiertage: in der Regel wie Sonntag.<br>
+          Tage vor Feiertagen: Wie Freitag.<br>
+          Kurzfristige Änderungen → Instagram & WhatsApp.
+        </p>
       </div>
       <div class="info-side">
         <div class="box warm reveal">
@@ -128,8 +132,11 @@
         </div>
         <div class="box reveal">
           <h3 style="margin-top:0;">Aktuelles kurzfristig</h3>
-          <p style="margin: 0 0 12px; font-size: 15px; opacity: .7;">Am ehrlichsten erfährst du von kurzfristigen Änderungen auf Instagram. Wir posten nachmittags, ob's läuft.</p>
-          <a href="https://instagram.com" class="btn ghost">@amperstrand.ffb <span class="arrow">→</span></a>
+          <p style="margin: 0 0 14px; font-size: 15px; opacity: .7;">Spontane Änderungen siehst du auf Instagram oder per WhatsApp. Wir posten nachmittags, ob's läuft — dieselben Stories, doppelt sicher.</p>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <a href="https://instagram.com" class="btn ghost" target="_blank" rel="noopener">Instagram <span class="arrow">→</span></a>
+            <a href="https://whatsapp.com/channel/" class="btn ghost" target="_blank" rel="noopener">WhatsApp <span class="arrow">→</span></a>
+          </div>
         </div>
         <div class="box reveal">
           <h3 style="margin-top:0;">Private Buchungen</h3>
@@ -147,24 +154,23 @@
       <div>
         <span class="eyebrow">§ Ampel · 7 Tage</span>
         <h2 style="margin:12px 0 8px;">So sieht die Woche aus.</h2>
-        <p class="lead">Grün = offen. Gelb = wir schauen uns den Himmel an. Rot = Ruhetag oder Wetter-Absage.</p>
+        <p class="lead">Grün = offen. Gelb = vielleicht.<br>Rot = Ruhetag oder Wetter-Absage.</p>
       </div>
-      <span class="mono" style="opacity:.55;">Quelle · Sheet · 09:14 Uhr</span>
     </div>
     <div class="ampel-days reveal" id="forecastDays"></div>
     <p style="margin-top: 24px; font-size: 14px; opacity: .55; max-width: 60ch;">
-      Diese Prognose pflegen wir morgens aus dem Team-Sheet. Sie kann sich ändern, wenn der Wetterbericht kippt — wir halten's aktuell.
+      Daten werden täglich aktualisiert.
     </p>
   </div>
 </section>
 
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=11"></script>
+<script src="assets/shared.js?v=12"></script>
 <script>
 (async function(){
   // 1) Forecast 7-Tage-Ampel
   const out = await window.buildAmpelWindow({ totalDays: 7 });
-  const stateLabels = { green: 'Geöffnet', red: 'Geschlossen', amber: 'Wetterabhängig', grey: 'Vor Saison' };
+  const stateLabels = { green: 'Geöffnet', red: 'Geschlossen', amber: 'Vielleicht', grey: 'Vor Saison' };
   document.getElementById('forecastDays').innerHTML = out.map(o => {
     const hrs = (o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || '—');
     return `
