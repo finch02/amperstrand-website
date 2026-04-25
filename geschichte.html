@@ -265,6 +265,12 @@
         </div>
       </div>
       <form class="form" id="contactForm">
+        <!-- Web3Forms-Schlüssel: hier den Access-Key von web3forms.com einsetzen -->
+        <input type="hidden" name="access_key" value="REPLACE_WITH_WEB3FORMS_ACCESS_KEY">
+        <input type="hidden" name="from_name" value="Amperstrand Website">
+        <input type="hidden" name="redirect" value="false">
+        <!-- Honeypot gegen Bots — Feld bleibt unsichtbar leer -->
+        <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off">
         <div class="field-2">
           <div class="field"><label>Name</label><input type="text" name="name" required placeholder="Dein Name"></div>
           <div class="field"><label>E-Mail</label><input type="email" name="email" required placeholder="du@beispiel.de"></div>
@@ -281,27 +287,54 @@
         </div>
         <div class="field"><label>Nachricht</label><textarea name="message" placeholder="Worum geht's?"></textarea></div>
         <label class="check"><input type="checkbox" required> <span>Ich habe die <a href="datenschutz.html" style="text-decoration:underline;text-underline-offset:3px;">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner Daten zu diesem Zweck zu.</span></label>
-        <button type="submit" class="btn alt submit">Per Mail senden <span class="arrow">→</span></button>
+        <div class="form-status" id="formStatus" aria-live="polite" style="display:none;"></div>
+        <button type="submit" class="btn alt submit" id="formSubmit">Anfrage senden <span class="arrow">→</span></button>
       </form>
       <script>
       (function(){
         const f = document.getElementById('contactForm');
+        const btn = document.getElementById('formSubmit');
+        const status = document.getElementById('formStatus');
         if (!f) return;
-        f.addEventListener('submit', (e) => {
+        f.addEventListener('submit', async (e) => {
           e.preventDefault();
           const fd = new FormData(f);
-          const name = (fd.get('name') || '').trim();
-          const email = (fd.get('email') || '').trim();
+          // Subject baut sich aus Betreff + Name
           const topic = (fd.get('topic') || 'Anfrage').trim();
-          const msg = (fd.get('message') || '').trim();
-          const subject = `[${topic}] – ${name || 'Anfrage'}`;
-          const body =
-            `Hallo Amperstrand-Team,\n\n` +
-            `${msg}\n\n` +
-            `— ${name}\n` +
-            `${email}`;
-          const url = `mailto:hello@amperstrand-ffb.de?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-          window.location.href = url;
+          const name = (fd.get('name') || '').trim();
+          fd.set('subject', `[${topic}] – ${name || 'Anfrage'}`);
+          // Fallback: wenn der Access-Key noch Platzhalter ist → mailto
+          if ((fd.get('access_key') || '').startsWith('REPLACE_')) {
+            const email = (fd.get('email') || '').trim();
+            const msg = (fd.get('message') || '').trim();
+            const body = `Hallo Amperstrand-Team,\n\n${msg}\n\n— ${name}\n${email}`;
+            window.location.href = `mailto:hello@amperstrand-ffb.de?subject=${encodeURIComponent(fd.get('subject'))}&body=${encodeURIComponent(body)}`;
+            return;
+          }
+          btn.disabled = true; btn.style.opacity = '.6';
+          status.style.display = 'block';
+          status.style.color = 'var(--paper)';
+          status.textContent = 'Wird gesendet …';
+          try {
+            const res = await fetch('https://api.web3forms.com/submit', {
+              method: 'POST',
+              headers: { 'Accept': 'application/json' },
+              body: fd
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              status.textContent = '✓ Danke! Wir melden uns innerhalb von 3 Tagen.';
+              f.reset();
+            } else {
+              throw new Error(data.message || 'Senden fehlgeschlagen');
+            }
+          } catch (err) {
+            console.warn('[Form] Fehler:', err);
+            status.textContent = '✗ Senden hat nicht geklappt. Bitte schreib uns direkt an hello@amperstrand-ffb.de';
+            status.style.color = '#ffb4b4';
+          } finally {
+            btn.disabled = false; btn.style.opacity = '1';
+          }
         });
       })();
       </script>
