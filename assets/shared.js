@@ -248,7 +248,7 @@ const NAV_HTML = (active) => `
       <a href="oeffnungszeiten.html" data-k="oeffnungszeiten">Öffnungszeiten</a>
       <a href="karte.html" data-k="karte">Karte</a>
       <a href="events.html" data-k="events">Events</a>
-      <a href="geschichte.html" data-k="geschichte">Geschichte</a>
+      <a href="geschichte.html" data-k="geschichte">Über uns</a>
       <a href="kreativquartier.html" data-k="kreativquartier">Kreativquartier</a>
     </div>
     <div class="nav-right">
@@ -265,7 +265,7 @@ const NAV_HTML = (active) => `
       <a href="oeffnungszeiten.html" data-k="oeffnungszeiten"><span class="mono">01</span><span>Öffnungszeiten</span></a>
       <a href="karte.html" data-k="karte"><span class="mono">02</span><span>Karte</span></a>
       <a href="events.html" data-k="events"><span class="mono">03</span><span>Events</span></a>
-      <a href="geschichte.html" data-k="geschichte"><span class="mono">04</span><span>Geschichte</span></a>
+      <a href="geschichte.html" data-k="geschichte"><span class="mono">04</span><span>Über uns</span></a>
       <a href="kreativquartier.html" data-k="kreativquartier"><span class="mono">05</span><span>Kreativquartier</span></a>
     </div>
     <div class="nav-overlay-foot">
@@ -300,7 +300,7 @@ const FOOTER_HTML = `
         </div>
         <div class="footer-col">
           <h4>Mehr</h4>
-          <a href="geschichte.html">Geschichte & FAQ</a>
+          <a href="geschichte.html">Über uns & FAQ</a>
           <a href="kreativquartier.html">Kreativquartier</a>
           <a href="geschichte.html#kontakt">Kontakt</a>
         </div>
