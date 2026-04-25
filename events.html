@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0e1a2b">
 <title>Events — Amperstrand</title>
-<link rel="stylesheet" href="assets/shared.css?v=10">
+<link rel="stylesheet" href="assets/shared.css?v=11">
 <style>
   .head { padding: 160px var(--gutter) 80px; background: var(--deep); color: var(--paper); position: relative; overflow: hidden; }
   .head h1 { max-width: 16ch; color: var(--paper); }
@@ -52,10 +52,24 @@
   .ev-price { font-family: var(--font-display); font-weight: 700; font-size: 22px; letter-spacing: -.01em; }
   .ev-arrow { font-family: var(--font-mono); font-size: 12px; opacity: .7; }
 
-  .big-date { font-family: var(--font-display); font-weight: 800; font-size: clamp(120px, 18vw, 260px); line-height:.85; letter-spacing: -.06em; position: absolute; right: 20px; bottom: 0; opacity: .12; pointer-events:none; }
+  /* Watermark Datums-Block: Tag groß oben, Monat darunter (scaleX matcht Tag-Breite).
+     tabular-nums → alle Digits gleich breit, damit "01" / "28" / "09" zentriert über
+     dem Monat sitzen. */
+  .big-date { font-family: var(--font-display); font-weight: 800; font-size: clamp(120px, 18vw, 260px); line-height: .78; letter-spacing: -.06em; position: absolute; right: 20px; bottom: 0; opacity: .12; pointer-events: none; text-align: center; font-variant-numeric: tabular-nums; }
   .event.bg-yel .big-date { opacity: .22; }
   .event.bg-ink .big-date { opacity: .14; }
   .event.bg-deep .big-date { opacity: .16; }
+  .big-mon {
+    display: block;
+    font-size: 0.42em;
+    font-weight: 900;
+    letter-spacing: -.02em;
+    text-transform: uppercase;
+    line-height: 0.7;
+    margin-top: -0.10em; /* leichter Abstand: kleiner Gap, aber nicht überlappend */
+    transform: scale(1.4, 0.62);
+    transform-origin: center top;
+  }
 
   .archive { padding: 80px var(--gutter) 140px; background: var(--paper-2); }
   .archive-list { margin-top: 40px; }
@@ -79,8 +93,8 @@
     .head-wave { height: 60px; }
     .event-grid { padding: 8px var(--gutter) 60px; }
     .section-head { margin-bottom: 20px !important; }
-    /* Card padding + Spacing innerhalb der Cards */
-    .event { padding: 24px 22px 26px; min-height: 280px; }
+    /* Card padding + Spacing innerhalb der Cards. Mehr Bottom-Padding für Atmung. */
+    .event { padding: 24px 22px 40px; min-height: 280px; }
     /* Datum (linker Span) prominenter — vorher 11px mono caps, jetzt deutlich lesbarer */
     .ev-top { font-size: 12px; gap: 12px; opacity: 1; align-items: center; }
     .ev-top > span:first-child { font-size: 14px; font-weight: 500; letter-spacing: .04em; opacity: .9; }
@@ -139,7 +153,7 @@
           </div>
           <span class="ev-arrow">Details →</span>
         </div>
-        <div class="big-date">28</div>
+        <div class="big-date">28<span class="big-mon">Apr</span></div>
       </article>
 
       <!-- EVENT 2: Saisonstart -->
@@ -160,7 +174,7 @@
           </div>
           <span class="ev-arrow">Details →</span>
         </div>
-        <div class="big-date">01</div>
+        <div class="big-date">01<span class="big-mon">Mai</span></div>
       </article>
 
       <!-- EVENT 3: Kreativquartier Opening "Kreativ in den Frühling" -->
@@ -181,7 +195,7 @@
           </div>
           <span class="ev-arrow">Details →</span>
         </div>
-        <div class="big-date">09</div>
+        <div class="big-date">09<span class="big-mon">Mai</span></div>
       </article>
     </div>
 
@@ -341,6 +355,6 @@
 -->
 
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=10"></script>
+<script src="assets/shared.js?v=11"></script>
 </body>
 </html>
