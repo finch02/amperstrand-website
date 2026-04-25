@@ -21,9 +21,10 @@
   .status-big h2 { color: var(--paper); font-size: clamp(56px, 9vw, 132px); letter-spacing: -.045em; line-height: .95; }
   .status-big .sub { font-family: var(--font-mono); font-size: 13px; opacity: .55; text-transform:uppercase; letter-spacing: .05em; margin-top: 24px; }
   .status-big .sub:empty { display: none; }
-  /* Status-Pill oben rechts — gleicher Stil wie auf den Eventkarten */
+  /* Status-Pill oben rechts — gleicher Stil wie auf den Eventkarten,
+     vertikal in einer Flucht mit dem "Jetzt gerade"-Eyebrow */
   .status-big .status-pill {
-    position: absolute; top: 28px; right: 28px; z-index: 2;
+    position: absolute; top: 64px; right: 56px; z-index: 2;
     display: inline-flex; align-items: center; gap: 8px;
     padding: 8px 14px; border-radius: 999px;
     background: rgba(255,255,255,.12);
@@ -79,7 +80,7 @@
     .status-big { padding: 24px var(--gutter) 60px; }
     .status-big .card { padding: 32px 28px; grid-template-columns: 1fr; gap: 24px; align-items: flex-start; }
     .status-big h2 { font-size: clamp(40px, 11vw, 64px); line-height: 1; letter-spacing: -.03em; }
-    .status-big .status-pill { top: 20px; right: 20px; padding: 6px 12px; font-size: 11px; }
+    .status-big .status-pill { top: 32px; right: 28px; padding: 6px 12px; font-size: 11px; }
   }
 </style>
 </head>
@@ -146,9 +147,9 @@
         <div class="box reveal">
           <h3 style="margin-top:0;">Aktuelles kurzfristig</h3>
           <p style="margin: 0 0 14px; font-size: 15px; opacity: .7;">Spontane Änderungen siehst du auf Instagram oder per WhatsApp. Wir posten täglich, ob wir heute geöffnet haben. Such's dir aus:</p>
-          <div style="display:flex; flex-wrap:wrap; gap:8px;">
-            <a href="https://instagram.com" class="btn ghost" target="_blank" rel="noopener">Instagram <span class="arrow">→</span></a>
-            <a href="https://whatsapp.com/channel/" class="btn ghost" target="_blank" rel="noopener">WhatsApp <span class="arrow">→</span></a>
+          <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <a href="https://instagram.com" class="btn" target="_blank" rel="noopener">Instagram <span class="arrow">→</span></a>
+            <a href="https://whatsapp.com/channel/" class="btn" target="_blank" rel="noopener">WhatsApp <span class="arrow">→</span></a>
           </div>
         </div>
         <div class="box reveal">
