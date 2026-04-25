@@ -242,7 +242,7 @@
     <h2 style="margin: 14px 0 0;">Schreib uns eine Nachricht.</h2>
     <div class="grid">
       <div class="contact-info">
-        <p>Buchungen, Event-Anfragen, Ideen, Kritik — wir lesen alles. Antwort innerhalb von drei Tagen.</p>
+        <p>Buchungen, Event-Anfragen, Ideen, Kritik — wir lesen alles. Antwort innerhalb der nächsten Tage.</p>
         <div class="row">
           <div class="label">E-Mail</div>
           <a href="mailto:hello@amperstrand-ffb.de">hello@amperstrand-ffb.de</a>
@@ -323,7 +323,7 @@
             });
             const data = await res.json();
             if (res.ok && data.success) {
-              status.textContent = '✓ Danke! Wir melden uns innerhalb von 3 Tagen.';
+              status.textContent = '✓ Danke! Wir melden uns innerhalb der nächsten Tage.';
               f.reset();
             } else {
               throw new Error(data.message || 'Senden fehlgeschlagen');
