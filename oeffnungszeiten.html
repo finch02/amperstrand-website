@@ -110,13 +110,13 @@
         <div class="eyebrow reveal">§ Kernzeiten · wenn das Wetter mitspielt</div>
         <h2 class="reveal" style="margin: 16px 0 32px; max-width: 12ch;">Die ganze<br>Woche.</h2>
         <table class="hours-table reveal">
-          <tr class="closed"><td>Montag</td><td>Ruhetag</td></tr>
-          <tr class="today closed"><td>Dienstag · heute</td><td>Ruhetag</td></tr>
-          <tr class="closed"><td>Mittwoch</td><td>Ruhetag</td></tr>
-          <tr><td>Donnerstag</td><td>17:00 – 22:00</td></tr>
-          <tr><td>Freitag</td><td>17:00 – 22:00</td></tr>
-          <tr><td>Samstag</td><td>15:00 – 22:00</td></tr>
-          <tr><td>Sonntag</td><td>15:00 – 22:00</td></tr>
+          <tr class="closed" data-day="0"><td>Montag</td><td>Ruhetag</td></tr>
+          <tr class="closed" data-day="1"><td>Dienstag</td><td>Ruhetag</td></tr>
+          <tr class="closed" data-day="2"><td>Mittwoch</td><td>Ruhetag</td></tr>
+          <tr data-day="3"><td>Donnerstag</td><td>17:00 – 22:00</td></tr>
+          <tr data-day="4"><td>Freitag</td><td>17:00 – 22:00</td></tr>
+          <tr data-day="5"><td>Samstag</td><td>15:00 – 22:00</td></tr>
+          <tr data-day="6"><td>Sonntag</td><td>15:00 – 22:00</td></tr>
         </table>
         <p class="mono" style="margin-top: 20px; opacity: .5;">Feiertage: in der Regel wie Sonntag. Kurzfristige Änderungen → Instagram.</p>
       </div>
@@ -161,6 +161,7 @@
 <script src="assets/shared.js?v=11"></script>
 <script>
 (async function(){
+  // 1) Forecast 7-Tage-Ampel
   const out = await window.buildAmpelWindow({ totalDays: 7 });
   const stateLabels = { green: 'Geöffnet', red: 'Geschlossen', amber: 'Wetterabhängig', grey: 'Vor Saison' };
   document.getElementById('forecastDays').innerHTML = out.map(o => {
@@ -173,6 +174,59 @@
       <div class="light"></div>
     </div>`;
   }).join('');
+
+  // 2) Hours-Table: heutigen Tag dynamisch markieren
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7; // Mo=0 ... So=6
+  document.querySelectorAll('.hours-table tr[data-day]').forEach(tr => {
+    const isToday = parseInt(tr.dataset.day, 10) === dow;
+    tr.classList.toggle('today', isToday);
+    const td = tr.querySelector('td:first-child');
+    if (td) {
+      const base = td.textContent.replace(/\s·\s*heute\s*$/, '').trim();
+      td.textContent = isToday ? `${base} · heute` : base;
+    }
+  });
+
+  // 3) Status-Big Card live aus Sheet
+  const todayKey = new Date(today); todayKey.setHours(0,0,0,0);
+  const csv = await window.loadAmpelData();
+  const row = csv[window.dateKey(todayKey)];
+  const sheetToKey = { green: 'open', red: 'closed', amber: 'weather', grey: 'preseason' };
+  const labels = { open: 'Jetzt geöffnet', closed: 'Heute geschlossen', weather: 'Wetterbedingt zu', preseason: 'Saison ab 01.05.' };
+  const dotColors = { open: 'green', closed: 'red', weather: 'amber', preseason: 'blue' };
+
+  let key, sub = '';
+  if (row) {
+    key = sheetToKey[row.cls] || 'closed';
+    sub = row.note || (key === 'open' ? 'bis 22:00' : '');
+  } else {
+    const mayStart = new Date(today.getFullYear(), 4, 1).getTime();
+    if (today.getTime() < mayStart) { key = 'preseason'; sub = ''; }
+    else if (dow <= 2) { key = 'closed'; sub = 'Ruhetag'; }
+    else if (dow >= 5) { key = 'open'; sub = 'ab 15:00'; }
+    else { key = 'open'; sub = 'ab 17:00'; }
+  }
+
+  const lblEl = document.querySelector('.status-big [data-status-label]');
+  const subEl = document.querySelector('.status-big [data-status-sub]');
+  const dotEl = document.querySelector('.status-big [data-status-dot]');
+  if (lblEl) lblEl.textContent = labels[key] || labels.closed;
+  if (subEl) subEl.textContent = sub;
+  if (dotEl) dotEl.className = 'big-dot ' + (dotColors[key] || 'red');
+
+  // STAND-Zeile auf jetzt setzen
+  const days = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+  const standEl = document.querySelector('.status-big .card .sub:not([data-status-sub])');
+  if (standEl) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const dd = String(today.getDate()).padStart(2,'0');
+    const mn = String(today.getMonth()+1).padStart(2,'0');
+    const yy = String(today.getFullYear()).slice(-2);
+    standEl.textContent = `Stand: ${days[dow]}, ${dd}.${mn}.${yy} · ${hh}:${mm}`;
+  }
 })();
 </script>
 </body>
