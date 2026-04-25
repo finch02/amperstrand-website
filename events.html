@@ -105,9 +105,91 @@
         <span class="eyebrow">§ Upcoming</span>
         <h2 style="margin: 12px 0 0;">Das kommt bald.</h2>
       </div>
-      <span class="mono" style="opacity:.55;">6 Events · Juli/August 2026</span>
+      <span class="mono" style="opacity:.55;">3 Events · April / Mai 2026</span>
     </div>
     <div class="evs">
+      <!-- EVENT 1: Wimpelaktion -->
+      <article class="event e-lg bg-yel reveal">
+        <div>
+          <div class="ev-top">
+            <span>28. April · Dienstag</span>
+            <span class="ev-status active"><span class="dot"></span>Offen</span>
+          </div>
+          <h3 style="margin-top: 40px;">Mach das Kreativquartier bunter.</h3>
+          <p class="ev-desc">Wir knüpfen gemeinsam bunte Girlanden hinter der Stadtbibliothek am Amperstrand. Egal ob mitgebrachte Stoffreste oder Material vor Ort — alle können mitmachen. Bei schlechtem Wetter im Turmgeflüster. Foodtruck ist am Start.</p>
+          <div class="ev-tags"><span class="ev-tag">Kreativ</span><span class="ev-tag">Mitmachen</span><span class="ev-tag">Familien</span></div>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">ab 15:00</div>
+            <div class="ev-meta"><span>Frei</span><span>Stadtbibliothek Aumühle</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+        <div class="big-date">28</div>
+      </article>
+
+      <!-- EVENT 2: Saisonstart -->
+      <article class="event e-md bg-ink reveal" data-delay="80">
+        <div>
+          <div class="ev-top">
+            <span>01. Mai · Donnerstag</span>
+            <span class="ev-status active"><span class="dot"></span>Offen</span>
+          </div>
+          <h3 style="margin-top: 32px;">Saisonstart 2026.</h3>
+          <p class="ev-desc">Endlich wieder Strand. Wir machen die Saison auf — kommt vorbei, trinkt einen mit, schaut wer da ist.</p>
+          <div class="ev-tags"><span class="ev-tag">Opening</span><span class="ev-tag">Saison 2026</span></div>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">ab 17:00</div>
+            <div class="ev-meta"><span>Frei</span><span>Amperstrand</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+      </article>
+
+      <!-- EVENT 3: Kreativquartier Opening "Kreativ in den Frühling" -->
+      <article class="event e-md bg-deep reveal" data-delay="120">
+        <div>
+          <div class="ev-top">
+            <span>09. Mai · Samstag</span>
+            <span class="ev-status active"><span class="dot"></span>Offen</span>
+          </div>
+          <h3 style="margin-top: 32px;">Kreativ in den Frühling.</h3>
+          <p class="ev-desc">Saisonauftakt im Kreativquartier — Von Bruck. Für Bruck. Mit Bruck. Bands, Kunstaktionen, Workshops, Essen und Getränke, Kinderprogramm.</p>
+          <div class="ev-tags"><span class="ev-tag">Kreativquartier</span><span class="ev-tag">Bands</span><span class="ev-tag">Workshops</span><span class="ev-tag">Familien</span></div>
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">14:00 – 22:00</div>
+            <div class="ev-meta"><span>Frei</span><span>Hinter Stadtbibliothek</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+      </article>
+    </div>
+
+    <!--
+      ARCHIV: Frühere Demo-Event-Karten (zum Wiederverwenden, wenn neue Events dazukommen).
+      Vorlagen für die verschiedenen Größen + Farben + Status. Einfach raus dem Kommentar
+      ziehen, Inhalte anpassen, oben im .evs-Container einfügen.
+
+      WICHTIG zu den Klassen:
+        .event.e-lg     → große Karte, span 6 (Desktop), min-height 420px
+        .event.e-md     → mittel, span 6
+        .event.e-sm     → klein, span 4
+
+        Farben: .bg-yel (Gelb) · .bg-ink (Schwarz, weiße Schrift) ·
+                .bg-paper (Hell, schwarze Schrift) · .bg-deep (Navy)
+        Status: .ev-status.active "Offen" (grün) · .ev-status.out "Fast voll" (gelb) ·
+                .ev-status.off "Abgesagt" (rot)
+
+      Reveal-Delays gestaffelt (data-delay="80", "120", "160" …) für sequenzielles
+      Einblenden. .big-date zeigt die große Datums-Zahl im Hintergrund (nur sinnvoll
+      auf .e-lg).
+    -->
+    <!--
       <article class="event e-lg bg-yel reveal">
         <div>
           <div class="ev-top">
@@ -216,10 +298,16 @@
           <span class="ev-arrow">Details →</span>
         </div>
       </article>
-    </div>
+    -->
   </div>
 </section>
 
+<!--
+  ARCHIV-Sektion mit Demo-Events ausgeblendet, bis echte vergangene Events
+  vorliegen. Wieder einbauen: Kommentar entfernen, Einträge im
+  .archive-list-Container anpassen (date / title / tags / rating).
+-->
+<!--
 <section class="archive">
   <div class="wrap">
     <div class="section-head reveal" style="margin-bottom:0;">
@@ -235,6 +323,7 @@
     </div>
   </div>
 </section>
+-->
 
 <div data-mount-footer></div>
 <script src="assets/shared.js?v=10"></script>
