@@ -10,11 +10,6 @@
   .head { padding: 160px var(--gutter) 60px; }
   .head h1 { max-width: 14ch; }
   .head .lead { margin-top: 32px; font-size: clamp(18px, 1.5vw, 22px); max-width: 56ch; opacity: .75; }
-  @media (max-width: 820px) {
-    .head { padding: 120px var(--gutter) 60px; }
-    .head h1 { font-size: clamp(34px, 9vw, 52px); letter-spacing: -.03em; line-height: 1.02; max-width: 100%; }
-    .head .lead { margin-top: 20px; font-size: 15px; line-height: 1.45; }
-  }
 
   .status-big { padding: 40px var(--gutter) 80px; }
   .status-big .card {
@@ -63,6 +58,18 @@
   .ampel-day.red .light { background: #ef4444; }
   .ampel-day.grey .light { background: rgba(10,10,10,.15); }
   @media (max-width: 820px) { .ampel-days { grid-template-columns: repeat(4, 1fr); } }
+
+  /* Mobile-Overrides — am Ende, damit Base-Rules sicher überschrieben werden */
+  @media (max-width: 820px) {
+    .head { padding: 120px var(--gutter) 60px; }
+    .head h1 { font-size: clamp(34px, 9vw, 52px); letter-spacing: -.03em; line-height: 1.02; max-width: 100%; margin-top: 22px; }
+    .head .lead { margin-top: 20px; font-size: 15px; line-height: 1.45; }
+    /* Status-Card kompakter, damit "Heute geschlossen" auf Mobile reinpasst */
+    .status-big { padding: 24px var(--gutter) 60px; }
+    .status-big .card { padding: 32px 28px; grid-template-columns: 1fr; gap: 24px; align-items: flex-start; }
+    .status-big h2 { font-size: clamp(40px, 11vw, 64px); line-height: 1; letter-spacing: -.03em; }
+    .status-big .big-dot { width: 60px; height: 60px; }
+  }
 </style>
 </head>
 <body data-page="oeffnungszeiten" data-tone="paper">
