@@ -264,14 +264,14 @@
           <div style="opacity:.75;">AMPERSTRAND Gastro & Event GbR<br>Bullachstraße 30<br>82256 Fürstenfeldbruck</div>
         </div>
       </div>
-      <form class="form" onsubmit="event.preventDefault(); alert('Demo-Prototyp — nicht gesendet.');">
+      <form class="form" id="contactForm">
         <div class="field-2">
-          <div class="field"><label>Name</label><input type="text" required placeholder="Dein Name"></div>
-          <div class="field"><label>E-Mail</label><input type="email" required placeholder="du@beispiel.de"></div>
+          <div class="field"><label>Name</label><input type="text" name="name" required placeholder="Dein Name"></div>
+          <div class="field"><label>E-Mail</label><input type="email" name="email" required placeholder="du@beispiel.de"></div>
         </div>
         <div class="field">
           <label>Betreff</label>
-          <select>
+          <select name="topic">
             <option>Private Buchung</option>
             <option>Event-Kooperation</option>
             <option>Feedback</option>
@@ -279,10 +279,32 @@
             <option>Etwas anderes</option>
           </select>
         </div>
-        <div class="field"><label>Nachricht</label><textarea placeholder="Worum geht's?"></textarea></div>
+        <div class="field"><label>Nachricht</label><textarea name="message" placeholder="Worum geht's?"></textarea></div>
         <label class="check"><input type="checkbox" required> <span>Ich habe die <a href="datenschutz.html" style="text-decoration:underline;text-underline-offset:3px;">Datenschutzerklärung</a> gelesen und stimme der Verarbeitung meiner Daten zu diesem Zweck zu.</span></label>
-        <button type="submit" class="btn alt submit">Absenden <span class="arrow">→</span></button>
+        <button type="submit" class="btn alt submit">Per Mail senden <span class="arrow">→</span></button>
       </form>
+      <script>
+      (function(){
+        const f = document.getElementById('contactForm');
+        if (!f) return;
+        f.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const fd = new FormData(f);
+          const name = (fd.get('name') || '').trim();
+          const email = (fd.get('email') || '').trim();
+          const topic = (fd.get('topic') || 'Anfrage').trim();
+          const msg = (fd.get('message') || '').trim();
+          const subject = `[${topic}] – ${name || 'Anfrage'}`;
+          const body =
+            `Hallo Amperstrand-Team,\n\n` +
+            `${msg}\n\n` +
+            `— ${name}\n` +
+            `${email}`;
+          const url = `mailto:hello@amperstrand-ffb.de?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          window.location.href = url;
+        });
+      })();
+      </script>
     </div>
   </div>
 </section>
