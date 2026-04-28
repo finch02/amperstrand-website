@@ -179,7 +179,7 @@
 </section>
 
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=12"></script>
+<script src="assets/shared.js?v=13"></script>
 <script>
 (async function(){
   // 1) Forecast 7-Tage-Ampel
@@ -214,19 +214,30 @@
   const csv = await window.loadAmpelData();
   const row = csv[window.dateKey(todayKey)];
   const sheetToKey = { green: 'open', red: 'closed', amber: 'weather', grey: 'preseason' };
-  const labels = { open: 'Jetzt geöffnet', closed: 'Heute geschlossen', weather: 'Wetterbedingt zu', preseason: 'Saison ab 01.05.' };
-  const dotColors = { open: 'green', closed: 'red', weather: 'amber', preseason: 'blue' };
+  const labels = { open: 'Jetzt geöffnet', soon: 'Öffnet bald', closed: 'Heute geschlossen', weather: 'Wetterbedingt zu', preseason: 'Saison ab 01.05.' };
+  const dotColors = { open: 'green', soon: 'amber', closed: 'red', weather: 'amber', preseason: 'blue' };
 
   let key, sub = '';
   if (row) {
     key = sheetToKey[row.cls] || 'closed';
-    sub = row.note || (key === 'open' ? 'bis 22:00' : '');
   } else {
     const mayStart = new Date(today.getFullYear(), 4, 1).getTime();
-    if (today.getTime() < mayStart) { key = 'preseason'; sub = ''; }
-    else if (dow <= 2) { key = 'closed'; sub = 'Ruhetag'; }
-    else if (dow >= 5) { key = 'open'; sub = 'ab 15:00'; }
-    else { key = 'open'; sub = 'ab 17:00'; }
+    if (today.getTime() < mayStart) key = 'preseason';
+    else if (dow <= 2) key = 'closed';
+    else key = 'open';
+  }
+
+  if (key === 'open') {
+    const st = window.resolveOpenStateNow(today, row);
+    key = st.key;
+    labels[key] = st.label;
+    sub = st.sub;
+  } else if (key === 'closed') {
+    sub = (row && row.note) || (dow <= 2 ? 'Ruhetag' : '');
+  } else if (key === 'weather') {
+    sub = (row && row.note) || 'siehe Instagram';
+  } else {
+    sub = (row && row.note) || '';
   }
 
   const lblEl = document.querySelector('.status-big [data-status-label]');
@@ -236,7 +247,7 @@
   if (lblEl) lblEl.textContent = labels[key] || labels.closed;
   if (subEl) subEl.textContent = sub;
   if (dotEl) dotEl.className = 'dot ' + (dotColors[key] || 'red');
-  const pillLabels = { open: 'Geöffnet', closed: 'Geschlossen', weather: 'Vielleicht', preseason: 'Preseason' };
+  const pillLabels = { open: 'Geöffnet', soon: 'Öffnet bald', closed: 'Geschlossen', weather: 'Vielleicht', preseason: 'Preseason' };
   if (pillLblEl) pillLblEl.textContent = pillLabels[key] || 'Geschlossen';
 
   // STAND-Zeile auf jetzt setzen

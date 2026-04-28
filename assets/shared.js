@@ -130,16 +130,92 @@ window.buildAmpelWindow = async function({ totalDays = 21, startDate = null } = 
 };
 
 // ============ STATUS LOGIC ============
-// Season: 1 May – 30 Sep. Hours (placeholder):
-// Mo-Do 15:00-22:00, Fr 15:00-23:00, Sa 12:00-23:00, So 12:00-22:00.
-// For prototype we simulate a state controlled by window.__AMPERSTRAND_STATE.
+// Season: 1 May – 30 Sep. Standard hours by weekday (Mo=0 ... So=6):
+// Mo-Mi: Ruhetag · Do/Fr: 17:00–22:00 · Sa/So: 15:00–22:00.
 const STATUS_STATES = {
   open:   { label: 'Jetzt geöffnet', sub: 'bis 22:00', dot: 'green' },
-  soon:   { label: 'Öffnet in 2h 15min', sub: 'um 15:00', dot: 'amber' },
+  soon:   { label: 'Öffnet bald', sub: '', dot: 'amber' },
   closed: { label: 'Heute geschlossen', sub: 'Mo Ruhetag', dot: 'red' },
   weather:{ label: 'Wetterbedingt zu', sub: 'siehe Instagram', dot: 'red' },
   preseason:{ label: 'Saison ab 01.05.', sub: 'noch 12 Tage', dot: 'blue' },
 };
+
+// Standard opening hours per weekday (Mo=0 ... So=6 nach (getDay()+6)%7).
+// Mo-Mi: Ruhetag (null). Do/Fr: 17–22. Sa/So: 15–22.
+window.AMPERSTRAND_HOURS = {
+  3: { open: '17:00', close: '22:00' },
+  4: { open: '17:00', close: '22:00' },
+  5: { open: '15:00', close: '22:00' },
+  6: { open: '15:00', close: '22:00' },
+};
+
+function getStandardHours(dow) {
+  return window.AMPERSTRAND_HOURS[dow] || null;
+}
+
+function timeStrToMin(s) {
+  const m = String(s || '').match(/^(\d{1,2}):(\d{2})$/);
+  return m ? (+m[1]) * 60 + (+m[2]) : null;
+}
+
+// Try to extract hours from a free-form sheet note.
+// Supports "15:00–22:00", "15-22", "ab 15:00", "ab 15 Uhr".
+function parseHoursFromNote(note) {
+  if (!note) return null;
+  const range = note.match(/(\d{1,2})(?::(\d{2}))?\s*[–\-]\s*(\d{1,2})(?::(\d{2}))?/);
+  if (range) {
+    return {
+      open:  String(range[1]).padStart(2,'0') + ':' + (range[2] || '00'),
+      close: String(range[3]).padStart(2,'0') + ':' + (range[4] || '00'),
+    };
+  }
+  const ab = note.match(/ab\s+(\d{1,2})(?::(\d{2}))?/i);
+  if (ab) {
+    return {
+      open:  String(ab[1]).padStart(2,'0') + ':' + (ab[2] || '00'),
+      close: '22:00',
+    };
+  }
+  return null;
+}
+
+function fmtCountdown(min) {
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  return m === 0 ? (h + 'h') : (h + 'h ' + m + 'min');
+}
+
+// Given "today is open" + optional sheet row, time-gate against actual hours.
+// Returns { key, label, sub } where key ∈ {open, soon, closed}.
+function resolveOpenStateNow(now, row) {
+  const dow = (now.getDay() + 6) % 7;
+  const hours = parseHoursFromNote(row && row.note)
+             || getStandardHours(dow)
+             || { open: '15:00', close: '22:00' };
+  const openMin  = timeStrToMin(hours.open);
+  const closeMin = timeStrToMin(hours.close);
+  const cur = now.getHours() * 60 + now.getMinutes();
+  if (cur < openMin) {
+    return {
+      key: 'soon',
+      label: 'Öffnet in ' + fmtCountdown(openMin - cur),
+      sub: 'um ' + hours.open,
+    };
+  }
+  if (cur >= closeMin) {
+    return {
+      key: 'closed',
+      label: 'Heute geschlossen',
+      sub: 'seit ' + hours.close,
+    };
+  }
+  return {
+    key: 'open',
+    label: 'Jetzt geöffnet',
+    sub: (row && row.note) || ('bis ' + hours.close),
+  };
+}
+window.resolveOpenStateNow = resolveOpenStateNow;
 
 function currentStatusKey() {
   const saved = localStorage.getItem('amperstrand-state');
@@ -165,24 +241,35 @@ async function applyLiveStatusFromSheet() {
   if (sessionStorage.getItem('amperstrand-state-manual')) return;
   try {
     const csv = await loadAmpelData();
-    const today = new Date(); today.setHours(0,0,0,0);
+    const now = new Date();
+    const today = new Date(now); today.setHours(0,0,0,0);
     const row = csv[dateKey(today)];
     const sheetToKey = { green: 'open', red: 'closed', amber: 'weather', grey: 'preseason' };
+    const dow = (today.getDay() + 6) % 7;
     let key;
     if (row) {
       key = sheetToKey[row.cls] || 'closed';
-      // Sheet-Notiz als Sub-Text (sonst kein Sub-Text)
-      STATUS_STATES[key].sub = row.note || '';
-      if (key === 'open' && !row.note) STATUS_STATES[key].sub = 'bis 22:00';
     } else {
-      // Kein Sheet-Eintrag: Sonntag=Ruhetag, sonst offen, vor 01.05. preseason
-      const d = today;
-      const mayStart = new Date(d.getFullYear(), 4, 1).getTime();
-      const dow = (d.getDay() + 6) % 7;
-      if (d.getTime() < mayStart) key = 'preseason';
-      else if (dow === 0) { key = 'closed'; STATUS_STATES.closed.sub = 'Ruhetag'; }
+      // Kein Sheet-Eintrag: Mo-Mi Ruhetag, sonst offen, vor 01.05. preseason
+      const mayStart = new Date(today.getFullYear(), 4, 1).getTime();
+      if (today.getTime() < mayStart) key = 'preseason';
+      else if (dow <= 2) key = 'closed';
       else key = 'open';
     }
+
+    if (key === 'open') {
+      // Time-gate: vor Öffnung → soon, nach Schluss → closed
+      const st = resolveOpenStateNow(now, row);
+      key = st.key;
+      STATUS_STATES[key].label = st.label;
+      STATUS_STATES[key].sub = st.sub;
+    } else if (key === 'closed') {
+      STATUS_STATES.closed.label = 'Heute geschlossen';
+      STATUS_STATES.closed.sub = (row && row.note) || (dow <= 2 ? 'Ruhetag' : '');
+    } else if (key === 'weather') {
+      STATUS_STATES.weather.sub = (row && row.note) || 'siehe Instagram';
+    }
+
     localStorage.setItem('amperstrand-state', key);
     applyStatusPill();
   } catch (e) {
