@@ -144,7 +144,7 @@
     </div>
     <div class="stats reveal">
       <div class="stat">
-        <div class="num">15</div>
+        <div class="num">16</div>
         <div class="lbl">Getränke</div>
       </div>
       <div class="stat">
@@ -152,12 +152,12 @@
         <div class="lbl">Cocktails</div>
       </div>
       <div class="stat">
-        <div class="num">4</div>
+        <div class="num">3</div>
         <div class="lbl">Snacks</div>
       </div>
       <div class="stat">
-        <div class="num">1,50<span class="unit">€</span></div>
-        <div class="lbl">Ab</div>
+        <div class="num">8</div>
+        <div class="lbl">Alkoholfrei</div>
       </div>
     </div>
   </div>
@@ -182,7 +182,7 @@
     <div class="cocktails-head">
       <div>
         <span class="eyebrow reveal">§ Cocktails</span>
-        <h2 class="reveal" style="margin-top: 12px;">Alle Cocktails — einheitlich 6,00 €.</h2>
+        <h2 class="reveal" style="margin-top: 12px;">Alle Cocktails — einheitlich 6,80 €.</h2>
       </div>
       <div class="kukki-note reveal">
         <strong>kukki Cocktails.</strong> Fertige Cocktails in der Glasflasche, geshakt &amp; abgefüllt. Kein Mixen, keine Wartezeit, kein Aufwand — einfach öffnen und trinken. Genau das, was du für Deinen Sommer brauchst.
@@ -207,41 +207,44 @@
 <script>
 const MENU = [
   { block: 'Softdrinks', items: [
-    { n:'Lemon / Orange Soda', d:'', p:'3,00', tags:['alkfrei']},
+    { n:'Lemon Soda', d:'', p:'3,30', tags:['alkfrei']},
+    { n:'Orange Soda', d:'', p:'3,30', tags:['alkfrei']},
     { n:'Spezi', d:'', p:'3,00', tags:['alkfrei']},
-    { n:'Cola', d:'', p:'3,00', tags:['alkfrei']},
-    { n:'Bionade', d:'Holunder, Kräuter, Mate, Eistee-Pfirsich, Ingwer-Orange', p:'3,00', tags:['alkfrei']},
-    { n:'Wasser', d:'', p:'1,50', tags:['alkfrei']},
+    { n:'Cola', d:'', p:'3,30', tags:['alkfrei']},
+    { n:'Cola Zero', d:'', p:'3,30', tags:['alkfrei']},
+    { n:'Bionade', d:'Holunder, Kräuter, Mate, Eistee-Pfirsich, Ingwer-Orange', p:'3,30', tags:['alkfrei']},
+    { n:'Wasser', d:'still oder sprudel', p:'2,50', tags:['alkfrei']},
   ]},
   { block: 'Bier & Radler', items: [
     { n:'Augustiner Helles', d:'', p:'3,50', tags:[]},
+    // Geplant, noch nicht aktiv: { n:'Augustiner Helles 0,33L', d:'', p:'2,80', tags:[]},
     { n:'Augustiner Alkoholfrei', d:'', p:'3,50', tags:['alkfrei']},
     { n:'Gösser Radler', d:'', p:'3,50', tags:[]},
-    { n:'Desperados', d:'', p:'4,00', tags:[]},
+    { n:'Desperados', d:'', p:'4,50', tags:[]},
   ]},
   { block: 'Weinschorle', items: [
-    { n:'Weiss', d:'', p:'3,50', tags:[]},
-    { n:'Rosé', d:'', p:'3,50', tags:[]},
+    { n:'Weiss', d:'', p:'3,80', tags:[]},
+    { n:'Rosé', d:'', p:'3,80', tags:[]},
   ]},
   { block: 'Aperitifs & Spritz', items: [
-    { n:'Aperol Spritz', d:'', p:'4,50', tags:[]},
-    { n:'Wild Berry Lillet', d:'', p:'4,50', tags:[]},
+    { n:'Aperol Spritz', d:'', p:'5,20', tags:[]},
+    { n:'Wild Berry Lillet', d:'', p:'5,20', tags:[]},
+    { n:'Frappuccino', d:'mehrere Sorten', p:'4,80', tags:[]},
   ]},
   { block: 'Snacks', items: [
     { n:'Kesselnüsse', d:'Paprika', p:'2,00', tags:['alkfrei']},
     { n:'Erdnüsse', d:'geröstet & gesalzen', p:'2,00', tags:['alkfrei']},
-    { n:'Elephant Pretzels', d:'Tomatoes & Herbs / Sea Salt / Honey Mustard & Onion', p:'2,50', tags:['alkfrei']},
     { n:'Fonzies', d:'', p:'2,50', tags:['alkfrei']},
   ]},
 ];
 
 const COCKTAILS = [
-  { n:'Sex on the Beach', vol:'14 % vol.' },
-  { n:'Mojito',            vol:'14 % vol.' },
-  { n:'Colada',            vol:'8 % vol.' },
-  { n:'Caipi',             vol:'14 % vol.' },
-  { n:'Wildberry',         vol:'8 % vol.' },
-  { n:'Wild Passion Fruit',vol:'8 % vol.' },
+  { n:'Sex on the Beach',   vol:'14,1 % vol.' },
+  { n:'Mojito',             vol:'14,1 % vol.' },
+  { n:'Colada',             vol:'8 % vol.' },
+  { n:'Caipi',              vol:'14,1 % vol.' },
+  { n:'Wild Berry',         vol:'8 % vol.' },
+  { n:'Wild Passion Fruit', vol:'8 % vol.' },
 ];
 
 function render() {
@@ -274,7 +277,7 @@ function render() {
       <div class="name">${c.n}</div>
       <div class="price-row">
         <span class="sub">kukki · Flasche</span>
-        <span class="price">6,00 €</span>
+        <span class="price">6,80 €</span>
       </div>
     </div>
   `).join('');
