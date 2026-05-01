@@ -46,6 +46,9 @@
   }
   .map-overlay .t { opacity: .55; margin-bottom: 4px; }
   .map-overlay .a { color: var(--paper); font-family: var(--font-display); font-size: 14px; font-weight: 500; letter-spacing: -.005em; text-transform: none; }
+  /* Sobald die Karte geladen ist, übernimmt Googles Marker die Adress-Anzeige —
+     unser eigenes Overlay raus, sonst überlagert sich's mit Googles UI-Buttons. */
+  .map-box.map-loaded .map-overlay { display: none; }
   .map-actions {
     position: absolute; right: 16px; bottom: 16px; z-index: 400;
     display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
@@ -374,7 +377,9 @@ document.getElementById('faqList').innerHTML = FAQ.map((f, i) => `
 `).join('');
 
 // 2-Klick-Lösung für Google Maps: erst beim Klick wird das iframe geladen,
-// damit vorher keine Daten an Google übertragen werden.
+// damit vorher keine Daten an Google übertragen werden. Sobald die Karte
+// geladen ist, blenden wir die Adress-Overlay aus — Googles eigener Marker
+// zeigt die Location bereits an, sonst überlagert sich beides.
 (function setupMapConsent(){
   const btn = document.getElementById('mapConsent');
   if (!btn) return;
@@ -387,6 +392,8 @@ document.getElementById('faqList').innerHTML = FAQ.map((f, i) => `
     iframe.title = 'Amperstrand auf Google Maps';
     iframe.src = 'https://maps.google.com/maps?q=Bullachstra%C3%9Fe+30,+82256+F%C3%BCrstenfeldbruck&z=16&output=embed';
     btn.replaceWith(iframe);
+    const box = document.getElementById('mapBox');
+    if (box) box.classList.add('map-loaded');
   });
 })();
 </script>
