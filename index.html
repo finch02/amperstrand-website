@@ -457,8 +457,10 @@
       align-items: center;
       white-space: nowrap;
     }
-    .hero-actions .status-hero { gap: 10px; }
+    /* Pill auf Mobile: Label + Sub vertikal stacken, sonst rutscht "um 15:00" aus dem Button */
+    .hero-actions .status-hero { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; padding: 8px 14px; line-height: 1.1; }
     .hero-actions .status-hero strong { font-size: 14px; font-weight: 500; white-space: nowrap; }
+    .hero-actions .status-hero .sub { font-size: 9.5px; letter-spacing: .06em; }
     .hero-actions .btn.ghost { gap: 8px; }
     .hero-actions .btn.ghost .nl-full { display: none; }
     .hero-actions .btn.ghost .nl-short { display: inline; }

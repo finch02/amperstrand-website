@@ -53,6 +53,10 @@
   /* Sobald die Karte geladen ist, übernimmt Googles Marker die Adress-Anzeige —
      unser eigenes Overlay raus, sonst überlagert sich's mit Googles UI-Buttons. */
   .map-box.map-loaded .map-overlay { display: none; }
+  /* Mobile: Karte ist klein, Overlay würde den "Karte laden"-Button verdecken — raus. */
+  @media (max-width: 720px) {
+    .map-box .map-overlay { display: none; }
+  }
   .map-actions {
     position: absolute; right: 16px; bottom: 16px; z-index: 400;
     display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
