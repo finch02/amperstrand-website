@@ -398,7 +398,7 @@ const FOOTER_HTML = `
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2026 AMPERSTRAND Gastro & Event GbR</span>
+        <span>© 2026 Amperstrand Gastro & Event · Inhaber: Finn-Bjarne Burtscheidt</span>
         <span>Teil vom Kreativquartier Aumühle/Lände</span>
       </div>
     </div>
