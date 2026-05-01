@@ -108,7 +108,9 @@ window.buildAmpelWindow = async function({ totalDays = 21, startDate = null } = 
     let cls, sub;
     if (row) {
       cls = row.cls;
-      sub = row.note || ({ green: 'Geöffnet', red: 'Geschlossen', amber: 'Wetterabhängig' }[cls]);
+      sub = row.note
+        ? (cls === 'green' ? formatNoteAsSub(row.note) : row.note)
+        : ({ green: 'Geöffnet', red: 'Geschlossen', amber: 'Wetterabhängig' }[cls]);
     } else if (d.getTime() < mayStart) {
       cls = 'grey'; sub = 'Vor Saisonstart';
     } else if (idx === 0) {
@@ -159,28 +161,28 @@ function timeStrToMin(s) {
 }
 
 // Try to extract hours from a free-form sheet note (Spalte C im Ampel-Sheet).
-// Akzeptiert: "15:00–22:00", "15-22", "ab 15:00", "ab 15 Uhr", "15:00", "15 Uhr", "15".
+// Akzeptiert: "15:00–22:00", "15-22", "ab 15:00", "ab 15 Uhr", "15:00", "15 Uhr", "15", "15:00:00".
 function parseHoursFromNote(note) {
   if (!note) return null;
   const trimmed = String(note).trim();
-  // Zeitspanne: "12:00–22:00" / "12-22"
-  const range = trimmed.match(/(\d{1,2})(?::(\d{2}))?\s*[–\-]\s*(\d{1,2})(?::(\d{2}))?/);
+  // Zeitspanne: "12:00–22:00" / "12-22" — Sekunden-Suffix optional
+  const range = trimmed.match(/(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*[–\-]\s*(\d{1,2})(?::(\d{2}))?(?::\d{2})?/);
   if (range) {
     return {
       open:  String(range[1]).padStart(2,'0') + ':' + (range[2] || '00'),
       close: String(range[3]).padStart(2,'0') + ':' + (range[4] || '00'),
     };
   }
-  // "ab 15:00" / "ab 15 Uhr"
-  const ab = trimmed.match(/ab\s+(\d{1,2})(?::(\d{2}))?/i);
+  // "ab 15:00" / "ab 15 Uhr" / "ab 15:00:00"
+  const ab = trimmed.match(/ab\s+(\d{1,2})(?::(\d{2}))?(?::\d{2})?/i);
   if (ab) {
     return {
       open:  String(ab[1]).padStart(2,'0') + ':' + (ab[2] || '00'),
       close: '22:00',
     };
   }
-  // Reine Uhrzeit als kompletter Inhalt: "15:00", "15 Uhr", "15"
-  const bare = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(?:Uhr)?$/i);
+  // Reine Uhrzeit als kompletter Inhalt: "15:00", "15 Uhr", "15", "15:00:00" (Sheets-Format)
+  const bare = trimmed.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*(?:Uhr)?$/i);
   if (bare) {
     return {
       open:  String(bare[1]).padStart(2,'0') + ':' + (bare[2] || '00'),
@@ -189,6 +191,19 @@ function parseHoursFromNote(note) {
   }
   return null;
 }
+
+// Hübsche Anzeige für die Kalender-Sub-Zeile bei einem Open-Day mit Notiz.
+// Wenn parseHoursFromNote erfolgreich ist → "ab HH:MM" oder "HH:MM – HH:MM",
+// sonst der Roh-Text.
+function formatNoteAsSub(note) {
+  const parsed = parseHoursFromNote(note);
+  if (!parsed) return String(note || '').trim();
+  if (parsed.close === '22:00' && !/[–\-]/.test(String(note))) {
+    return 'ab ' + parsed.open;
+  }
+  return parsed.open + ' – ' + parsed.close;
+}
+window.formatNoteAsSub = formatNoteAsSub;
 
 function fmtCountdown(min) {
   if (min < 60) return min + ' min';
