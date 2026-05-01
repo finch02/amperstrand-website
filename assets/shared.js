@@ -224,8 +224,8 @@ function resolveOpenStateNow(now, row) {
   if (cur < openMin) {
     return {
       key: 'soon',
-      label: 'Öffnet in ' + fmtCountdown(openMin - cur),
-      sub: 'um ' + hours.open,
+      label: 'Öffnet um ' + hours.open,
+      sub: '',
     };
   }
   if (cur >= closeMin) {
