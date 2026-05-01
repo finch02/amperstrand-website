@@ -158,21 +158,32 @@ function timeStrToMin(s) {
   return m ? (+m[1]) * 60 + (+m[2]) : null;
 }
 
-// Try to extract hours from a free-form sheet note.
-// Supports "15:00–22:00", "15-22", "ab 15:00", "ab 15 Uhr".
+// Try to extract hours from a free-form sheet note (Spalte C im Ampel-Sheet).
+// Akzeptiert: "15:00–22:00", "15-22", "ab 15:00", "ab 15 Uhr", "15:00", "15 Uhr", "15".
 function parseHoursFromNote(note) {
   if (!note) return null;
-  const range = note.match(/(\d{1,2})(?::(\d{2}))?\s*[–\-]\s*(\d{1,2})(?::(\d{2}))?/);
+  const trimmed = String(note).trim();
+  // Zeitspanne: "12:00–22:00" / "12-22"
+  const range = trimmed.match(/(\d{1,2})(?::(\d{2}))?\s*[–\-]\s*(\d{1,2})(?::(\d{2}))?/);
   if (range) {
     return {
       open:  String(range[1]).padStart(2,'0') + ':' + (range[2] || '00'),
       close: String(range[3]).padStart(2,'0') + ':' + (range[4] || '00'),
     };
   }
-  const ab = note.match(/ab\s+(\d{1,2})(?::(\d{2}))?/i);
+  // "ab 15:00" / "ab 15 Uhr"
+  const ab = trimmed.match(/ab\s+(\d{1,2})(?::(\d{2}))?/i);
   if (ab) {
     return {
       open:  String(ab[1]).padStart(2,'0') + ':' + (ab[2] || '00'),
+      close: '22:00',
+    };
+  }
+  // Reine Uhrzeit als kompletter Inhalt: "15:00", "15 Uhr", "15"
+  const bare = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(?:Uhr)?$/i);
+  if (bare) {
+    return {
+      open:  String(bare[1]).padStart(2,'0') + ':' + (bare[2] || '00'),
       close: '22:00',
     };
   }
