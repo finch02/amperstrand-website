@@ -223,6 +223,12 @@
   .ha-status .pulse::after {
     content: ''; position: absolute; inset: -4px; border-radius: 50%;
     border: 1px solid currentColor; opacity: .4;
+    animation: none;
+    display: none;
+  }
+  /* Puls nur, wenn JETZT (heute, innerhalb Öffnungszeit) wirklich offen */
+  .hero-ampel.is-now-open[data-state="open"] .ha-status .pulse::after {
+    display: block;
     animation: haPulse 2.2s ease-out infinite;
   }
   @keyframes haPulse { 0% { transform: scale(.6); opacity: .6; } 100% { transform: scale(1.6); opacity: 0; } }
@@ -770,8 +776,18 @@
 
     function fmtLabel(o) {
       const stateLabels = { green: 'Geöffnet', amber: 'Wetterabhängig', red: 'Geschlossen', grey: 'Vor Saisonstart' };
-      // Sheet-Notiz priorisieren, sonst Default-Label
-      const statusText = (o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || 'Geschlossen');
+      let statusText;
+      if (o.cls === 'green' && !o.isToday) {
+        // Zukünftiger offener Tag: Öffnungszeit statt "Geöffnet"
+        const dow = (o.dateObj.getDay() + 6) % 7;
+        const note = (o.fromSheet && o.sub && o.sub !== 'Geöffnet') ? o.sub : null;
+        const hours = window.AMPERSTRAND_HOURS && window.AMPERSTRAND_HOURS[dow];
+        if (note) statusText = note;
+        else if (hours) statusText = `${hours.open} – ${hours.close}`;
+        else statusText = 'Geöffnet';
+      } else {
+        statusText = (o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || 'Geschlossen');
+      }
       const dayText = o.isToday ? 'Heute' : `${o.wd}, ${o.d}. ${o.m}`;
       return `<span class="lbl-day">${dayText}</span><span class="lbl-sub">${statusText}</span>`;
     }
@@ -799,6 +815,17 @@
       const sel = out[selected];
       const [state] = stateMap[sel.cls] || ['closed'];
       wrap.dataset.state = state;
+
+      // Pulsieren nur, wenn der heute-Slot ausgewählt ist UND wir gerade
+      // wirklich innerhalb der Öffnungszeit sind (nicht bei zukünftigen
+      // Tagen oder vor Öffnung).
+      let pulseActive = false;
+      if (selected === 0 && sel.cls === 'green' && window.resolveOpenStateNow) {
+        const sheetRow = sel.fromSheet ? { note: (sel.sub === 'Geöffnet' ? '' : sel.sub) } : null;
+        pulseActive = window.resolveOpenStateNow(new Date(), sheetRow).key === 'open';
+      }
+      wrap.classList.toggle('is-now-open', pulseActive);
+
       lbl.innerHTML = fmtLabel(sel);
 
       prevBtn.disabled = winStart === 0;
