@@ -6,8 +6,6 @@
 <meta name="theme-color" content="#fafaf7">
 <title>Über uns — Amperstrand</title>
 <link rel="stylesheet" href="assets/shared.css?v=12">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
 <style>
   .head { padding: 160px var(--gutter) 80px; }
   .head h1 { max-width: 12ch; }
@@ -35,7 +33,7 @@
     background: var(--paper); border: 1px solid rgba(10,10,10,.08);
     box-shadow: 0 20px 40px -24px rgba(10,10,10,.15);
   }
-  #leafletMap { position: absolute; inset: 0; z-index: 1; }
+  .map-frame { position: absolute; inset: 0; z-index: 1; border: 0; width: 100%; height: 100%; }
   .map-overlay {
     position: absolute; left: 20px; top: 20px; z-index: 400;
     background: var(--ink); color: var(--paper);
@@ -63,38 +61,38 @@
     border: 1px solid rgba(10,10,10,.08);
   }
   .map-actions a:hover { transform: translateY(-1px); background: var(--yellow); }
-  .map-pin-wrap {
-    display: flex; flex-direction: column; align-items: center; transform: translateY(-8px);
-    filter: drop-shadow(0 8px 14px rgba(0,0,0,.25));
+
+  /* 2-Klick-Lösung: Platzhalter mit Consent-CTA. Erst beim Klick wird das
+     Google-Maps-iframe geladen und damit Daten an Google übertragen. */
+  .map-consent {
+    position: absolute; inset: 0; z-index: 200;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 24px;
+    background:
+      linear-gradient(135deg, rgba(249,207,44,.18) 0%, transparent 60%),
+      repeating-linear-gradient(45deg, rgba(10,10,10,.025) 0 12px, transparent 12px 24px),
+      var(--paper-2);
+    color: var(--ink); text-align: center; cursor: pointer;
+    border: 0; font-family: var(--font-body);
+    transition: background .2s;
   }
-  .map-pin-wrap .lbl {
+  .map-consent:hover { background:
+    linear-gradient(135deg, rgba(249,207,44,.28) 0%, transparent 60%),
+    repeating-linear-gradient(45deg, rgba(10,10,10,.03) 0 12px, transparent 12px 24px),
+    var(--paper-2);
+  }
+  .map-consent .cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 999px;
     background: var(--ink); color: var(--paper);
-    font-family: var(--font-mono); font-size: 10px;
-    padding: 4px 8px; border-radius: 4px;
-    text-transform: uppercase; letter-spacing: .06em;
-    white-space: nowrap; margin-bottom: 6px;
+    font-family: var(--font-display); font-weight: 500; font-size: 16px; letter-spacing: -.01em;
+    box-shadow: 0 8px 20px -8px rgba(0,0,0,.35);
   }
-  .map-pin-wrap .dot {
-    width: 20px; height: 20px; border-radius: 50%;
-    background: var(--yellow); border: 4px solid var(--ink);
+  .map-consent .info {
+    max-width: 36ch; font-size: 12.5px; line-height: 1.5; opacity: .7;
+    font-family: var(--font-mono); letter-spacing: .01em;
   }
-  .map-pin-wrap .stem {
-    width: 2px; height: 8px; background: var(--ink);
-  }
-  /* Leaflet overrides to fit our brand */
-  .leaflet-container { background: #eeece2; font-family: var(--font-body); }
-  .leaflet-control-attribution {
-    background: rgba(250,250,247,.75) !important;
-    font-family: var(--font-mono) !important; font-size: 9.5px !important;
-    letter-spacing: .02em !important;
-  }
-  .leaflet-control-attribution a { color: var(--ink) !important; }
-  .leaflet-control-zoom a {
-    background: var(--paper) !important; color: var(--ink) !important;
-    border: 1px solid rgba(10,10,10,.08) !important;
-    font-family: var(--font-display) !important; font-weight: 500;
-  }
-  .leaflet-control-zoom a:hover { background: var(--yellow) !important; }
+  .map-consent .info a { text-decoration: underline; text-underline-offset: 2px; color: inherit; }
   .travel h3 { margin-bottom: 18px; font-size: 22px; }
   .travel-item { padding: 18px 0; border-bottom: 1px dashed rgba(10,10,10,.12); }
   .travel-item .mode { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing:.06em; opacity:.55; margin-bottom: 6px; }
@@ -188,15 +186,21 @@
     <span class="eyebrow reveal">§ Hier findest du uns</span>
     <h2 class="reveal" style="margin: 14px 0 40px;">Bullachstraße 30 · 82256 Fürstenfeldbruck.</h2>
     <div class="map-grid">
-      <div class="map-box reveal">
-        <div id="leafletMap"></div>
+      <div class="map-box reveal" id="mapBox">
+        <button class="map-consent" type="button" id="mapConsent" aria-label="Google Maps laden">
+          <span class="cta">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>
+            Karte laden
+          </span>
+          <span class="info">Beim Klick wird Google Maps eingebunden — dabei werden Daten (u.a. deine IP-Adresse) an Google übertragen. Mehr im <a href="datenschutz.html#extern">Datenschutz</a>.</span>
+        </button>
         <div class="map-overlay">
           <div class="t">Amperstrand</div>
           <div class="a">Bullachstraße 30<br>82256 Fürstenfeldbruck</div>
         </div>
         <div class="map-actions">
           <a href="https://www.google.com/maps/dir/?api=1&destination=Bullachstra%C3%9Fe+30,+82256+F%C3%BCrstenfeldbruck" target="_blank" rel="noopener">Route →</a>
-          <a href="https://www.openstreetmap.org/?mlat=48.1764&mlon=11.2567#map=17/48.1764/11.2567" target="_blank" rel="noopener">Größer ↗</a>
+          <a href="https://www.google.com/maps/place/?q=Bullachstra%C3%9Fe+30,+82256+F%C3%BCrstenfeldbruck" target="_blank" rel="noopener">Größer ↗</a>
         </div>
       </div>
       <div class="travel">
@@ -368,6 +372,23 @@ document.getElementById('faqList').innerHTML = FAQ.map((f, i) => `
     <div class="faq-answer">${f.a}</div>
   </details>
 `).join('');
+
+// 2-Klick-Lösung für Google Maps: erst beim Klick wird das iframe geladen,
+// damit vorher keine Daten an Google übertragen werden.
+(function setupMapConsent(){
+  const btn = document.getElementById('mapConsent');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const iframe = document.createElement('iframe');
+    iframe.className = 'map-frame';
+    iframe.loading = 'lazy';
+    iframe.allow = 'fullscreen';
+    iframe.referrerPolicy = 'no-referrer-when-downgrade';
+    iframe.title = 'Amperstrand auf Google Maps';
+    iframe.src = 'https://maps.google.com/maps?q=Bullachstra%C3%9Fe+30,+82256+F%C3%BCrstenfeldbruck&z=16&output=embed';
+    btn.replaceWith(iframe);
+  });
+})();
 </script>
 </body>
 </html>
