@@ -132,72 +132,12 @@
         <span class="eyebrow">§ Upcoming</span>
         <h2 style="margin: 12px 0 0;">Das kommt bald.</h2>
       </div>
-      <span class="mono" style="opacity:.55;">3 Events · April / Mai 2026</span>
+      <span class="mono" id="upcomingCount" style="opacity:.55;"></span>
     </div>
-    <div class="evs">
-      <!-- EVENT 1: Wimpelaktion -->
-      <article class="event e-lg bg-yel reveal">
-        <div>
-          <div class="ev-top">
-            <span>28. April · Dienstag</span>
-            <span class="ev-status active"><span class="dot"></span>Offen</span>
-          </div>
-          <h3 style="margin-top: 40px;">Mach das Kreativquartier bunter.</h3>
-          <p class="ev-desc">Wir knüpfen gemeinsam bunte Girlanden hinter der Stadtbibliothek am Amperstrand. Egal ob mitgebrachte Stoffreste oder Material vor Ort — alle können mitmachen. Bei schlechtem Wetter im Turmgeflüster. Foodtruck ist am Start.</p>
-          <div class="ev-tags"><span class="ev-tag">Kreativ</span><span class="ev-tag">Mitmachen</span><span class="ev-tag">Familien</span></div>
-        </div>
-        <div class="ev-bottom">
-          <div>
-            <div class="ev-when">ab 15:00</div>
-            <div class="ev-meta"><span class="ev-loc"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Amperstrand</span></div>
-          </div>
-          <span class="ev-arrow">Details →</span>
-        </div>
-        <div class="big-date">28<span class="big-mon">Apr</span></div>
-      </article>
-
-      <!-- EVENT 2: Saisonstart -->
-      <article class="event e-md bg-ink reveal" data-delay="80">
-        <div>
-          <div class="ev-top">
-            <span>01. Mai · Donnerstag</span>
-            <span class="ev-status active"><span class="dot"></span>Offen</span>
-          </div>
-          <h3 style="margin-top: 32px;">Saisonstart 2026.</h3>
-          <p class="ev-desc">Endlich wieder Amperstrand. Wir starten in die Saison — komm vorbei. Wir freuen uns auf euch!</p>
-          <div class="ev-tags"><span class="ev-tag">Opening</span><span class="ev-tag">Saison 2026</span></div>
-        </div>
-        <div class="ev-bottom">
-          <div>
-            <div class="ev-when">ab 17:00</div>
-            <div class="ev-meta"><span class="ev-loc"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Amperstrand</span></div>
-          </div>
-          <span class="ev-arrow">Details →</span>
-        </div>
-        <div class="big-date">01<span class="big-mon">Mai</span></div>
-      </article>
-
-      <!-- EVENT 3: Kreativquartier Opening "Kreativ in den Frühling" -->
-      <article class="event e-md bg-deep reveal" data-delay="120">
-        <div>
-          <div class="ev-top">
-            <span>09. Mai · Samstag</span>
-            <span class="ev-status active"><span class="dot"></span>Offen</span>
-          </div>
-          <h3 style="margin-top: 32px;">Kreativ in den Frühling.</h3>
-          <p class="ev-desc">Saisonauftakt im Kreativquartier — Von Bruck. Für Bruck. Mit Bruck. Bands, Kunstaktionen, Workshops, Essen und Getränke, Kinderprogramm.</p>
-          <div class="ev-tags"><span class="ev-tag">Kreativquartier</span><span class="ev-tag">Bands</span><span class="ev-tag">Workshops</span><span class="ev-tag">Familien</span></div>
-        </div>
-        <div class="ev-bottom">
-          <div>
-            <div class="ev-when">14:00 – 22:00</div>
-            <div class="ev-meta"><span class="ev-loc"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Amperstrand</span></div>
-          </div>
-          <span class="ev-arrow">Details →</span>
-        </div>
-        <div class="big-date">09<span class="big-mon">Mai</span></div>
-      </article>
-    </div>
+    <div class="evs" id="upcomingList"></div>
+    <p id="upcomingEmpty" class="reveal" style="display:none; opacity:.55; font-size:15px; margin-top: 8px;">
+      Aktuell stehen keine Events fest. Schau bald wieder rein — oder folg uns auf Instagram.
+    </p>
 
     <!--
       ARCHIV: Frühere Demo-Event-Karten (zum Wiederverwenden, wenn neue Events dazukommen).
@@ -331,30 +271,134 @@
   </div>
 </section>
 
-<!--
-  ARCHIV-Sektion mit Demo-Events ausgeblendet, bis echte vergangene Events
-  vorliegen. Wieder einbauen: Kommentar entfernen, Einträge im
-  .archive-list-Container anpassen (date / title / tags / rating).
--->
-<!--
-<section class="archive">
+<section class="archive" id="pastSection" style="display:none;">
   <div class="wrap">
-    <div class="section-head reveal" style="margin-bottom:0;">
-      <span class="eyebrow">§ Archiv</span>
-      <h2 style="margin:12px 0 0;">Was schon war.</h2>
+    <div class="section-head reveal" style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;margin-bottom: 0;">
+      <div>
+        <span class="eyebrow">§ Archiv</span>
+        <h2 style="margin:12px 0 0;">Was bisher geschah.</h2>
+      </div>
+      <span class="mono" id="pastCount" style="opacity:.55;"></span>
     </div>
-    <div class="archive-list reveal">
-      <div class="arch"><div class="date">14. Jun 2026</div><div class="title">Saison-Opening</div><div class="tags">Live-Musik · Familien</div><div class="rating">voll ★</div></div>
-      <div class="arch"><div class="date">28. Jun 2026</div><div class="title">Sundowner mit DJ Hans-Peter</div><div class="tags">DJ · Open Air</div><div class="rating">voll ★</div></div>
-      <div class="arch"><div class="date">05. Jul 2026</div><div class="title">Summer Flohmarkt</div><div class="tags">Flohmarkt · Vintage</div><div class="rating">~120 Leute</div></div>
-      <div class="arch"><div class="date">21. Sep 2025</div><div class="title">Saison-Closing 2025</div><div class="tags">DJ · Suppe</div><div class="rating">~300 Leute</div></div>
-      <div class="arch"><div class="date">14. Aug 2025</div><div class="title">Malen am Wasser (Kids)</div><div class="tags">Familien · Workshop</div><div class="rating">ausgebucht</div></div>
-    </div>
+    <div class="archive-list reveal" id="pastList"></div>
   </div>
 </section>
--->
 
 <div data-mount-footer></div>
 <script src="assets/shared.js?v=16"></script>
+<script>
+// Events-Daten — neue Events hier eintragen.
+// "date" muss ISO sein (YYYY-MM-DD), wird zur Sortierung + Past/Upcoming-Trennung benutzt.
+// size: lg | md | sm  ·  bg: yel | ink | paper | deep
+// status: active | out | off  (zeigt grünen/gelben/roten Punkt)
+const EVENTS = [
+  {
+    date: '2026-04-28',
+    when: 'ab 15:00',
+    title: 'Mach das Kreativquartier bunter.',
+    desc: 'Wir knüpfen gemeinsam bunte Girlanden hinter der Stadtbibliothek am Amperstrand. Egal ob mitgebrachte Stoffreste oder Material vor Ort — alle können mitmachen. Bei schlechtem Wetter im Turmgeflüster. Foodtruck ist am Start.',
+    tags: ['Kreativ', 'Mitmachen', 'Familien'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'lg',
+    bg: 'yel',
+  },
+  {
+    date: '2026-05-01',
+    when: 'ab 17:00',
+    title: 'Saisonstart 2026.',
+    desc: 'Endlich wieder Amperstrand. Wir starten in die Saison — komm vorbei. Wir freuen uns auf euch!',
+    tags: ['Opening', 'Saison 2026'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'ink',
+  },
+  {
+    date: '2026-05-09',
+    when: '14:00 – 22:00',
+    title: 'Kreativ in den Frühling.',
+    desc: 'Saisonauftakt im Kreativquartier — Von Bruck. Für Bruck. Mit Bruck. Bands, Kunstaktionen, Workshops, Essen und Getränke, Kinderprogramm.',
+    tags: ['Kreativquartier', 'Bands', 'Workshops', 'Familien'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'deep',
+  },
+];
+
+(function renderEvents() {
+  const days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  const monthsShort = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const monthsLong = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  const statusLabels = { active: 'Offen', out: 'Fast voll', off: 'Abgesagt' };
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const enriched = EVENTS.map(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return { ...e, dateObj: d, isPast: d.getTime() < today.getTime() };
+  });
+
+  const upcoming = enriched.filter(e => !e.isPast).sort((a,b) => a.dateObj - b.dateObj);
+  const past = enriched.filter(e => e.isPast).sort((a,b) => b.dateObj - a.dateObj);
+
+  const pinSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>';
+
+  const fmtMonthRange = (events) => {
+    if (!events.length) return '';
+    const months = [...new Set(events.map(e => `${monthsLong[e.dateObj.getMonth()]} ${e.dateObj.getFullYear()}`))];
+    return months.length === 1 ? months[0] : months[0] + ' – ' + months[months.length - 1];
+  };
+
+  // Upcoming als Karten
+  const upList = document.getElementById('upcomingList');
+  const upCount = document.getElementById('upcomingCount');
+  const upEmpty = document.getElementById('upcomingEmpty');
+  if (upcoming.length === 0) {
+    upList.style.display = 'none';
+    upEmpty.style.display = 'block';
+    upCount.textContent = '';
+  } else {
+    upCount.textContent = `${upcoming.length} ${upcoming.length === 1 ? 'Event' : 'Events'} · ${fmtMonthRange(upcoming)}`;
+    upList.innerHTML = upcoming.map((e, i) => {
+      const dateLabel = `${String(e.dateObj.getDate()).padStart(2,'0')}. ${monthsLong[e.dateObj.getMonth()]} · ${days[e.dateObj.getDay()]}`;
+      const headingMargin = e.size === 'lg' ? 40 : (e.size === 'sm' ? 20 : 32);
+      return `
+      <article class="event e-${e.size} bg-${e.bg} reveal" data-delay="${i*40}">
+        <div>
+          <div class="ev-top">
+            <span>${dateLabel}</span>
+            <span class="ev-status ${e.status}"><span class="dot"></span>${statusLabels[e.status] || ''}</span>
+          </div>
+          <h3 style="margin-top: ${headingMargin}px;">${e.title}</h3>
+          ${e.desc ? `<p class="ev-desc">${e.desc}</p>` : ''}
+          ${e.tags && e.tags.length ? `<div class="ev-tags">${e.tags.map(t => `<span class="ev-tag">${t}</span>`).join('')}</div>` : ''}
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">${e.when}</div>
+            <div class="ev-meta"><span class="ev-loc">${pinSvg}${e.location || 'Amperstrand'}</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+        <div class="big-date">${String(e.dateObj.getDate()).padStart(2,'0')}<span class="big-mon">${monthsShort[e.dateObj.getMonth()]}</span></div>
+      </article>`;
+    }).join('');
+  }
+
+  // Past als kompakte Liste
+  const pastSec = document.getElementById('pastSection');
+  if (past.length) {
+    pastSec.style.display = '';
+    document.getElementById('pastCount').textContent = `${past.length} ${past.length === 1 ? 'Event' : 'Events'}`;
+    document.getElementById('pastList').innerHTML = past.map(e => {
+      const dateLabel = `${String(e.dateObj.getDate()).padStart(2,'0')}. ${monthsShort[e.dateObj.getMonth()]} ${e.dateObj.getFullYear()}`;
+      const tags = (e.tags || []).join(' · ');
+      return `<div class="arch"><div class="date">${dateLabel}</div><div class="title">${e.title.replace(/\.$/, '')}</div><div class="tags">${tags}</div><div class="rating">${e.when || ''}</div></div>`;
+    }).join('');
+  }
+})();
+</script>
 </body>
 </html>
