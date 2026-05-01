@@ -24,6 +24,8 @@
   .story p { font-size: 17px; line-height: 1.65; opacity: .8; max-width: 60ch; }
 
   .story-img { width: 100%; aspect-ratio: 16/9; border-radius: 16px; margin-bottom: 32px; }
+  /* Echte Foto-Variante: Hochformat-freundlich, Fokus oben (Gesicht/Körper) */
+  .story-photo { width: 100%; aspect-ratio: 4/5; border-radius: 16px; margin-bottom: 32px; object-fit: cover; object-position: center 30%; display: block; background: var(--paper-2); }
 
   .map-sec { padding: 60px var(--gutter); background: var(--paper-2); }
   .map-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; }
@@ -160,7 +162,7 @@
     <div class="block reveal">
       <div class="year">2025</div>
       <div>
-        <div class="ph yellow story-img" data-label="Eröffnung · 2025"></div>
+        <img class="story-photo" src="assets/img/eroeffnung-2025.jpg" alt="Eröffnung Amperstrand · 2025" loading="lazy">
         <h3>Wie alles anfing.</h3>
         <p>2025 eröffnete der Amperstrand als Stadtstrand von Fürstenfeldbruck — ein kleiner Kiosk direkt an der Amper, im Kreativquartier an der Bullachstraße. Die Idee war einfach: ein Ort draußen, an dem man sich ohne großes Tamtam trifft, ein Bier trinkt und auf's Wasser schaut.</p>
       </div>
