@@ -356,7 +356,7 @@ const NAV_HTML = (active) => `
       <a href="kreativquartier.html" data-k="kreativquartier"><span class="mono">05</span><span>Kreativquartier</span></a>
     </div>
     <div class="nav-overlay-foot">
-      <span class="mono">Bullachstr. 30 · FFB</span>
+      <span class="mono">Bullachstr. 27 · FFB</span>
       <span class="mono">Est. 2025</span>
     </div>
   </div>
@@ -374,7 +374,7 @@ const FOOTER_HTML = `
           <h4>Amperstrand</h4>
           <p style="opacity:.7; font-size:15px; line-height:1.55; max-width:320px;">
             Stadtstrand an der Amper.<br>
-            Bullachstraße 30, 82256 Fürstenfeldbruck.
+            Bullachstraße 27, 82256 Fürstenfeldbruck.
           </p>
           <p style="opacity:.7; font-size:15px;"><a href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener" style="display:inline-flex;gap:6px;align-items:center;text-decoration:underline;text-underline-offset:4px;">Instagram →</a></p>
         </div>
@@ -398,7 +398,7 @@ const FOOTER_HTML = `
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2026 AMPERSTRAND Gastro & Event GbR</span>
+        <span>© 2026 AMPERSTRAND Gastro & Event UG (haftungsbeschränkt)</span>
         <span>Teil vom Kreativquartier Aumühle/Lände</span>
       </div>
     </div>

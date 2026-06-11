@@ -470,6 +470,12 @@
     .hero-actions .btn.ghost { padding: 9px 14px; font-size: 13px; }
   }
 
+  @media (max-width: 480px) {
+    /* Lange Status-Labels ("Öffnet in 16h 35min"): Sub-Zeit ausblenden, kein Overflow */
+    .hero-actions .status-hero { overflow: hidden; }
+    .hero-actions .status-hero .sub { display: none; }
+  }
+
   /* INSTAGRAM STRIP */
   .ig { padding: 100px var(--gutter) 140px; background: var(--paper-2); }
   .ig-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 40px; }
@@ -527,7 +533,7 @@
     <div class="hero-meta reveal" data-delay="320">
       <span>Saison 2026 · 01. Mai — 30. Sep</span>
       <span>·</span>
-      <span>Bullachstraße 30 · 82256 FFB</span>
+      <span>Bullachstraße 27 · 82256 FFB</span>
     </div>
   </div>
 
@@ -564,8 +570,8 @@
 <!-- MARQUEE STRIP -->
 <section class="strip" aria-hidden="true">
   <div class="strip-row">
-    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Elephant Pretzels&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;Sundowner · DJ Sets · Flohmarkt&nbsp;<span class="sep">✦</span>&nbsp;</span>
-    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Elephant Pretzels&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;Sundowner · DJ Sets · Flohmarkt&nbsp;<span class="sep">✦</span>&nbsp;</span>
+    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
+    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
   </div>
 </section>
 
@@ -584,17 +590,17 @@
           <div class="section-label">Bier & Radler</div>
           <div class="item"><span>Augustiner Helles</span><span class="dots"></span><span class="price">3,50</span></div>
           <div class="item"><span>Gösser Radler</span><span class="dots"></span><span class="price">3,50</span></div>
-          <div class="item"><span>Desperados</span><span class="dots"></span><span class="price">4,00</span></div>
+          <div class="item"><span>Desperados</span><span class="dots"></span><span class="price">4,50</span></div>
 
           <div class="section-label">Aperitifs</div>
-          <div class="item"><span>Aperol Spritz</span><span class="dots"></span><span class="price">4,50</span></div>
-          <div class="item"><span>Wild Berry Lillet</span><span class="dots"></span><span class="price">4,50</span></div>
+          <div class="item"><span>Aperol Spritz</span><span class="dots"></span><span class="price">5,20</span></div>
+          <div class="item"><span>Wild Berry Lillet</span><span class="dots"></span><span class="price">5,20</span></div>
 
           <div class="section-label">Snacks</div>
           <div class="item"><span>Kesselnüsse Paprika</span><span class="dots"></span><span class="price">2,00</span></div>
-          <div class="item"><span>Elephant Pretzels</span><span class="dots"></span><span class="price">2,50</span></div>
+          <div class="item"><span>Erdnüsse</span><span class="dots"></span><span class="price">2,00</span></div>
 
-          <div class="menu-footnote">Cocktails alle einheitlich 6,00 · Softdrinks ab 1,50</div>
+          <div class="menu-footnote">Cocktails alle einheitlich 6,80 · Softdrinks ab 2,50</div>
         </div>
         <div class="label">
           <div class="top"><span>Karte</span><span>Auszug</span></div>
@@ -607,10 +613,10 @@
 
       <a href="events.html" class="teaser t-events reveal" data-delay="80">
         <div class="label">
-          <div class="top"><span>Events</span><span>Sommer 26</span></div>
+          <div class="top"><span>Events</span><span>WM 2026</span></div>
           <div>
-            <h3>Musik, Menschen,<br>Sommerstimmung.</h3>
-            <span class="arrow">→ Was diesen Monat läuft</span>
+            <h3>WM auf der Leinwand,<br>Füße im Sand.</h3>
+            <span class="arrow">→ Alle Public-Viewing-Termine</span>
           </div>
         </div>
         <div class="big-num" data-current-month>07</div>
@@ -629,7 +635,7 @@
 
       <a href="geschichte.html" class="teaser t-gesch reveal" data-delay="200">
         <div class="label">
-          <div class="top"><span>Über uns</span><span>2021 —</span></div>
+          <div class="top"><span>Über uns</span><span>2025 —</span></div>
           <div>
             <h3>Wie aus einer<br>Wiese ein Strand wurde.</h3>
             <span class="arrow">→ Story & FAQ</span>
@@ -658,7 +664,7 @@
         <span class="eyebrow" style="color: var(--paper); opacity: .55;">§ 02 · Ampel</span>
         <h2 style="margin: 14px 0 16px;">Offen oder zu?<br>Schau nach.</h2>
         <p style="opacity: .7; max-width: 40ch; font-size: 16px;">Wir sind bei schönem Wetter für dich da. Die Ampel zeigt dir, wie's aussieht — heute und die nächsten sechs Tage.</p>
-        <p class="ampel-hint">Daten aus unserem Sheet · aktualisiert 21.04.2026 09:14</p>
+        <p class="ampel-hint">Tagesaktuell vom Team gepflegt · kurzfristiges auf Instagram & WhatsApp</p>
       </div>
       <div>
         <div class="ampel-days" id="ampelDays"></div>
@@ -702,7 +708,7 @@
     <div>
       <span class="eyebrow" style="color: var(--paper); opacity: .5;">§ 04 · Nachbarschaft</span>
       <h2 style="margin: 14px 0 20px;">Wir sind Teil vom Kreativquartier Aumühle/Lände.</h2>
-      <p>Gleich nebenan: Escape Rooms, Demokratie-Hütten, Ateliers. Lauft ein paar Schritte weiter — es lohnt sich.</p>
+      <p>Gleich nebenan: Escape Room, Demokratie-Hütte, Stadtbibliothek. Lauft ein paar Schritte weiter — es lohnt sich.</p>
       <a href="kreativquartier.html" class="btn alt" style="margin-top: 12px;">Nachbar:innen ansehen <span class="arrow">→</span></a>
     </div>
     <div class="kq-partners">
@@ -717,9 +723,9 @@
         <p style="font-size: 14px; opacity: .65; margin: 0;">Demokratie-Hütte. Reden, zuhören, dasein.</p>
       </div>
       <div class="kq-partner">
-        <div class="meta">Werkstatt</div>
-        <h4>Atelier Aumühle</h4>
-        <p style="font-size: 14px; opacity: .65; margin: 0;">Offene Türen. Tropfender Farbgeruch.</p>
+        <div class="meta">Bibliothek</div>
+        <h4>Stadtbibliothek Aumühle</h4>
+        <p style="font-size: 14px; opacity: .65; margin: 0;">Erst ein Buch, dann ein Eis am Strand.</p>
       </div>
       <div class="kq-partner">
         <div class="meta">Soon</div>
