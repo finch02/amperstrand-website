@@ -81,6 +81,15 @@
   @keyframes waveFloatB { 0%,100% { transform: translate(0, 0); } 30% { transform: translate(-2.5%, 5px); } 60% { transform: translate(-1%, -7px); } 85% { transform: translate(-2%, 3px); } }
   @keyframes waveFloatC { 0%,100% { transform: translate(0, 0); } 20% { transform: translate(-1%, 4px); } 50% { transform: translate(-2.2%, -5px); } 75% { transform: translate(-3%, 6px); } }
 
+  /* Niedrige Desktop-Viewports: Hero-Inhalt unter die fixierte Ampel-Pille setzen,
+     damit die Koordinaten-Zeile nicht von der Ampel überlagert wird. */
+  @media (min-width: 821px) and (max-height: 880px) {
+    .hero-inner { justify-content: flex-start; padding-top: 64px; padding-bottom: 0; }
+  }
+  @media (min-width: 821px) and (max-height: 720px) {
+    .hero-inner { padding-top: 72px; }
+  }
+
   /* ENGRAVED INFO STRIP */
   .strip {
     background: var(--ink); color: var(--paper);
@@ -570,8 +579,8 @@
 <!-- MARQUEE STRIP -->
 <section class="strip" aria-hidden="true">
   <div class="strip-row">
-    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
-    <span>Augustiner Helles&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wild Berry Lillet&nbsp;<span class="sep">✦</span>&nbsp;Bionade Holunder&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Desperados&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Fonzies&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
+    <span>Augustiner Hell&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wildberry Lillet&nbsp;<span class="sep">✦</span>&nbsp;fritz-kola&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Salitos Tequila&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Chips&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
+    <span>Augustiner Hell&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wildberry Lillet&nbsp;<span class="sep">✦</span>&nbsp;fritz-kola&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Salitos Tequila&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Chips&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
   </div>
 </section>
 
@@ -587,20 +596,20 @@
     <div class="teaser-grid">
       <a href="karte.html" class="teaser t-karte reveal">
         <div class="menu-preview">
-          <div class="section-label">Bier & Radler</div>
-          <div class="item"><span>Augustiner Helles</span><span class="dots"></span><span class="price">3,50</span></div>
-          <div class="item"><span>Gösser Radler</span><span class="dots"></span><span class="price">3,50</span></div>
-          <div class="item"><span>Desperados</span><span class="dots"></span><span class="price">4,50</span></div>
+          <div class="section-label">Bier</div>
+          <div class="item"><span>Augustiner Hell · 0,5 l</span><span class="dots"></span><span class="price">3,80</span></div>
+          <div class="item"><span>Gösser Radler · 0,5 l</span><span class="dots"></span><span class="price">3,80</span></div>
+          <div class="item"><span>Salitos Tequila</span><span class="dots"></span><span class="price">4,50</span></div>
 
-          <div class="section-label">Aperitifs</div>
-          <div class="item"><span>Aperol Spritz</span><span class="dots"></span><span class="price">5,20</span></div>
-          <div class="item"><span>Wild Berry Lillet</span><span class="dots"></span><span class="price">5,20</span></div>
+          <div class="section-label">Spritz & Aperitivo</div>
+          <div class="item"><span>Aperol Spritz</span><span class="dots"></span><span class="price">5,00</span></div>
+          <div class="item"><span>Wildberry Lillet</span><span class="dots"></span><span class="price">5,00</span></div>
 
           <div class="section-label">Snacks</div>
-          <div class="item"><span>Kesselnüsse Paprika</span><span class="dots"></span><span class="price">2,00</span></div>
-          <div class="item"><span>Erdnüsse</span><span class="dots"></span><span class="price">2,00</span></div>
+          <div class="item"><span>Kesselnüsse Paprika</span><span class="dots"></span><span class="price">2,50</span></div>
+          <div class="item"><span>Erdnüsse</span><span class="dots"></span><span class="price">2,50</span></div>
 
-          <div class="menu-footnote">Cocktails alle einheitlich 6,80 · Softdrinks ab 2,50</div>
+          <div class="menu-footnote">Cocktails alle einheitlich 7,00 · Softdrinks ab 2,50</div>
         </div>
         <div class="label">
           <div class="top"><span>Karte</span><span>Auszug</span></div>

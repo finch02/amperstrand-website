@@ -144,11 +144,11 @@
     </div>
     <div class="stats reveal">
       <div class="stat">
-        <div class="num">16</div>
+        <div class="num">18</div>
         <div class="lbl">Getränke</div>
       </div>
       <div class="stat">
-        <div class="num">8</div>
+        <div class="num">6</div>
         <div class="lbl">Cocktails</div>
       </div>
       <div class="stat">
@@ -156,7 +156,7 @@
         <div class="lbl">Snacks</div>
       </div>
       <div class="stat">
-        <div class="num">8</div>
+        <div class="num">9</div>
         <div class="lbl">Alkoholfrei</div>
       </div>
     </div>
@@ -182,10 +182,10 @@
     <div class="cocktails-head">
       <div>
         <span class="eyebrow reveal">§ Cocktails</span>
-        <h2 class="reveal" style="margin-top: 12px;">Alle Cocktails — einheitlich 6,80 €.</h2>
+        <h2 class="reveal" style="margin-top: 12px;">Alle Cocktails — einheitlich 7,00 €.</h2>
       </div>
       <div class="kukki-note reveal">
-        <strong>kukki Cocktails.</strong> Fertige Cocktails in der Glasflasche, geshakt &amp; abgefüllt. Kein Mixen, keine Wartezeit, kein Aufwand — einfach öffnen und trinken. Genau das, was du für Deinen Sommer brauchst.
+        <strong>kukki Cocktails.</strong> Fertige Cocktails in der Glasflasche, geshakt &amp; abgefüllt. Kein Mixen, keine Wartezeit, kein Aufwand — einfach öffnen und trinken. Genau das, was du für Deinen Sommer brauchst. Alle 0,275 l.
       </div>
     </div>
     <div class="cocktail-grid" id="cocktailGrid"></div>
@@ -207,48 +207,47 @@
 <script>
 const MENU = [
   { block: 'Softdrinks', items: [
-    { n:'Lemon Soda', d:'', p:'3,30', tags:['alkfrei']},
-    { n:'Orange Soda', d:'', p:'3,30', tags:['alkfrei']},
-    { n:'Spezi', d:'', p:'3,00', tags:['alkfrei']},
-    { n:'Cola', d:'', p:'3,30', tags:['alkfrei']},
-    { n:'Cola Zero', d:'', p:'3,30', tags:['alkfrei']},
-    { n:'Bionade', d:'Holunder, Kräuter, Mate, Eistee-Pfirsich, Ingwer-Orange', p:'3,30', tags:['alkfrei']},
-    { n:'Wasser', d:'still oder sprudel', p:'2,50', tags:['alkfrei']},
+    { n:'Adelholzener Classic', d:'Sprudel · 0,5 l', p:'2,50', tags:['alkfrei']},
+    { n:'Adelholzener Naturell', d:'Still · 0,5 l', p:'2,50', tags:['alkfrei']},
+    { n:'fritz-kola Original', d:'0,33 l', p:'3,30', tags:['alkfrei']},
+    { n:'fritz-kola SuperZero', d:'0,33 l', p:'3,30', tags:['alkfrei']},
+    { n:'fritz-limo Orange', d:'0,33 l', p:'3,30', tags:['alkfrei']},
+    { n:'fritz-limo Zitrone', d:'0,33 l', p:'3,30', tags:['alkfrei']},
+    { n:'fritz-spritz Apfelschorle', d:'0,33 l', p:'3,30', tags:['alkfrei']},
+    { n:'Paulaner Spezi', d:'0,5 l', p:'3,30', tags:['alkfrei']},
   ]},
-  { block: 'Bier & Radler', items: [
-    { n:'Augustiner Helles', d:'', p:'3,50', tags:[]},
-    // Geplant, noch nicht aktiv: { n:'Augustiner Helles 0,33L', d:'', p:'2,80', tags:[]},
-    { n:'Augustiner Alkoholfrei', d:'', p:'3,50', tags:['alkfrei']},
-    { n:'Gösser Radler', d:'', p:'3,50', tags:[]},
-    { n:'Desperados', d:'', p:'4,50', tags:[]},
+  { block: 'Bier', items: [
+    { n:'Augustiner Hell', d:'0,33 l', p:'2,80', tags:[]},
+    { n:'Augustiner Hell', d:'0,5 l', p:'3,80', tags:[]},
+    { n:'Augustiner Hell Alkoholfrei', d:'0,5 l', p:'3,80', tags:['alkfrei']},
+    { n:'Gösser Radler', d:'0,5 l', p:'3,80', tags:[]},
+    { n:'Salitos Tequila', d:'0,33 l', p:'4,50', tags:[]},
+  ]},
+  { block: 'Spritz & Aperitivo', items: [
+    { n:'Aperol Spritz', d:'0,2 l', p:'5,00', tags:[]},
+    { n:'Wildberry Lillet', d:'0,2 l', p:'5,00', tags:[]},
   ]},
   { block: 'Weinschorle', items: [
-    { n:'Weiss', d:'', p:'3,80', tags:[]},
-    { n:'Rosé', d:'', p:'3,80', tags:[]},
+    { n:'Weiß', d:'0,275 l', p:'3,80', tags:[]},
+    { n:'Rosé', d:'0,275 l', p:'3,80', tags:[]},
   ]},
-  { block: 'Aperitifs & Spritz', items: [
-    { n:'Aperol Spritz', d:'', p:'5,20', tags:[]},
-    { n:'Wild Berry Lillet', d:'', p:'5,20', tags:[]},
-  ]},
-  { block: 'Kaffee', items: [
-    { n:'Frappuccino', d:'mehrere Sorten', p:'4,80', tags:[]},
+  { block: 'Sonstiges', items: [
+    { n:'Ingwershot', d:'mit Bourbon Ingwer aus Madagaskar · 6 cl', p:'3,00', tags:[]},
   ]},
   { block: 'Snacks', items: [
-    { n:'Kesselnüsse', d:'Paprika', p:'2,00', tags:['alkfrei']},
-    { n:'Erdnüsse', d:'geröstet & gesalzen', p:'2,00', tags:['alkfrei']},
-    { n:'Fonzies', d:'', p:'2,50', tags:['alkfrei']},
+    { n:'Kesselnüsse Paprika', d:'40 g', p:'2,50', tags:['alkfrei']},
+    { n:'Erdnüsse', d:'geröstet & gesalzen · 40 g', p:'2,50', tags:['alkfrei']},
+    { n:'Chips', d:'wechselndes Angebot · 40 g', p:'3,00', tags:['alkfrei']},
   ]},
 ];
 
 const COCKTAILS = [
-  { n:'Sex on the Beach',   vol:'14,1 % vol.' },
-  { n:'Mojito',             vol:'14,1 % vol.' },
+  { n:'Sex on the Beach',   vol:'14 % vol.' },
+  { n:'Mojito',             vol:'14 % vol.' },
   { n:'Colada',             vol:'8 % vol.' },
-  { n:'Caipi',              vol:'14,1 % vol.' },
-  { n:'Wild Berry',         vol:'8 % vol.' },
+  { n:'Caipi',              vol:'14 % vol.' },
+  { n:'Wildberry',          vol:'8 % vol.' },
   { n:'Wild Passion Fruit', vol:'8 % vol.' },
-  { n:'Espresso Martini',   vol:'14,1 % vol.' },
-  { n:'Pornstar Martini',   vol:'14,1 % vol.' },
 ];
 
 function render() {
@@ -281,7 +280,7 @@ function render() {
       <div class="name">${c.n}</div>
       <div class="price-row">
         <span class="sub">kukki · Flasche</span>
-        <span class="price">6,80 €</span>
+        <span class="price">7,00 €</span>
       </div>
     </div>
   `).join('');
