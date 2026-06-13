@@ -71,32 +71,6 @@
     transform-origin: center top;
   }
 
-  /* WM K.o.-Plan */
-  .ko-sec { padding: 20px var(--gutter) 100px; }
-  .ko-card { background: var(--ink); color: var(--paper); border-radius: 32px; padding: 56px 48px; }
-  .ko-card .eyebrow { color: var(--paper); opacity: .55; }
-  .ko-card h2 { color: var(--paper); max-width: 22ch; margin: 14px 0 10px; }
-  .ko-card .lead { opacity: .7; max-width: 60ch; font-size: 16px; line-height: 1.55; }
-  .ko-list { margin-top: 36px; border-top: 1px solid rgba(250,250,247,.14); }
-  .ko-row {
-    display: grid; grid-template-columns: 150px 1fr auto;
-    gap: 24px; align-items: baseline;
-    padding: 16px 8px; border-bottom: 1px solid rgba(250,250,247,.12);
-  }
-  .ko-row .date { font-family: var(--font-mono); font-size: 12.5px; opacity: .6; text-transform: uppercase; letter-spacing: .05em; }
-  .ko-row .round { font-family: var(--font-display); font-weight: 500; font-size: 19px; letter-spacing: -.01em; }
-  .ko-row .kick { font-family: var(--font-mono); font-size: 13px; opacity: .8; }
-  .ko-row.final { background: var(--yellow); color: var(--ink); border-radius: 14px; border-bottom: 0; margin-top: 8px; padding: 18px 16px; }
-  .ko-row.final .date { opacity: .7; }
-  .ko-row.final .round { font-weight: 700; }
-  .ko-note { margin-top: 22px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; opacity: .5; line-height: 1.7; }
-  @media (max-width: 720px) {
-    .ko-card { padding: 32px 24px; border-radius: 24px; }
-    .ko-row { grid-template-columns: 1fr auto; gap: 4px 16px; padding: 14px 4px; }
-    .ko-row .date { grid-column: 1 / -1; }
-    .ko-row.final { padding: 16px 14px; }
-  }
-
   .archive { padding: 80px var(--gutter) 140px; background: var(--paper-2); }
   .archive-list { margin-top: 40px; }
   .arch {
@@ -133,6 +107,28 @@
     .ev-when { font-size: 16px; }
     .big-date { font-size: clamp(96px, 22vw, 160px); right: 12px; }
   }
+
+  /* WM K.o.-Plan */
+  .ko-sec { padding: 20px var(--gutter) 100px; }
+  .ko-card { background: var(--ink); color: var(--paper); border-radius: 32px; padding: 56px 48px; }
+  .ko-card .eyebrow { color: var(--paper); opacity: .55; }
+  .ko-card h2 { color: var(--paper); max-width: 22ch; margin: 14px 0 10px; }
+  .ko-card .lead { opacity: .7; max-width: 60ch; font-size: 16px; line-height: 1.55; }
+  .ko-list { margin-top: 36px; border-top: 1px solid rgba(250,250,247,.14); }
+  .ko-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 24px; align-items: baseline; padding: 16px 8px; border-bottom: 1px solid rgba(250,250,247,.12); }
+  .ko-row .date { font-family: var(--font-mono); font-size: 12.5px; opacity: .6; text-transform: uppercase; letter-spacing: .05em; }
+  .ko-row .round { font-family: var(--font-display); font-weight: 500; font-size: 19px; letter-spacing: -.01em; }
+  .ko-row .kick { font-family: var(--font-mono); font-size: 13px; opacity: .8; }
+  .ko-row.final { background: var(--yellow); color: var(--ink); border-radius: 14px; border-bottom: 0; margin-top: 8px; padding: 18px 16px; }
+  .ko-row.final .date { opacity: .7; }
+  .ko-row.final .round { font-weight: 700; }
+  .ko-note { margin-top: 22px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; opacity: .5; line-height: 1.7; }
+  @media (max-width: 720px) {
+    .ko-card { padding: 32px 24px; border-radius: 24px; }
+    .ko-row { grid-template-columns: 1fr auto; gap: 4px 16px; padding: 14px 4px; }
+    .ko-row .date { grid-column: 1 / -1; }
+    .ko-row.final { padding: 16px 14px; }
+  }
 </style>
 </head>
 <body data-page="events" data-tone="ink">
@@ -155,95 +151,15 @@
   <div class="wrap">
     <div class="section-head reveal" style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;margin-bottom: 40px;">
       <div>
-        <span class="eyebrow">§ Public Viewing</span>
-        <h2 style="margin: 12px 0 0;">WM 2026 am Amperstrand.</h2>
+        <span class="eyebrow">§ Upcoming</span>
+        <h2 style="margin: 12px 0 0;">Das kommt bald.</h2>
       </div>
-      <span class="mono" style="opacity:.55;">WM 2026 · Public Viewing · Juni / Juli</span>
+      <span class="mono" id="upcomingCount" style="opacity:.55;"></span>
     </div>
-    <div class="evs">
-      <!-- WM · Deutschland Gruppenspiel 1 -->
-      <article class="event e-lg bg-yel reveal">
-        <div>
-          <div class="ev-top">
-            <span>14. Juni · Sonntag</span>
-            <span class="ev-status active"><span class="dot"></span>Public Viewing</span>
-          </div>
-          <h3 style="margin-top: 40px;">Anpfiff:<br>Deutschland – Curaçao.</h3>
-          <p class="ev-desc">Das erste Gruppenspiel der DFB-Elf bei der WM 2026 — live auf der Leinwand, mit den Füßen im Sand. Komm rechtzeitig, die besten Plätze sind schnell weg.</p>
-          <div class="ev-tags"><span class="ev-tag">WM 2026</span><span class="ev-tag">Gruppe E</span><span class="ev-tag">Eintritt frei</span></div>
-        </div>
-        <div class="ev-bottom">
-          <div>
-            <div class="ev-when">Anstoß 19:00</div>
-            <div class="ev-meta"><span class="ev-loc"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Amperstrand</span></div>
-          </div>
-          <span class="ev-arrow">ARD · live</span>
-        </div>
-        <div class="big-date">14<span class="big-mon">Jun</span></div>
-      </article>
-
-      <!-- WM · Deutschland Gruppenspiel 2 -->
-      <article class="event e-md bg-ink reveal" data-delay="80">
-        <div>
-          <div class="ev-top">
-            <span>20. Juni · Samstag</span>
-            <span class="ev-status active"><span class="dot"></span>Public Viewing</span>
-          </div>
-          <h3 style="margin-top: 32px;">Deutschland – Elfenbeinküste.</h3>
-          <p class="ev-desc">Zweites Gruppenspiel, Abendkulisse an der Amper. Wir zeigen das Spiel bis zum Abpfiff.</p>
-          <div class="ev-tags"><span class="ev-tag">WM 2026</span><span class="ev-tag">Gruppe E</span><span class="ev-tag">Eintritt frei</span></div>
-        </div>
-        <div class="ev-bottom">
-          <div>
-            <div class="ev-when">Anstoß 22:00</div>
-            <div class="ev-meta"><span class="ev-loc"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Amperstrand</span></div>
-          </div>
-          <span class="ev-arrow">ZDF · live</span>
-        </div>
-        <div class="big-date">20<span class="big-mon">Jun</span></div>
-      </article>
-
-      <!-- WM · Deutschland Gruppenspiel 3 -->
-      <article class="event e-md bg-deep reveal" data-delay="120">
-        <div>
-          <div class="ev-top">
-            <span>25. Juni · Donnerstag</span>
-            <span class="ev-status active"><span class="dot"></span>Public Viewing</span>
-          </div>
-          <h3 style="margin-top: 32px;">Ecuador – Deutschland.</h3>
-          <p class="ev-desc">Drittes Gruppenspiel — hier entscheidet sich der Gruppensieg. Wir zeigen das Spiel bis zum Abpfiff.</p>
-          <div class="ev-tags"><span class="ev-tag">WM 2026</span><span class="ev-tag">Gruppe E</span><span class="ev-tag">Eintritt frei</span></div>
-        </div>
-        <div class="ev-bottom">
-          <div>
-            <div class="ev-when">Anstoß 22:00</div>
-            <div class="ev-meta"><span class="ev-loc"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Amperstrand</span></div>
-          </div>
-          <span class="ev-arrow">ARD · live</span>
-        </div>
-        <div class="big-date">25<span class="big-mon">Jun</span></div>
-      </article>
-
-      <!-- WM · Sechzehntelfinale (Termin offen) -->
-      <article class="event e-lg bg-paper reveal" data-delay="160">
-        <div>
-          <div class="ev-top">
-            <span>29. / 30. Juni</span>
-            <span class="ev-status out"><span class="dot"></span>Termin folgt</span>
-          </div>
-          <h3 style="margin-top: 40px;">Sechzehntelfinale —<br>wenn Deutschland weiterkommt.</h3>
-          <p class="ev-desc">Kommt die DFB-Elf in die K.o.-Runde, zeigen wir ihr Sechzehntelfinale. Der genaue Termin steht nach dem letzten Gruppenspiel fest — als Gruppensieger Montag, 29.06., sonst Dienstag, 30.06. Updates auf Instagram & WhatsApp.</p>
-          <div class="ev-tags"><span class="ev-tag">WM 2026</span><span class="ev-tag">K.o.-Runde</span><span class="ev-tag">Eintritt frei</span></div>
-        </div>
-        <div class="ev-bottom">
-          <div>
-            <div class="ev-when">Anstoß folgt</div>
-            <div class="ev-meta"><span class="ev-loc"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>Amperstrand</span></div>
-          </div>
-          <span class="ev-arrow">Updates →</span>
-        </div>
-      </article>
-    </div>
+    <div class="evs" id="upcomingList"></div>
+    <p id="upcomingEmpty" class="reveal" style="display:none; opacity:.55; font-size:15px; margin-top: 8px;">
+      Aktuell stehen keine Events fest. Schau bald wieder rein — oder folg uns auf Instagram.
+    </p>
 
     <!--
       ARCHIV: Frühere Demo-Event-Karten (zum Wiederverwenden, wenn neue Events dazukommen).
@@ -377,6 +293,19 @@
   </div>
 </section>
 
+<section class="archive" id="pastSection" style="display:none;">
+  <div class="wrap">
+    <div class="section-head reveal" style="display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;margin-bottom: 0;">
+      <div>
+        <span class="eyebrow">§ Archiv</span>
+        <h2 style="margin:12px 0 0;">Was bisher geschah.</h2>
+      </div>
+      <span class="mono" id="pastCount" style="opacity:.55;"></span>
+    </div>
+    <div class="archive-list reveal" id="pastList"></div>
+  </div>
+</section>
+
 <!-- WM K.o.-PLAN -->
 <section class="ko-sec">
   <div class="wrap">
@@ -402,24 +331,198 @@
   </div>
 </section>
 
-<section class="archive">
-  <div class="wrap">
-    <div class="section-head reveal" style="margin-bottom:0;">
-      <span class="eyebrow">§ Archiv</span>
-      <h2 style="margin:12px 0 0;">Was schon war.</h2>
-    </div>
-    <div class="archive-list reveal">
-      <div class="arch"><div class="date">09. Mai 2026</div><div class="title">Kreativ in den Frühling</div><div class="tags">Kreativquartier · Bands · Workshops</div><div class="rating">Eintritt frei</div></div>
-      <div class="arch"><div class="date">01. Mai 2026</div><div class="title">Saisonstart 2026</div><div class="tags">Opening · Saison 2026</div><div class="rating">★</div></div>
-      <div class="arch"><div class="date">28. Apr 2026</div><div class="title">Wimpelaktion im Kreativquartier</div><div class="tags">Kreativ · Mitmachen · Familien</div><div class="rating">Eintritt frei</div></div>
-      <div class="arch"><div class="date">29. Mai 2026</div><div class="title">Demokratie-Pubquiz</div><div class="tags">Demokratiehütte · Quiz · Amperstrand</div><div class="rating">Eintritt frei</div></div>
-      <div class="arch"><div class="date">30. Aug 2025</div><div class="title">AMPERSTRAND Open Air</div><div class="tags">Foodtruck · Beerpong · DJ Brucklyn</div><div class="rating">voll ★</div></div>
-      <div class="arch"><div class="date">17. Mai 2025</div><div class="title">Eröffnung Amperstrand</div><div class="tags">Der allererste Tag am Strand</div><div class="rating">★</div></div>
-    </div>
-  </div>
-</section>
-
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=13"></script>
+<script src="assets/shared.js?v=17"></script>
+<script>
+// Events-Daten — neue Events hier eintragen.
+// "date" muss ISO sein (YYYY-MM-DD), wird zur Sortierung + Past/Upcoming-Trennung benutzt.
+// size: lg | md | sm  ·  bg: yel | ink | paper | deep
+// status: active | out | off  (zeigt grünen/gelben/roten Punkt)
+const EVENTS = [
+  {
+    date: '2026-04-28',
+    when: 'ab 15:00',
+    title: 'Mach das Kreativquartier bunter.',
+    desc: 'Wir knüpfen gemeinsam bunte Girlanden hinter der Stadtbibliothek am Amperstrand. Egal ob mitgebrachte Stoffreste oder Material vor Ort — alle können mitmachen. Bei schlechtem Wetter im Turmgeflüster. Foodtruck ist am Start.',
+    tags: ['Kreativ', 'Mitmachen', 'Familien'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'lg',
+    bg: 'yel',
+  },
+  {
+    date: '2026-05-01',
+    when: 'ab 15:00',
+    title: 'Saisonstart 2026.',
+    desc: 'Endlich wieder Amperstrand. Wir starten in die Saison — komm vorbei. Wir freuen uns auf euch!',
+    tags: ['Opening', 'Saison 2026'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'ink',
+  },
+  {
+    date: '2026-05-09',
+    when: '14:00 – 22:00',
+    title: 'Kreativ in den Frühling.',
+    desc: 'Saisonauftakt im Kreativquartier — Von Bruck. Für Bruck. Mit Bruck. Bands, Kunstaktionen, Workshops, Essen und Getränke, Kinderprogramm.',
+    tags: ['Kreativquartier', 'Bands', 'Workshops', 'Familien'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'deep',
+  },
+  {
+    date: '2026-05-29',
+    when: 'ab 18:00',
+    title: 'Demokratie-Pubquiz.',
+    desc: 'Quizabend mit der Demokratiehütte am Amperstrand — Teams, knifflige Fragen, gute Stimmung am Wasser.',
+    tags: ['Demokratiehütte', 'Quiz'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'sm',
+    bg: 'paper',
+  },
+  {
+    date: '2025-08-30',
+    when: '14:00 – 23:00',
+    title: 'AMPERSTRAND Open Air.',
+    desc: 'Foodtruck, alkoholfreies Beerpong-Turnier und ab 18 Uhr DJ Brucklyn. Eintritt frei.',
+    tags: ['Open Air', 'DJ', 'Foodtruck'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'ink',
+  },
+  {
+    date: '2025-05-17',
+    when: 'Eröffnung',
+    title: 'Eröffnung Amperstrand.',
+    desc: 'Der allererste Tag am Strand — Saison 2025 startet.',
+    tags: ['Opening'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'sm',
+    bg: 'yel',
+  },
+  {
+    date: '2026-06-14',
+    when: 'Anstoß 19:00 · ARD',
+    title: 'Deutschland – Curaçao.',
+    desc: 'Erstes Gruppenspiel der DFB-Elf bei der WM 2026 — live auf der Leinwand, mit den Füßen im Sand. Komm rechtzeitig, die besten Plätze sind schnell weg.',
+    tags: ['WM 2026', 'Gruppe E', 'Public Viewing'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'lg',
+    bg: 'yel',
+  },
+  {
+    date: '2026-06-20',
+    when: 'Anstoß 22:00 · ZDF',
+    title: 'Deutschland – Elfenbeinküste.',
+    desc: 'Zweites Gruppenspiel, Abendkulisse an der Amper. Wir zeigen das Spiel bis zum Abpfiff.',
+    tags: ['WM 2026', 'Gruppe E', 'Public Viewing'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'ink',
+  },
+  {
+    date: '2026-06-25',
+    when: 'Anstoß 22:00 · ARD',
+    title: 'Ecuador – Deutschland.',
+    desc: 'Drittes Gruppenspiel — hier entscheidet sich der Gruppensieg. Wir zeigen das Spiel bis zum Abpfiff.',
+    tags: ['WM 2026', 'Gruppe E', 'Public Viewing'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'deep',
+  },
+  {
+    date: '2026-06-29',
+    when: 'Anstoß folgt',
+    title: 'Sechzehntelfinale — wenn Deutschland weiterkommt.',
+    desc: 'Kommt die DFB-Elf in die K.o.-Runde, zeigen wir ihr Sechzehntelfinale. Der genaue Termin steht nach dem letzten Gruppenspiel fest — als Gruppensieger Mo 29.06., sonst Di 30.06. Updates auf Instagram & WhatsApp.',
+    tags: ['WM 2026', 'K.o.-Runde', 'Public Viewing'],
+    location: 'Amperstrand',
+    status: 'out',
+    size: 'lg',
+    bg: 'paper',
+  },
+];
+
+(function renderEvents() {
+  const days = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  const monthsShort = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const monthsLong = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  const statusLabels = { active: 'Offen', out: 'Fast voll', off: 'Abgesagt' };
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const enriched = EVENTS.map(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return { ...e, dateObj: d, isPast: d.getTime() < today.getTime() };
+  });
+
+  const upcoming = enriched.filter(e => !e.isPast).sort((a,b) => a.dateObj - b.dateObj);
+  const past = enriched.filter(e => e.isPast).sort((a,b) => b.dateObj - a.dateObj);
+
+  const pinSvg = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>';
+
+  const fmtMonthRange = (events) => {
+    if (!events.length) return '';
+    const months = [...new Set(events.map(e => `${monthsLong[e.dateObj.getMonth()]} ${e.dateObj.getFullYear()}`))];
+    return months.length === 1 ? months[0] : months[0] + ' – ' + months[months.length - 1];
+  };
+
+  // Upcoming als Karten
+  const upList = document.getElementById('upcomingList');
+  const upCount = document.getElementById('upcomingCount');
+  const upEmpty = document.getElementById('upcomingEmpty');
+  if (upcoming.length === 0) {
+    upList.style.display = 'none';
+    upEmpty.style.display = 'block';
+    upCount.textContent = '';
+  } else {
+    upCount.textContent = `${upcoming.length} ${upcoming.length === 1 ? 'Event' : 'Events'} · ${fmtMonthRange(upcoming)}`;
+    upList.innerHTML = upcoming.map((e, i) => {
+      const dateLabel = `${String(e.dateObj.getDate()).padStart(2,'0')}. ${monthsLong[e.dateObj.getMonth()]} · ${days[e.dateObj.getDay()]}`;
+      const headingMargin = e.size === 'lg' ? 40 : (e.size === 'sm' ? 20 : 32);
+      return `
+      <article class="event e-${e.size} bg-${e.bg} reveal" data-delay="${i*40}">
+        <div>
+          <div class="ev-top">
+            <span>${dateLabel}</span>
+            <span class="ev-status ${e.status}"><span class="dot"></span>${statusLabels[e.status] || ''}</span>
+          </div>
+          <h3 style="margin-top: ${headingMargin}px;">${e.title}</h3>
+          ${e.desc ? `<p class="ev-desc">${e.desc}</p>` : ''}
+          ${e.tags && e.tags.length ? `<div class="ev-tags">${e.tags.map(t => `<span class="ev-tag">${t}</span>`).join('')}</div>` : ''}
+        </div>
+        <div class="ev-bottom">
+          <div>
+            <div class="ev-when">${e.when}</div>
+            <div class="ev-meta"><span class="ev-loc">${pinSvg}${e.location || 'Amperstrand'}</span></div>
+          </div>
+          <span class="ev-arrow">Details →</span>
+        </div>
+        <div class="big-date">${String(e.dateObj.getDate()).padStart(2,'0')}<span class="big-mon">${monthsShort[e.dateObj.getMonth()]}</span></div>
+      </article>`;
+    }).join('');
+  }
+
+  // Past als kompakte Liste
+  const pastSec = document.getElementById('pastSection');
+  if (past.length) {
+    pastSec.style.display = '';
+    document.getElementById('pastCount').textContent = `${past.length} ${past.length === 1 ? 'Event' : 'Events'}`;
+    document.getElementById('pastList').innerHTML = past.map(e => {
+      const dateLabel = `${String(e.dateObj.getDate()).padStart(2,'0')}. ${monthsShort[e.dateObj.getMonth()]} ${e.dateObj.getFullYear()}`;
+      const tags = (e.tags || []).join(' · ');
+      return `<div class="arch"><div class="date">${dateLabel}</div><div class="title">${e.title.replace(/\.$/, '')}</div><div class="tags">${tags}</div><div class="rating">${e.when || ''}</div></div>`;
+    }).join('');
+  }
+})();
+</script>
 </body>
 </html>

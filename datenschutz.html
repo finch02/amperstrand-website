@@ -14,12 +14,13 @@
     .legal h1 { font-size: clamp(34px, 9vw, 52px); letter-spacing: -.03em; line-height: 1.02; margin-bottom: 32px; }
   }
   .legal h2 { font-size: 22px; margin: 40px 0 12px; letter-spacing: -.01em; }
-  .legal h3 { font-size: 17px; margin: 20px 0 8px; }
+  .legal h3 { font-size: 17px; margin: 24px 0 8px; }
   .legal p, .legal li { font-size: 16px; line-height: 1.7; opacity: .82; }
   .legal ul { padding-left: 22px; }
   .legal a { text-decoration: underline; text-underline-offset: 3px; }
   .legal .meta { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; opacity: .55; margin-bottom: 24px; }
   .legal .divider { height: 1px; background: rgba(10,10,10,.1); margin: 40px 0; }
+  .legal .stand { font-family: var(--font-mono); font-size: 12px; opacity: .5; letter-spacing: .04em; text-transform: uppercase; margin-top: 8px; }
   .toc { padding: 20px 24px; background: var(--paper-2); border-radius: 16px; margin: 24px 0 40px; font-size: 15px; }
   .toc ol { margin: 0; padding-left: 20px; }
   .toc a { text-decoration: none; opacity: .75; }
@@ -31,47 +32,93 @@
 <section class="legal">
   <span class="eyebrow meta">§ Datenschutzerklärung · DSGVO</span>
   <h1>Datenschutz.</h1>
-  <p>Wir nehmen den Schutz deiner persönlichen Daten ernst. Diese Seite erklärt, welche Daten wir wann, warum und wie lange erheben — und was du dagegen tun kannst.</p>
+  <p>Wir nehmen den Schutz deiner personenbezogenen Daten ernst und behandeln sie vertraulich, entsprechend den gesetzlichen Datenschutzvorschriften (DSGVO, BDSG, TDDDG) sowie dieser Datenschutzerklärung.</p>
 
   <div class="toc">
     <strong>Inhalt</strong>
     <ol>
       <li><a href="#verantwortlich">Verantwortlicher</a></li>
-      <li><a href="#erhebung">Erhebung &amp; Verarbeitung</a></li>
+      <li><a href="#allgemein">Allgemeines</a></li>
+      <li><a href="#hosting">Hosting &amp; Server-Logs</a></li>
+      <li><a href="#tls">SSL-/TLS-Verschlüsselung</a></li>
       <li><a href="#kontakt">Kontaktformular</a></li>
-      <li><a href="#cookies">Cookies &amp; Analyse</a></li>
+      <li><a href="#newsletter">Newsletter</a></li>
+      <li><a href="#extern">Externe Inhalte &amp; Schriftarten</a></li>
+      <li><a href="#cookies">Cookies &amp; lokale Speicherung</a></li>
       <li><a href="#rechte">Deine Rechte</a></li>
-      <li><a href="#aufsicht">Aufsichtsbehörde</a></li>
+      <li><a href="#aufsicht">Beschwerderecht</a></li>
     </ol>
   </div>
 
   <h2 id="verantwortlich">1. Verantwortlicher</h2>
-  <p>AMPERSTRAND Gastro &amp; Event UG (haftungsbeschränkt), Bullachstraße 27, 82256 Fürstenfeldbruck. E-Mail: <a href="mailto:hello@amperstrand-ffb.de">hello@amperstrand-ffb.de</a></p>
+  <p>Verantwortlich für die Datenverarbeitung auf dieser Website ist:</p>
+  <p>AMPERSTRAND Gastro &amp; Event UG (haftungsbeschränkt)<br>Bahnhofstr. 2a<br>82296 Schöngeising<br>E-Mail: <a href="mailto:hello@amperstrand-ffb.de">hello@amperstrand-ffb.de</a></p>
 
-  <h2 id="erhebung">2. Erhebung und Verarbeitung</h2>
-  <p>Beim Aufruf unserer Website werden automatisch Informationen allgemeiner Natur erfasst (Browser-Typ, Betriebssystem, Herkunftsdomain, IP-Adresse anonymisiert, Uhrzeit). Diese Daten werden zur Gewährleistung eines störungsfreien Betriebs der Website und zur Verbesserung unseres Angebots ausgewertet.</p>
+  <h2 id="allgemein">2. Allgemeines</h2>
+  <p>Wir verarbeiten personenbezogene Daten nur, soweit dies für die Bereitstellung einer funktionsfähigen Website sowie unserer Inhalte und Leistungen erforderlich ist. Rechtsgrundlagen sind im Wesentlichen Art. 6 Abs. 1 lit. b DSGVO (Vertrag bzw. vorvertragliche Maßnahmen), lit. f (berechtigtes Interesse) und lit. a (Einwilligung).</p>
 
-  <h2 id="kontakt">3. Kontaktformular</h2>
-  <p>Wenn du uns per Kontaktformular schreibst, werden deine Angaben zum Zweck der Bearbeitung der Anfrage und für den Fall von Anschlussfragen gespeichert. Rechtsgrundlage ist Art. 6 Abs. 1 lit. a DSGVO (Einwilligung). Für den technischen Versand des Formulars nutzen wir den Dienst Web3Forms; dabei werden die von dir eingegebenen Daten an Web3Forms übermittelt und an uns per E-Mail weitergeleitet. Die Daten werden gelöscht, sobald sie für die Zweckerreichung nicht mehr erforderlich sind, spätestens nach 24 Monaten.</p>
+  <h2 id="hosting">3. Hosting &amp; Server-Logs</h2>
+  <p>Diese Website wird gehostet bei der Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA 91789, USA. Beim Aufruf der Seite verarbeitet Vercel automatisch technische Verbindungsdaten, insbesondere IP-Adresse, Datum und Uhrzeit der Anfrage, abgerufene Ressource, übertragene Datenmenge, HTTP-Statuscode, Referrer sowie Browser- und Betriebssystem-Informationen. Diese Daten werden in Server-Logfiles gespeichert, dienen der Sicherstellung eines stabilen, sicheren Betriebs und werden nach maximal 30 Tagen gelöscht, sofern nicht im Einzelfall ein Sicherheitsvorfall eine längere Aufbewahrung erfordert.</p>
+  <p>Vercel Inc. ist nach dem EU-U.S. Data Privacy Framework zertifiziert. Die Übermittlung in die USA erfolgt auf Grundlage des Angemessenheitsbeschlusses der EU-Kommission vom 10.07.2023 (Art. 45 DSGVO). Mit Vercel besteht ein Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO.</p>
+  <p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer sicheren und stabilen Bereitstellung).</p>
 
-  <h2 id="cookies">4. Cookies &amp; Analyse</h2>
-  <p>Wir verwenden keine Cookies zu Analyse- oder Marketingzwecken und setzen keine Tracking-Tools ein. Es werden lediglich technisch notwendige Funktionen genutzt.</p>
+  <h2 id="tls">4. SSL-/TLS-Verschlüsselung</h2>
+  <p>Diese Seite nutzt aus Sicherheitsgründen eine durchgängige SSL-/TLS-Verschlüsselung. Du erkennst eine verschlüsselte Verbindung an der Adresszeile deines Browsers (https://) und dem Schloss-Symbol.</p>
 
-  <h2 id="rechte">5. Deine Rechte</h2>
+  <h2 id="kontakt">5. Kontaktformular</h2>
+  <p>Auf der Seite „Über uns" bieten wir ein Kontaktformular. Die Übermittlung deiner Anfrage erfolgt über den Dienst Web3Forms (Anbieter: IO Communications GmbH, Bessemerstraße 82, 12103 Berlin, Deutschland — <a href="https://web3forms.com" target="_blank" rel="noopener">web3forms.com</a>). Übermittelt werden die von dir eingegebenen Inhalte (Name, E-Mail-Adresse, optional Telefonnummer und Nachricht) sowie technische Verbindungsdaten. Web3Forms reicht die Eingabe als E-Mail an uns weiter und speichert die Daten nicht dauerhaft auf eigenen Servern. Mit Web3Forms besteht ein Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO.</p>
+  <p>Wir verwenden die übermittelten Daten ausschließlich zur Bearbeitung deiner Anfrage. Sie werden gelöscht, sobald sie für die Bearbeitung nicht mehr erforderlich sind, spätestens nach Ablauf gesetzlicher Aufbewahrungsfristen.</p>
+  <p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Vertragsanbahnung) bzw. lit. f (berechtigtes Interesse an der Beantwortung der Anfrage).</p>
+
+  <h2 id="newsletter">6. Newsletter</h2>
+  <p>Auf der Startseite kannst du dich für unseren Newsletter eintragen. Anbieter ist Brevo (Sendinblue GmbH, Köpenicker Straße 126, 10179 Berlin, Deutschland; Mutterunternehmen: Brevo SAS, 106 Boulevard Haussmann, 75008 Paris, Frankreich). Der Eintrag erfolgt im Double-Opt-In-Verfahren: Nach Eingabe deiner E-Mail-Adresse erhältst du eine Bestätigungs-E-Mail. Erst nach Klick auf den enthaltenen Bestätigungslink wirst du in den Verteiler aufgenommen.</p>
+  <p>Wir speichern Anmeldezeit, Bestätigungszeit sowie die IP-Adresse, um die Einwilligung gemäß DSGVO nachweisen zu können. Mit Brevo besteht ein Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO.</p>
+  <p>Du kannst den Newsletter jederzeit über den Abmelde-Link in jeder E-Mail oder per Nachricht an <a href="mailto:hello@amperstrand-ffb.de">hello@amperstrand-ffb.de</a> wieder abbestellen. Mit der Abmeldung erlischt die Einwilligung.</p>
+  <p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. a DSGVO (Einwilligung).</p>
+
+  <h2 id="extern">7. Externe Inhalte &amp; Schriftarten</h2>
+
+  <h3>7.1 Google Fonts</h3>
+  <p>Diese Website verwendet zur einheitlichen Darstellung Schriftarten von Google Fonts (Anbieter: Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland; Mutterunternehmen: Google LLC, USA). Beim Aufruf der Seite lädt dein Browser die benötigten Schriften direkt von einem Google-Server. Dabei wird deine IP-Adresse an Google übertragen. Die Übermittlung in die USA stützt sich auf den Angemessenheitsbeschluss der EU-Kommission vom 10.07.2023 (EU-U.S. Data Privacy Framework, Art. 45 DSGVO).</p>
+  <p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer einheitlichen Schrift­darstellung).</p>
+
+  <h3>7.2 Google Maps (2-Klick-Einbindung)</h3>
+  <p>Auf der Seite „Über uns" findest du eine Karte unseres Standorts. Sie wird <strong>nicht automatisch</strong> geladen — angezeigt wird zunächst nur ein Platzhalter mit dem Hinweis „Karte laden". Erst wenn du diesen Button aktiv anklickst, wird Google Maps eingebettet (Anbieter: Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland; Mutterunternehmen: Google LLC, USA). Dabei werden technische Verbindungsdaten (insbesondere IP-Adresse) an Google übertragen und Google kann Cookies setzen.</p>
+  <p>Die Übermittlung in die USA stützt sich auf den Angemessenheitsbeschluss der EU-Kommission vom 10.07.2023 (EU-U.S. Data Privacy Framework, Art. 45 DSGVO). Datenschutzhinweise von Google: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>.</p>
+  <p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. a DSGVO (Einwilligung durch aktiven Klick auf „Karte laden").</p>
+
+  <h3>7.3 Statusanzeige (Google Sheets)</h3>
+  <p>Die Öffnungs- und Wetter-Ampel auf Startseite und „Öffnungszeiten" liest eine öffentlich publizierte CSV-Datei aus Google Sheets (Google Ireland Limited, Irland). Es wird ausschließlich diese Datei heruntergeladen; es werden keine personenbezogenen Daten an Google gesendet, die über die übliche Verbindungsanfrage (insb. IP-Adresse) hinausgehen.</p>
+  <p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. f DSGVO.</p>
+
+  <h3>7.4 Externe Links</h3>
+  <p>Auf der Seite befinden sich Links zu Instagram, WhatsApp, OpenStreetMap und Google Maps. Beim bloßen Aufruf unserer Seite werden hierdurch keine Daten an die jeweiligen Anbieter übertragen. Erst beim Klick auf einen Link gelangst du auf die externe Seite, deren Datenschutzbestimmungen dann gelten.</p>
+
+  <h2 id="cookies">8. Cookies &amp; lokale Speicherung</h2>
+  <p>Diese Website setzt keine Tracking- oder Analyse-Cookies. Eine funktional notwendige Speicherung im Browser (LocalStorage und SessionStorage) wird ausschließlich verwendet, um deine Auswahl in der Statusanzeige (z.B. Hero-Ton, manuell überschriebener Status) während des Besuchs zu erhalten. Es findet keine Auswertung über deine Sitzung hinaus statt. Du kannst LocalStorage jederzeit über die Einstellungen deines Browsers löschen.</p>
+
+  <h2 id="rechte">9. Deine Rechte</h2>
+  <p>Du hast jederzeit folgende Rechte uns gegenüber:</p>
   <ul>
-    <li>Auskunft über deine bei uns gespeicherten Daten (Art. 15 DSGVO)</li>
+    <li>Auskunft über die zu deiner Person gespeicherten Daten (Art. 15 DSGVO)</li>
     <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
     <li>Löschung (Art. 17 DSGVO)</li>
     <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
     <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
-    <li>Widerspruch (Art. 21 DSGVO)</li>
+    <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
+    <li>Widerruf einer einmal erteilten Einwilligung mit Wirkung für die Zukunft (Art. 7 Abs. 3 DSGVO)</li>
   </ul>
+  <p>Bitte richte deine Anfrage formlos an <a href="mailto:hello@amperstrand-ffb.de">hello@amperstrand-ffb.de</a>.</p>
 
-  <h2 id="aufsicht">6. Beschwerde bei der Aufsichtsbehörde</h2>
-  <p>Bei Beschwerden kannst du dich an die zuständige Datenschutzbehörde wenden: Bayerisches Landesamt für Datenschutzaufsicht (BayLDA), Promenade 18, 91522 Ansbach.</p>
+  <h2 id="aufsicht">10. Beschwerderecht bei der Aufsichtsbehörde</h2>
+  <p>Du hast das Recht, dich bei einer Datenschutz-Aufsichtsbehörde über die Verarbeitung deiner personenbezogenen Daten zu beschweren. Zuständig für uns ist:</p>
+  <p>Bayerisches Landesamt für Datenschutzaufsicht (BayLDA)<br>Promenade 18, 91522 Ansbach<br>Telefon: +49 (0)981 180093-0<br>E-Mail: <a href="mailto:poststelle@lda.bayern.de">poststelle@lda.bayern.de</a><br><a href="https://www.lda.bayern.de" target="_blank" rel="noopener">lda.bayern.de</a></p>
 
+  <div class="divider"></div>
+  <p>Wir behalten uns vor, diese Datenschutzerklärung anzupassen, wenn sich die rechtlichen Rahmenbedingungen oder unsere Datenverarbeitungsvorgänge ändern. Die jeweils aktuelle Fassung findest du auf dieser Seite.</p>
+  <p class="stand">Stand: Mai 2026</p>
 </section>
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=13"></script>
+<script src="assets/shared.js?v=17"></script>
 </body>
 </html>
