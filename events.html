@@ -129,6 +129,29 @@
     .ko-row .date { grid-column: 1 / -1; }
     .ko-row.final { padding: 16px 14px; }
   }
+
+  /* Event-Detail-Overlay */
+  .ev-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .ev-modal[hidden] { display: none; }
+  .ev-modal-backdrop { position: absolute; inset: 0; background: rgba(10,10,10,.55); }
+  .ev-modal-card { position: relative; z-index: 1; width: min(560px, 100%); max-height: 88vh; overflow-y: auto; background: var(--paper); color: var(--ink); border-radius: 24px; padding: 44px 38px 38px; box-shadow: 0 30px 80px rgba(0,0,0,.32); }
+  .ev-modal-x { position: absolute; top: 18px; right: 20px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(10,10,10,.06); font-size: 22px; line-height: 1; cursor: pointer; color: var(--ink); }
+  .ev-modal-x:hover { background: rgba(10,10,10,.12); }
+  .evm-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
+  .evm-title { font-size: clamp(26px, 3.6vw, 38px); letter-spacing: -.02em; line-height: 1.05; margin: 16px 0 10px; }
+  .evm-when { font-family: var(--font-mono); font-size: 14px; opacity: .8; margin-bottom: 16px; }
+  .evm-desc { font-size: 16px; line-height: 1.6; opacity: .85; }
+  .evm-info { margin-top: 28px; border-top: 1px solid rgba(10,10,10,.12); padding-top: 22px; }
+  .evm-info-h { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin-bottom: 14px; }
+  .evm-info dl { margin: 0; }
+  .evm-row { display: grid; grid-template-columns: 132px 1fr; gap: 16px; padding: 9px 0; border-bottom: 1px solid rgba(10,10,10,.07); }
+  .evm-row dt { font-weight: 600; font-size: 14px; }
+  .evm-row dd { margin: 0; font-size: 14px; line-height: 1.5; opacity: .85; }
+  .event[data-evkey] { cursor: pointer; }
+  @media (max-width: 560px) {
+    .ev-modal-card { padding: 36px 22px 26px; }
+    .evm-row { grid-template-columns: 1fr; gap: 2px; }
+  }
 </style>
 </head>
 <body data-page="events" data-tone="ink">
@@ -331,6 +354,14 @@
   </div>
 </section>
 
+<div class="ev-modal" id="evModal" hidden>
+  <div class="ev-modal-backdrop" data-close></div>
+  <div class="ev-modal-card" role="dialog" aria-modal="true" aria-label="Event-Details">
+    <button class="ev-modal-x" data-close aria-label="Schließen">&times;</button>
+    <div id="evModalBody"></div>
+  </div>
+</div>
+
 <div data-mount-footer></div>
 <script src="assets/shared.js?v=17"></script>
 <script>
@@ -489,7 +520,7 @@ const EVENTS = [
       const dateLabel = `${String(e.dateObj.getDate()).padStart(2,'0')}. ${monthsLong[e.dateObj.getMonth()]} · ${days[e.dateObj.getDay()]}`;
       const headingMargin = e.size === 'lg' ? 40 : (e.size === 'sm' ? 20 : 32);
       return `
-      <article class="event e-${e.size} bg-${e.bg} reveal" data-delay="${i*40}">
+      <article class="event e-${e.size} bg-${e.bg} reveal" data-delay="${i*40}" data-evkey="${i}" role="button" tabindex="0" aria-label="${e.title} — Details öffnen">
         <div>
           <div class="ev-top">
             <span>${dateLabel}</span>
@@ -521,6 +552,66 @@ const EVENTS = [
       const tags = (e.tags || []).join(' · ');
       return `<div class="arch"><div class="date">${dateLabel}</div><div class="title">${e.title.replace(/\.$/, '')}</div><div class="tags">${tags}</div><div class="rating">${e.when || ''}</div></div>`;
     }).join('');
+  }
+
+  // ---- Detail-Overlay ----
+  const PV_INFO = [
+    ['Eintritt', 'Frei. Keine Tickets, kein Eintritt.'],
+    ['Reservierung', 'Brauchst du nicht — einfach vorbeikommen.'],
+    ['Leinwand', '200 Zoll, jedes Spiel live über MagentaTV.'],
+    ['Kicker', 'Steht aufgebaut bereit.'],
+    ['Getränke-Special', 'Zu jedem Spiel ein eigenes Special.'],
+    ['Decken', 'Haben wir da, falls es frisch wird.'],
+    ['Mitbringen', 'Eigene Stühle und Decken sind willkommen.'],
+    ['Nicht erlaubt', 'Eigenes Essen, Snacks und eigene Getränke.'],
+    ['Dresscode', 'Trikot an, gute Laune mit — wir freuen uns.'],
+    ['Bester Platz', 'Sei rund 1,5 Stunden vor Anstoß da.'],
+  ];
+  const isPV = e => Array.isArray(e.tags) && e.tags.includes('Public Viewing');
+
+  const modal = document.getElementById('evModal');
+  const modalBody = document.getElementById('evModalBody');
+
+  function openEventModal(e) {
+    if (!e) return;
+    const dateLabel = `${String(e.dateObj.getDate()).padStart(2,'0')}. ${monthsLong[e.dateObj.getMonth()]} ${e.dateObj.getFullYear()} · ${days[e.dateObj.getDay()]}`;
+    let html = `
+      <div class="evm-top">
+        <span class="evm-date">${dateLabel}</span>
+        <span class="ev-status ${e.status}"><span class="dot"></span>${statusLabels[e.status] || ''}</span>
+      </div>
+      <h3 class="evm-title">${e.title}</h3>
+      <div class="evm-when">${e.when || ''}${e.location ? ' · ' + e.location : ''}</div>
+      ${e.desc ? `<p class="evm-desc">${e.desc}</p>` : ''}
+      ${e.tags && e.tags.length ? `<div class="ev-tags" style="margin-top:16px;">${e.tags.map(t => `<span class="ev-tag">${t}</span>`).join('')}</div>` : ''}
+    `;
+    if (isPV(e)) {
+      html += `<div class="evm-info"><div class="evm-info-h">Gut zu wissen</div><dl>`
+        + PV_INFO.map(([k,v]) => `<div class="evm-row"><dt>${k}</dt><dd>${v}</dd></div>`).join('')
+        + `</dl></div>`;
+    }
+    modalBody.innerHTML = html;
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function closeEventModal() {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+  }
+  if (upList) {
+    upList.addEventListener('click', (ev) => {
+      const card = ev.target.closest('[data-evkey]');
+      if (card) openEventModal(upcoming[+card.dataset.evkey]);
+    });
+    upList.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      const card = ev.target.closest('[data-evkey]');
+      if (card) { ev.preventDefault(); openEventModal(upcoming[+card.dataset.evkey]); }
+    });
+  }
+  if (modal) {
+    modal.addEventListener('click', (ev) => { if (ev.target.hasAttribute('data-close')) closeEventModal(); });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !modal.hidden) closeEventModal(); });
   }
 })();
 </script>
