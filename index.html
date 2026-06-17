@@ -443,9 +443,9 @@
 
     /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen.
        min-height auf small-viewport — Erstanzeige ist komplett gelb bis zu den Wellen. */
-    .hero { padding-top: 142px; padding-bottom: 180px; min-height: auto; }
-    /* Wellen größer + Hero content-getrieben → keine Riesenlücke unter der Adresse */
-    .hero-wave { height: 180px; min-height: 180px; }
+    .hero { padding-top: 142px; padding-bottom: 230px; min-height: 100vh; min-height: 100svh; }
+    /* Hero füllt den Screen (komplett gelb beim Laden); große Wellen füllen den unteren Bereich statt Leerraum */
+    .hero-wave { height: 230px; min-height: 230px; }
     .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
     /* "Servus" als eigenständige Zeile oberhalb von "Amperstrand" — groß, fast so groß wie der Rest */
     .hero h1 .hand { display: block; font-size: 1em; margin: 0 0 16px; transform: rotate(-3deg); line-height: 1; }
