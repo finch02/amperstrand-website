@@ -493,6 +493,9 @@
   .ig-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 40px; }
   .ig-grid .tile { aspect-ratio: 1; border-radius: 4px; overflow: hidden; }
   .ig-grid .tile:nth-child(1) { grid-column: span 2; grid-row: span 2; aspect-ratio: 1/1; }
+  .ig-grid .tile { display: block; }
+  .ig-grid .tile img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s var(--ease); }
+  .ig-grid .tile:hover img { transform: scale(1.05); }
   @media (max-width: 820px) { .ig-grid { grid-template-columns: repeat(3, 1fr); } .ig-grid .tile:nth-child(1) { grid-column: span 2; grid-row: span 2; } }
 
   /* KQ TEASER */
@@ -700,15 +703,15 @@
       <a href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener" class="btn ghost">Auf Instagram folgen <span class="arrow">→</span></a>
     </div>
     <div class="ig-grid reveal">
-      <div class="tile ph" data-label="Sundowner · Juli"></div>
-      <div class="tile ph yellow" data-label="Aperol"></div>
-      <div class="tile ph dark" data-label="Flohmarkt"></div>
-      <div class="tile ph" data-label="Kids"></div>
-      <div class="tile ph dark" data-label="Livemusik"></div>
-      <div class="tile ph yellow" data-label="Eis"></div>
-      <div class="tile ph" data-label="Amper"></div>
-      <div class="tile ph dark" data-label="Abend"></div>
-      <div class="tile ph yellow" data-label="Laugenbrezn"></div>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-01.jpg" alt="Amperstrand am Wasser" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-02.jpg" alt="Amperstrand" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-03.jpg" alt="Amperstrand" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-04.jpg" alt="Amperstrand" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-05.jpg" alt="Amperstrand" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-06.jpg" alt="Amperstrand" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-07.jpg" alt="Amperstrand" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-08.jpg" alt="Amperstrand" loading="lazy"></a>
+      <a class="tile" href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener"><img src="assets/insta/insta-09.jpg" alt="Amperstrand" loading="lazy"></a>
     </div>
   </div>
 </section>
