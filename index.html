@@ -443,10 +443,9 @@
 
     /* Hero: kleineres H1, mehr Breath; padding-bottom reserviert Platz für die Wellen.
        min-height auf small-viewport — Erstanzeige ist komplett gelb bis zu den Wellen. */
-    .hero { padding-top: 142px; padding-bottom: 150px; min-height: 100svh; min-height: 100vh; }
-    @supports (min-height: 100svh) { .hero { min-height: 100svh; } }
-    /* Wellen auseinandergezogen — höher, damit die Kurven breiter atmen */
-    .hero-wave { height: 150px; min-height: 150px; }
+    .hero { padding-top: 142px; padding-bottom: 180px; min-height: auto; }
+    /* Wellen größer + Hero content-getrieben → keine Riesenlücke unter der Adresse */
+    .hero-wave { height: 180px; min-height: 180px; }
     .hero h1 { font-size: clamp(40px, 11.5vw, 64px); line-height: 1; max-width: 100%; }
     /* "Servus" als eigenständige Zeile oberhalb von "Amperstrand" — groß, fast so groß wie der Rest */
     .hero h1 .hand { display: block; font-size: 1em; margin: 0 0 16px; transform: rotate(-3deg); line-height: 1; }
@@ -571,7 +570,7 @@
         <strong data-status-label>Jetzt geöffnet</strong>
         <span class="sub" data-status-sub>bis 22:00</span>
       </span>
-      <a href="https://ed45c9e2.sibforms.com/serve/MUIFAP6z6enBTDiLxqzJtD6MH3-Ar-N442_7MGbolrkDpj4bv2ZsWkIrLU9xXttf7Sd-AWMA-J1jin8xiZNPcDMcG-pKuCXrelC-sTE3uxj0hh_wGLIZ1mJRM3NC9xNrObGzMdbVV2w0k0q-DagtqtXwlLwQez6Uzi6_fpQBMiGMoO7ugUxAbLnRF_HXrNsUgBQjv7Ej0NMtY2WK" target="_blank" rel="noopener" class="btn ghost"><span class="nl-full">Newsletter abonnieren</span><span class="nl-short">Newsletter</span> <span class="arrow">→</span></a>
+      <a href="https://whatsapp.com/channel/0029VbCyio0F1YlMoRsNtL2F" target="_blank" rel="noopener" class="btn ghost"><span class="nl-full">WhatsApp-Channel</span><span class="nl-short">WhatsApp</span> <span class="arrow">→</span></a>
     </div>
 
     <div class="hero-meta reveal" data-delay="320">
