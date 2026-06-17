@@ -139,7 +139,9 @@
   .teaser.t-karte h3 { color: var(--paper); }
   .teaser.t-events h3 { color: var(--ink); }
 
-  .teaser.t-events .big-num { position:absolute; right:24px; bottom:24px; font-family:var(--font-display); font-size: clamp(80px, 12vw, 180px); font-weight:800; letter-spacing:-.04em; color: var(--ink); line-height: 1; }
+  .teaser.t-events .big-num { position:absolute; right:20px; bottom:16px; z-index:0; pointer-events:none; font-family:var(--font-display); font-size: clamp(60px, 8.5vw, 128px); font-weight:800; letter-spacing:-.04em; color: var(--ink); line-height: 1; }
+  .teaser.t-events .label { z-index: 1; }
+  .teaser.t-events .label > div:not(.top) { position: relative; max-width: 60%; }
 
   /* Menu preview in teaser */
   /* Top-/Bottom-Padding so gewählt, dass .label (KARTE/AUSZUG oben und Titel+Arrow unten) nicht überlappt */
@@ -182,6 +184,7 @@
     /* Events-Card: aspect-ratio mobilfreundlicher; "04" dezent rechts oben */
     .teaser.t-events { aspect-ratio: 4/5; }
     .teaser.t-events .big-num { font-size: clamp(56px, 16vw, 90px); right: 22px; bottom: auto; top: 48px; opacity: .85; }
+    .teaser.t-events .label > div:not(.top) { max-width: none; }
     .teaser.t-oeff, .teaser.t-gesch, .teaser.t-krea { grid-column: span 12; aspect-ratio: 16/9; }
     .ampel-card { grid-template-columns: 1fr; padding: 36px 28px; }
     .ampel-days { grid-template-columns: repeat(7, 1fr); gap: 4px; }
