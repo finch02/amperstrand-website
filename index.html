@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f9cf2c">
 <title>Amperstrand — Stadtstrand an der Amper, Fürstenfeldbruck</title>
 <meta name="description" content="Stadtstrand. Mitten in Bruck. Kühle Getränke, Snacks, Eis, Events. Direkt an der Amper.">
-<link rel="stylesheet" href="assets/shared.css?v=12">
+<link rel="stylesheet" href="assets/shared.css?v=13">
 <style>
   /* HERO */
   .hero {
@@ -26,7 +26,7 @@
   :root[data-herotone="ink"] .badge-kiosk { background: var(--yellow); color: var(--ink); }
   :root[data-herotone="ink"] .eyebrow { color: var(--paper); opacity: .6; }
 
-  .hero-inner { max-width: var(--max); margin: 0 auto; width: 100%; flex: 1; display:flex; flex-direction:column; justify-content:center; padding-bottom: 8vh; }
+  .hero-inner { max-width: var(--max); margin: 0 auto; width: 100%; flex: 1; display:flex; flex-direction:column; justify-content:center; padding-bottom: 4vh; }
   .hero-eyebrow { display:flex; gap: 14px; align-items:center; margin-bottom: 24px; }
   .hero-eyebrow .line { flex: 0 0 40px; height: 1px; background: var(--ink); opacity:.3; }
   .hero h1 {
@@ -187,9 +187,15 @@
     .teaser.t-events .label > div:not(.top) { max-width: none; }
     .teaser.t-oeff, .teaser.t-gesch, .teaser.t-krea { grid-column: span 12; aspect-ratio: 16/9; }
     .ampel-card { grid-template-columns: 1fr; padding: 36px 28px; }
-    .ampel-days { grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    .ampel-day { padding: 12px 4px; }
-    .ampel-day .d { font-size: 16px; }
+    .ampel-days { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .ampel-day { padding: 14px 6px; min-width: 0; }
+    .ampel-day .d { font-size: 18px; }
+    /* Hero mobil: nicht mehr auf 100vh zentriert — sonst riesige Leerräume */
+    .hero { min-height: auto; padding-top: 148px; padding-bottom: 44px; }
+    .hero-inner { justify-content: flex-start; flex: none; padding-bottom: 0; }
+    .hero-sub { margin-top: 22px; }
+    .hero-actions { margin-top: 26px; }
+    .hero-meta { margin-top: 26px; }
   }
 
   /* HERO AMPEL — zentriert im Viewport, unter der Nav */

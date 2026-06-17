@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#fafaf7">
 <title>Kreativquartier-Partner — Amperstrand</title>
-<link rel="stylesheet" href="assets/shared.css?v=12">
+<link rel="stylesheet" href="assets/shared.css?v=13">
 <style>
   .head { padding: 160px var(--gutter) 80px; }
   .head h1 { max-width: 14ch; }
@@ -29,6 +29,13 @@
   .pcard.md { grid-column: span 3; }
   .pcard.sm { grid-column: span 2; min-height: 280px; }
   @media (max-width: 900px) { .pcard { grid-column: span 6 !important; } }
+  @media (max-width: 560px) {
+    .pcard { padding: 26px; min-height: 240px; }
+    .pcard h3 { font-size: clamp(22px, 6.5vw, 30px); }
+    .pcard.lg { min-height: 280px; }
+    .pcard.lg h3 { font-size: clamp(24px, 7.5vw, 32px); }
+    .pcard p { font-size: 14.5px; }
+  }
   .pcard.ink { background: var(--ink); color: var(--paper); }
   .pcard.yel { background: var(--yellow); color: var(--ink); }
   .pcard.paper { background: var(--paper); color: var(--ink); border: 1px solid rgba(10,10,10,.1); }
