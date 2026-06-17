@@ -29,13 +29,6 @@
   .pcard.md { grid-column: span 3; }
   .pcard.sm { grid-column: span 2; min-height: 280px; }
   @media (max-width: 900px) { .pcard { grid-column: span 6 !important; } }
-  @media (max-width: 560px) {
-    .pcard { padding: 26px; min-height: 240px; }
-    .pcard h3 { font-size: clamp(20px, 5.2vw, 25px); }
-    .pcard.lg { min-height: 280px; }
-    .pcard.lg h3 { font-size: clamp(19px, 5vw, 23px); }
-    .pcard p { font-size: 14.5px; }
-  }
   .pcard.ink { background: var(--ink); color: var(--paper); }
   .pcard.yel { background: var(--yellow); color: var(--ink); }
   .pcard.paper { background: var(--paper); color: var(--ink); border: 1px solid rgba(10,10,10,.1); }
@@ -46,6 +39,14 @@
   .pcard p { font-size: 15px; line-height: 1.55; opacity: .78; max-width: 48ch; margin: 0 0 16px; }
   .pcard .cta { font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
   .pcard .cta::after { content: ' →'; }
+  /* Mobile NACH den Basis-Regeln, sonst überschreiben diese die kleineren Größen */
+  @media (max-width: 560px) {
+    .pcard { padding: 26px; min-height: 240px; }
+    .pcard h3 { font-size: clamp(20px, 5.2vw, 25px); }
+    .pcard.lg { min-height: 280px; }
+    .pcard.lg h3 { font-size: clamp(19px, 4.8vw, 22px); }
+    .pcard p { font-size: 14.5px; }
+  }
 
   .pcard .ornament {
     position: absolute; right: -40px; bottom: -40px; width: 220px; height: 220px;
