@@ -402,7 +402,11 @@ const FOOTER_HTML = `
             Stadtstrand an der Amper.<br>
             Bullachstraße 27, 82256 Fürstenfeldbruck.
           </p>
-          <p style="opacity:.7; font-size:15px;"><a href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener" style="display:inline-flex;gap:6px;align-items:center;text-decoration:underline;text-underline-offset:4px;">Instagram →</a></p>
+          <p style="opacity:.7; font-size:15px; display:flex; flex-direction:column; gap:7px; align-items:flex-start;">
+            <a href="https://www.instagram.com/amperstrand_ffb/" target="_blank" rel="noopener" style="display:inline-flex;gap:6px;align-items:center;text-decoration:underline;text-underline-offset:4px;">Instagram →</a>
+            <a href="https://whatsapp.com/channel/0029VbCyio0F1YlMoRsNtL2F" target="_blank" rel="noopener" style="display:inline-flex;gap:6px;align-items:center;text-decoration:underline;text-underline-offset:4px;">WhatsApp-Channel →</a>
+            <a href="https://ed45c9e2.sibforms.com/serve/MUIFAP6z6enBTDiLxqzJtD6MH3-Ar-N442_7MGbolrkDpj4bv2ZsWkIrLU9xXttf7Sd-AWMA-J1jin8xiZNPcDMcG-pKuCXrelC-sTE3uxj0hh_wGLIZ1mJRM3NC9xNrObGzMdbVV2w0k0q-DagtqtXwlLwQez6Uzi6_fpQBMiGMoO7ugUxAbLnRF_HXrNsUgBQjv7Ej0NMtY2WK" target="_blank" rel="noopener" style="display:inline-flex;gap:6px;align-items:center;text-decoration:underline;text-underline-offset:4px;">Newsletter →</a>
+          </p>
         </div>
         <div class="footer-col">
           <h4>Seiten</h4>
