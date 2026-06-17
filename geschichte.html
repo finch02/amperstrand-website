@@ -30,6 +30,8 @@
   .story-photo-wide { width: 100%; aspect-ratio: 4/3; border-radius: 16px; margin-bottom: 32px; object-fit: cover; object-position: center; display: block; background: var(--paper-2); }
 
   .map-sec { padding: 60px var(--gutter); background: var(--paper-2); }
+  .map-sec h2 { font-size: clamp(28px, 4vw, 46px); }
+  @media (min-width: 900px) { .map-sec h2 { white-space: nowrap; } }
   .map-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; }
   @media (max-width: 900px) { .map-grid { grid-template-columns: 1fr; } }
   .map-box {
