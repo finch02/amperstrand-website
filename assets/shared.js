@@ -593,6 +593,76 @@ function mountTweaks() {
   });
 }
 
+// ============ CONSENT (externe Karten / Google Maps) ============
+const CONSENT_KEY = 'amperstrand_consent_v1';
+function getConsent(){ try { return localStorage.getItem(CONSENT_KEY); } catch(e){ return null; } }
+function setConsent(v){ try { localStorage.setItem(CONSENT_KEY, v); } catch(e){} }
+
+function loadMap(){
+  const box = document.getElementById('mapBox');
+  if (!box || box.classList.contains('map-loaded')) return;
+  const btn = document.getElementById('mapConsent');
+  const iframe = document.createElement('iframe');
+  iframe.className = 'map-frame';
+  iframe.loading = 'lazy';
+  iframe.allow = 'fullscreen';
+  iframe.referrerPolicy = 'no-referrer-when-downgrade';
+  iframe.title = 'Amperstrand auf Google Maps';
+  iframe.src = 'https://maps.google.com/maps?q=Amperstrand+F%C3%BCrstenfeldbruck&z=16&output=embed';
+  if (btn) btn.replaceWith(iframe); else box.prepend(iframe);
+  box.classList.add('map-loaded');
+}
+
+function injectConsentStyles(){
+  if (document.getElementById('consent-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'consent-styles';
+  s.textContent = `
+    .consent-bar { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 3000; max-width: 720px; margin: 0 auto;
+      background: var(--ink); color: var(--paper); border-radius: 18px; padding: 22px 24px;
+      box-shadow: 0 24px 60px -18px rgba(0,0,0,.55); display: flex; gap: 22px; align-items: center; flex-wrap: wrap;
+      font-family: var(--font-body); animation: consentUp .4s var(--ease); }
+    @keyframes consentUp { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .consent-bar p { margin: 0; font-size: 14px; line-height: 1.55; opacity: .85; flex: 1 1 280px; }
+    .consent-bar a { color: var(--paper); text-decoration: underline; text-underline-offset: 2px; }
+    .consent-bar .consent-btns { display: flex; gap: 10px; flex: 0 0 auto; }
+    .consent-bar button { border: 0; cursor: pointer; font-family: var(--font-display); font-weight: 500; font-size: 15px;
+      padding: 12px 20px; border-radius: 999px; letter-spacing: -.01em; transition: transform .2s, background .2s; }
+    .consent-bar button:hover { transform: translateY(-1px); }
+    .consent-bar .c-accept { background: var(--yellow); color: var(--ink); }
+    .consent-bar .c-decline { background: rgba(250,250,247,.12); color: var(--paper); }
+    .consent-bar .c-decline:hover { background: rgba(250,250,247,.22); }
+    @media (max-width: 560px) { .consent-bar { flex-direction: column; align-items: stretch; gap: 14px; } .consent-bar .consent-btns { justify-content: stretch; } .consent-bar button { flex: 1; } }
+  `;
+  document.head.appendChild(s);
+}
+
+function setupConsent(){
+  // Klick auf den Karten-Platzhalter lädt die Karte manuell (Fallback bei Ablehnung)
+  const btn = document.getElementById('mapConsent');
+  if (btn) btn.addEventListener('click', loadMap);
+
+  const consent = getConsent();
+  if (consent === 'all') { loadMap(); return; }   // bereits zugestimmt → automatisch laden
+  if (consent === 'necessary') return;             // abgelehnt → Platzhalter bleibt
+
+  // Noch keine Entscheidung → Banner einblenden
+  injectConsentStyles();
+  const bar = document.createElement('div');
+  bar.className = 'consent-bar';
+  bar.setAttribute('role', 'dialog');
+  bar.setAttribute('aria-label', 'Einwilligung externe Karte');
+  bar.innerHTML = `
+    <p>Wir binden die Standort-Karte über Google Maps ein. Mit „Karte erlauben" lädt sie automatisch — dabei werden Daten (u.a. deine IP-Adresse) an Google übertragen. Mehr im <a href="datenschutz.html#extern">Datenschutz</a>.</p>
+    <div class="consent-btns">
+      <button type="button" class="c-decline">Nur notwendige</button>
+      <button type="button" class="c-accept">Karte erlauben</button>
+    </div>`;
+  document.body.appendChild(bar);
+  bar.querySelector('.c-accept').addEventListener('click', () => { setConsent('all'); bar.remove(); loadMap(); });
+  bar.querySelector('.c-decline').addEventListener('click', () => { setConsent('necessary'); bar.remove(); });
+}
+
 // Init
 document.addEventListener('DOMContentLoaded', () => {
   const active = document.body.dataset.page || '';
@@ -601,6 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupReveals();
   applyStatusPill();
   mountTweaks();
+  setupConsent();
   // Live-Status aus Google Sheet ziehen (überschreibt Default-Pill)
   applyLiveStatusFromSheet();
   // Fill current month into any [data-current-month] element (e.g. events teaser)

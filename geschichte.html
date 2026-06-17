@@ -361,7 +361,7 @@
 </section>
 
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=18"></script>
+<script src="assets/shared.js?v=19"></script>
 <script>
 const FAQ = [
   { q:'Was ist der Amperstrand eigentlich?', a:'Ein Kiosk mit Sitzgelegenheiten an der Amper, mitten in Fürstenfeldbruck. Wir schenken Getränke aus und verkaufen kleine Snacks. Kein Restaurant, kein Club — eher ein entspannter Treffpunkt unter freiem Himmel.'},
@@ -387,26 +387,6 @@ document.getElementById('faqList').innerHTML = FAQ.map((f, i) => `
   </details>
 `).join('');
 
-// 2-Klick-Lösung für Google Maps: erst beim Klick wird das iframe geladen,
-// damit vorher keine Daten an Google übertragen werden. Sobald die Karte
-// geladen ist, blenden wir die Adress-Overlay aus — Googles eigener Marker
-// zeigt die Location bereits an, sonst überlagert sich beides.
-(function setupMapConsent(){
-  const btn = document.getElementById('mapConsent');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    const iframe = document.createElement('iframe');
-    iframe.className = 'map-frame';
-    iframe.loading = 'lazy';
-    iframe.allow = 'fullscreen';
-    iframe.referrerPolicy = 'no-referrer-when-downgrade';
-    iframe.title = 'Amperstrand auf Google Maps';
-    iframe.src = 'https://maps.google.com/maps?q=Amperstrand+F%C3%BCrstenfeldbruck&z=16&output=embed';
-    btn.replaceWith(iframe);
-    const box = document.getElementById('mapBox');
-    if (box) box.classList.add('map-loaded');
-  });
-})();
 </script>
 </body>
 </html>
