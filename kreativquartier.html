@@ -16,15 +16,6 @@
     .head .lead { margin-top: 20px; font-size: 15px; line-height: 1.45; }
   }
 
-  .map-strip { padding: 20px var(--gutter) 80px; }
-  .map-strip .box { aspect-ratio: 16/6; border-radius: 24px; background: var(--paper-2); position: relative; overflow: hidden; border: 1px solid rgba(10,10,10,.08); }
-  .map-strip svg { width: 100%; height: 100%; display: block; }
-  .map-strip .pin { position: absolute; transform: translate(-50%, -100%); text-align: center; }
-  .map-strip .pin .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--yellow); border: 3px solid var(--ink); margin: 0 auto; }
-  .map-strip .pin.amper .dot { background: #7dd3fc; }
-  .map-strip .pin .lbl { margin-top: 4px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; background: var(--ink); color: var(--paper); padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
-  .map-strip .pin.amper .lbl { background: var(--paper); color: var(--ink); border:1px solid rgba(10,10,10,.15); }
-
   .partners { padding: 40px var(--gutter) 100px; }
   .p-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
   .pcard {
@@ -71,36 +62,7 @@
   <div class="wrap">
     <span class="eyebrow reveal">§ Kreativquartier · Aumühle/Lände</span>
     <h1 class="reveal" style="margin-top: 18px;">Nicht allein hier draußen.</h1>
-    <p class="lead reveal">Wir sind Teil eines kleinen Quartiers aus Menschen, die alle am Wasser was aufgemacht haben. Rätseln, Reden, Ateliers, Gärtnern — lauf ein paar Schritte weiter.</p>
-  </div>
-</section>
-
-<section class="map-strip">
-  <div class="wrap">
-    <div class="box reveal">
-      <svg viewBox="0 0 1200 450" preserveAspectRatio="xMidYMid slice">
-        <rect width="1200" height="450" fill="#fafaf7"/>
-        <!-- Amper river -->
-        <path d="M-20 300 C 200 240, 420 340, 640 290 S 1040 260, 1220 310" stroke="#7dd3fc" stroke-width="42" fill="none" opacity=".45"/>
-        <path d="M-20 300 C 200 240, 420 340, 640 290 S 1040 260, 1220 310" stroke="#0a0a0a" stroke-width=".5" fill="none"/>
-        <text x="80" y="285" font-family="JetBrains Mono, monospace" font-size="11" fill="#0a0a0a" opacity=".5">AMPER</text>
-        <!-- Quartier blocks -->
-        <rect x="120" y="80" width="180" height="110" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
-        <rect x="360" y="60" width="140" height="130" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
-        <rect x="560" y="100" width="170" height="90" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
-        <rect x="780" y="80" width="180" height="120" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
-        <rect x="200" y="360" width="160" height="70" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
-        <rect x="520" y="360" width="230" height="70" fill="none" stroke="#0a0a0a" stroke-width=".5" opacity=".3"/>
-        <!-- Paths -->
-        <line x1="0" y1="230" x2="1200" y2="240" stroke="#0a0a0a" stroke-width=".5" opacity=".2"/>
-        <line x1="500" y1="0" x2="520" y2="450" stroke="#0a0a0a" stroke-width=".5" opacity=".2"/>
-      </svg>
-      <div class="pin" style="left: 48%; top: 60%;"><div class="dot"></div><div class="lbl">Amperstrand</div></div>
-      <div class="pin" style="left: 28%; top: 40%;"><div class="dot"></div><div class="lbl">Riddle Machine</div></div>
-      <div class="pin" style="left: 60%; top: 32%;"><div class="dot"></div><div class="lbl">Demokratie-Hütte</div></div>
-      <div class="pin" style="left: 78%; top: 38%;"><div class="dot"></div><div class="lbl">Stadtbibliothek</div></div>
-      <div class="pin amper" style="left: 92%; top: 58%;"><div class="dot"></div><div class="lbl">Amper →</div></div>
-    </div>
+    <p class="lead reveal">Wir sind Teil des Kreativquartiers Aumühle/Lände — ein kleines Quartier aus Menschen, die alle am Wasser was aufgemacht haben. Foodtruck, Rätselraum, Demokratie-Hütte — lauf ein paar Schritte weiter.</p>
   </div>
 </section>
 
@@ -109,42 +71,46 @@
     <span class="eyebrow reveal">§ Wer noch hier ist</span>
     <h2 class="reveal" style="margin: 14px 0 40px;">Die Nachbar:innen.</h2>
     <div class="p-grid">
-      <a class="pcard lg ink reveal" href="https://www.escaperoom-ffb.de/" target="_blank" rel="noopener">
+      <a class="pcard lg yel reveal" href="https://sarasotafoodtruck.de/" target="_blank" rel="noopener" style="grid-column: 1 / -1;">
+        <div>
+          <div class="meta"><span>Foodtruck · Sarasota</span><span>Neu 2026</span></div>
+          <h3>Dschungelhunger.</h3>
+          <p>Neu diese Saison bei uns: der Foodtruck von Sarasota. Herzhaft, frisch und direkt am Strand — der perfekte Begleiter zum Sundowner.</p>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;">
+          <span class="cta">sarasotafoodtruck.de</span>
+          <span class="mono" style="opacity:.5;">Direkt am Strand</span>
+        </div>
+        <svg class="ornament" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 80 Q 35 30, 50 80 T 80 80"/><path d="M30 80 Q 45 45, 60 80"/></svg>
+      </a>
+      <a class="pcard md ink reveal" href="https://www.kreativquartier.fuerstenfeldbruck.de/" target="_blank" rel="noopener" style="grid-column: 1 / -1;" data-delay="80">
+        <div>
+          <div class="meta"><span>Stadt Fürstenfeldbruck</span><span>Kreativquartier</span></div>
+          <h3>Mitten im Kreativquartier.</h3>
+          <p>Der Amperstrand ist Teil des Kreativquartiers Aumühle/Lände der Stadt Fürstenfeldbruck. Alle Projekte, Flächen und Termine findest du auf der offiziellen Quartiersseite.</p>
+        </div>
+        <span class="cta">kreativquartier.fuerstenfeldbruck.de</span>
+      </a>
+      <a class="pcard md deep reveal" href="https://www.bbv-ffb.de/" target="_blank" rel="noopener" data-delay="120">
+        <div>
+          <div class="meta"><span>Demokratie-Hütte · BBV</span><span>Aumühle</span></div>
+          <h3>Demokratie-Hütte.</h3>
+          <p>Die Brucker Bürgervereinigung lädt am Quartier zum Reden ein: Kaffee, Kekse, Zeit für ein Gespräch. Keine Agenda, nur Zuhören.</p>
+        </div>
+        <span class="cta">bbv-ffb.de</span>
+        <svg class="ornament" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 70 Q 30 30, 50 70 T 90 70"/><path d="M10 80 Q 30 50, 50 80 T 90 80"/></svg>
+      </a>
+      <a class="pcard md paper reveal" href="https://www.escaperoom-ffb.de/" target="_blank" rel="noopener" data-delay="160">
         <div>
           <div class="meta"><span>Riddle Machine</span><span>Escape Room</span></div>
-          <h3>Rätseln bis der Kopf raucht.</h3>
-          <p>Rätseln für Teams: Der Escape Room im Kreativquartier, nur eine Minute zu Fuß vom Strand — perfekt vor dem Sundowner.</p>
+          <h3>Rätseln am Wasser.</h3>
+          <p>Der Escape Room im Quartier, nur eine Minute zu Fuß vom Strand — perfekt vor oder nach dem Sundowner.</p>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;">
           <span class="cta">escaperoom-ffb.de</span>
           <span class="mono" style="opacity:.5;">1 Min zu Fuß</span>
         </div>
         <svg class="ornament" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="30"/><circle cx="50" cy="50" r="16"/></svg>
-      </a>
-      <a class="pcard md yel reveal" href="https://www.kreativquartier.fuerstenfeldbruck.de/" target="_blank" rel="noopener" data-delay="80">
-        <div>
-          <div class="meta"><span>Bündnis für Demokratie</span><span>Fr 16–19</span></div>
-          <h3>Demokratie-Hütte.</h3>
-          <p>Jeden Freitag offen: Kaffee, Kekse, Zeit für ein Gespräch. Keine Agenda, nur ein Zelt und Leute, die zuhören.</p>
-        </div>
-        <span class="cta">Mehr im Kreativquartier</span>
-        <svg class="ornament" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 70 Q 30 30, 50 70 T 90 70"/><path d="M10 80 Q 30 50, 50 80 T 90 80"/></svg>
-      </a>
-      <a class="pcard md paper reveal" href="https://www.fuerstenfeldbruck.de/" target="_blank" rel="noopener" data-delay="160">
-        <div>
-          <div class="meta"><span>Stadtbibliothek</span><span>Aumühle</span></div>
-          <h3>Stadtbibliothek<br>in der Aumühle.</h3>
-          <p>Lesen, lernen, stöbern — die Bibliothek in der alten Aumühle ist unser direkter Nachbar. Erst ein Buch, dann ein Eis am Strand.</p>
-        </div>
-        <span class="cta">Zur Stadt FFB</span>
-      </a>
-      <a class="pcard sm deep reveal" href="https://www.kreativquartier.fuerstenfeldbruck.de/" target="_blank" rel="noopener" data-delay="200">
-        <div>
-          <div class="meta"><span>Kreativquartier</span><span>Aumühle/Lände</span></div>
-          <h3>Das Quartier wächst.</h3>
-          <p>Alle Projekte, Termine und Neuigkeiten aus dem Quartier — auf der offiziellen Seite der Stadt.</p>
-        </div>
-        <span class="cta">kreativquartier.fuerstenfeldbruck.de</span>
       </a>
     </div>
   </div>
