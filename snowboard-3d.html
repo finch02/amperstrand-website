@@ -66,12 +66,16 @@
     box-shadow:0 8px 22px rgba(30,70,110,.16)}
 
   /* --- Screens --- */
-  .screen{position:fixed;inset:0;z-index:6;display:none;flex-direction:column;align-items:center;justify-content:center;
+  /* overflow-y + margin:auto statt justify-content:center — sonst wird
+     ueberstehender Inhalt oben abgeschnitten und ist nicht scrollbar.
+     touch-action ueberschreibt das globale none, sonst geht Wischen nicht. */
+  .screen{position:fixed;inset:0;z-index:6;display:none;flex-direction:column;align-items:center;
+    justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;
     padding:26px;text-align:center;backdrop-filter:blur(3px);
     background:radial-gradient(120% 110% at 50% 0%,rgba(157,196,232,.42),rgba(232,242,251,.62))}
   .screen.on{display:flex}
   .card{background:rgba(255,255,255,.94);border-radius:26px;padding:30px 26px;max-width:460px;width:100%;
-    box-shadow:0 26px 70px rgba(20,60,100,.25)}
+    margin:auto;box-shadow:0 26px 70px rgba(20,60,100,.25)}
   h1{font-size:clamp(32px,8vw,54px);letter-spacing:-.03em;line-height:1;margin-bottom:6px}
   h1 em{font-style:normal;color:#0a84ff}
   .sub{color:#5a7791;font-size:15px;line-height:1.55;margin-bottom:18px}
@@ -2707,7 +2711,8 @@ function updateHUD() {
 }
 
 const GHOST_DT = 0.08;
-function ghostKey() { return 'powderline_ghost_' + State.trackId; }
+// v2: Geister aus der fehlerhaften Aufzeichnung sind unbrauchbar
+function ghostKey() { return 'powderline_ghost2_' + State.trackId; }
 
 function startGame(mode, trackId) {
   Audio.init();
@@ -2918,7 +2923,7 @@ function renderTracks() {
     const open = Progress.has(t.id);
     el.className = 'track' + (open ? '' : ' locked');
     const best = (() => {
-      try { const g = JSON.parse(localStorage.getItem('powderline_ghost_' + t.id) || 'null');
+      try { const g = JSON.parse(localStorage.getItem('powderline_ghost2_' + t.id) || 'null');
             return g ? g.t.toFixed(2) + ' s' : '—'; } catch (e) { return '—'; }
     })();
     el.innerHTML = '<div><b><span style="display:inline-block;width:9px;height:9px;border-radius:50%;'
@@ -3377,7 +3382,10 @@ function frame(now) {
       State.time += dt;
       // Ghost aufzeichnen
       const rec = State.ghostRec;
-      if (rec && State.time >= rec.length * GHOST_DT) {
+      // rec.length zaehlt Zahlen, ein Stuetzpunkt sind vier davon. Ohne die
+      // Division waere der Aufzeichnungstakt viermal zu grob — und der Geist
+      // liefe bei der Wiedergabe viermal zu schnell.
+      if (rec && State.time >= (rec.length / 4) * GHOST_DT) {
         rec.push(+rider.pos.x.toFixed(2), +rider.pos.y.toFixed(2), +rider.pos.z.toFixed(2), +rider.yaw.toFixed(3));
       }
       // Ghost abspielen
