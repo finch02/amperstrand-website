@@ -88,6 +88,16 @@
     border-radius:999px;padding:5px 16px;display:inline-block;margin-bottom:14px}
   .secthead{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#7793ad;
     text-align:left;margin:18px 0 8px}
+  .pistemap{position:relative;width:100%;margin-bottom:14px;border-radius:16px;overflow:hidden;
+    background:linear-gradient(#cfe6fa,#eef7ff)}
+  .pistemap canvas{position:static;width:100%;height:auto;display:block}
+  #pistehits{position:absolute;inset:0}
+  .pistehit{position:absolute;transform:translate(-50%,-50%);border:0;cursor:pointer;font:inherit;
+    font-weight:800;font-size:12px;white-space:nowrap;padding:5px 10px;border-radius:999px;
+    background:rgba(255,255,255,.94);color:#15304d;box-shadow:0 3px 10px rgba(20,60,100,.28);
+    display:flex;align-items:center;gap:6px}
+  .pistehit i{width:9px;height:9px;border-radius:50%;display:block}
+  .pistehit.locked{background:rgba(230,236,243,.94);color:#8ea2b6;cursor:default}
   .tracks{display:flex;flex-direction:column;gap:8px}
   .track{display:flex;align-items:center;gap:12px;text-align:left;background:#f1f7fd;border:2px solid #dceaf6;
     border-radius:16px;padding:11px 14px;cursor:pointer;font:inherit;width:100%}
@@ -157,7 +167,8 @@
       <button class="btn mode" data-mode="ENDLESS">Endlos<small>Freie Abfahrt, Highscore, ab und zu ein Funpark</small></button>
       <button class="btn mode" data-mode="FREESTYLE">Freestyle<small>Durchgehend Park: Kicker, Rails, Tricks</small></button>
     </div>
-    <div class="secthead">Rennstrecken</div>
+    <div class="secthead">Pistenplan</div>
+    <div class="pistemap"><canvas id="pistecv" width="660" height="430"></canvas><div id="pistehits"></div></div>
     <div class="tracks" id="trackList"></div>
   </div>
 </div>
@@ -258,6 +269,7 @@ const CONFIG = {
     bump: 0.42,                                      // feine Unebenheit
     bankK: 0.10, bankPow: 1.45, bankMax: 24,         // Schneewaende am Pistenrand
     treeNear: 1.0, treeGap: 1.0,      // Randbewaldung je Strecke
+    powder: 0,                        // 1 = unpraepariert, keine Raupenspur
     groovePitch: 0.17,                               // Rillenabstand der Pistenraupe (m)
     passAmp: 0.022, passWidth: 5.6                    // breite Raupen-Faehrten als Displacement
   },
@@ -326,31 +338,39 @@ const CONFIG = {
 const TRACKS = [
   /* tune ueberschreibt Gelaende- und Fahrwerte — nur so fahren sich die
      Strecken wirklich anders und nicht bloss anders benannt. */
-  { id: 'tal', name: 'Talabfahrt', seed: 0x51ce4d, len: 1200, cost: 0, style: 'flow',
+  { id: 'tal', look: { sky:[0x8fbde8,0xe8f2fb], fog:0xdfeaf6, near:60, far:260, snow:0xffffff, tree:0xffffff, mtn:0xffffff, sun:1.00, hemi:1.00, sunCol:0xfff6e6 }, grade: 'blau', name: 'Talabfahrt', seed: 0x51ce4d, len: 1200, cost: 0, style: 'flow',
     desc: 'Breit und flach — zum Reinkommen',
     tune: { terrain: { slope0: 0.24, slope1: 0.32, width0: 32, width1: 27, camber: 0.09,
                        rollerAmp: 1.6, treeNear: 0.5, treeGap: 1.8 },
             phys:    { cruiseSpeed: 14, boostSpeed: 24 } } },
 
-  { id: 'wald', name: 'Waldschneise', seed: 0x7b31a9, len: 1500, cost: 6, style: 'forest',
+  { id: 'wald', look: { sky:[0x7fb0dd,0xe4f0f6], fog:0xd9e8e4, near:45, far:200, snow:0xf4fbf7, tree:0xc8e6cd, mtn:0xdfe9e4, sun:0.92, hemi:1.05, sunCol:0xfff2d8 }, grade: 'blau', name: 'Waldschneise', seed: 0x7b31a9, len: 1500, cost: 6, style: 'forest',
     desc: 'Eng zwischen den Bäumen, viele Tore',
     tune: { terrain: { slope0: 0.30, slope1: 0.40, width0: 21, width1: 16, camber: 0.14,
                        treeNear: 1.7, treeGap: 0.45 },
             phys:    { cruiseSpeed: 17, boostSpeed: 28 } } },
 
-  { id: 'steil', name: 'Steilstück', seed: 0x2ad9f1, len: 1600, cost: 14, style: 'steep',
+  { id: 'steil', look: { sky:[0x6ea6e0,0xdfeefb], fog:0xd2e2f2, near:50, far:230, snow:0xf7fbff, tree:0xe2eef0, mtn:0xeaf1fa, sun:1.10, hemi:0.92, sunCol:0xffffff }, grade: 'rot', name: 'Steilstück', seed: 0x2ad9f1, len: 1600, cost: 14, style: 'steep',
     desc: 'Dauergefälle, kaum Verschnaufer',
     tune: { terrain: { slope0: 0.42, slope1: 0.60, width0: 23, width1: 16, camber: 0.18,
                        rollerAmp: 3.0, treeNear: 0.9, treeGap: 1.0 },
             phys:    { cruiseSpeed: 22, boostSpeed: 34 } } },
 
-  { id: 'kehren', name: 'Spitzkehren', seed: 0x9c4e77, len: 1800, cost: 26, style: 'hairpin',
+  { id: 'kehren', look: { sky:[0x6f9fd8,0xffe9c9], fog:0xf0dfc6, near:55, far:245, snow:0xfff3e2, tree:0xf2e2c8, mtn:0xffeeda, sun:1.15, hemi:0.88, sunCol:0xffd9a0 }, grade: 'schwarz', name: 'Spitzkehren', seed: 0x9c4e77, len: 1800, cost: 26, style: 'hairpin',
     desc: 'Kehre an Kehre — reine Kantentechnik',
     tune: { terrain: { slope0: 0.36, slope1: 0.50, width0: 27, width1: 19, camber: 0.26,
                        treeNear: 1.2, treeGap: 0.7 },
             phys:    { cruiseSpeed: 19, boostSpeed: 30, gripEdge: 13.0 } } },
 
-  { id: 'gletscher', name: 'Gletscher', seed: 0xe17b03, len: 2200, cost: 42, style: 'glacier',
+  { id: 'powder', look: { sky:[0xb8c9d8,0xeef3f7], fog:0xe6ecf2, near:28, far:135, snow:0xffffff, tree:0xf0f4f8, mtn:0xf2f5f9, sun:0.70, hemi:1.25, sunCol:0xf4f7ff }, grade: 'rot', name: 'Tiefschnee', seed: 0x3f8a21, len: 1700, cost: 20, style: 'powder',
+    desc: 'Unpräpariert — schwer, träge, tief',
+    tune: { terrain: { slope0: 0.38, slope1: 0.52, width0: 34, width1: 28, camber: 0.12,
+                       roll: 7.5, rollerAmp: 3.2, bump: 1.1, powder: 1,
+                       treeNear: 1.1, treeGap: 1.1 },
+            phys:    { cruiseSpeed: 15, boostSpeed: 25, rollResist: 3.4,
+                       gripLoose: 3.4, gripEdge: 6.5, carveDrag: 0.9 } } },
+
+  { id: 'gletscher', look: { sky:[0x4f86cf,0xd8ecfb], fog:0xcfe4f5, near:65, far:290, snow:0xf2f9ff, tree:0xdce9f2, mtn:0xe8f3ff, sun:1.22, hemi:0.90, sunCol:0xf2f8ff }, grade: 'schwarz', name: 'Gletscher', seed: 0xe17b03, len: 2200, cost: 42, style: 'glacier',
     desc: 'Eisfelder, Sprünge, keine Fehler',
     tune: { terrain: { slope0: 0.48, slope1: 0.68, width0: 20, width1: 13, camber: 0.22,
                        rollerAmp: 3.4, treeNear: 0.3, treeGap: 2.2 },
@@ -385,6 +405,32 @@ Progress.load();
    aus konfiguriert wird statt von der zuletzt gefahrenen. */
 const T_BASE = Object.assign({}, CONFIG.terrain);
 const P_BASE = Object.assign({}, CONFIG.phys);
+/* Jede Strecke bekommt ihr eigenes Licht- und Farbklima. Schnee, Baeume und
+   Berge werden ueber material.color eingefaerbt (multipliziert sich mit den
+   Vertexfarben), der Himmel bekommt neue Vertexfarben. Kein Neuaufbau noetig. */
+function applyLook(look) {
+  const L = look || { sky:[0x8fbde8,0xe8f2fb], fog:0xdfeaf6, near:60, far:260,
+                      snow:0xffffff, tree:0xffffff, mtn:0xffffff, sun:1.0, hemi:1.0, sunCol:0xfff6e6 };
+  scene.fog.color.setHex(L.fog);
+  scene.fog.near = L.near; scene.fog.far = L.far;
+  snowMat.color.setHex(L.snow);
+  treeMat.color.setHex(L.tree);
+  for (const m of mountains.children) m.material.color.setHex(L.mtn);
+  sun.color.setHex(L.sunCol);
+  sun.intensity = CONFIG.light.sunInt * L.sun;
+  hemi.intensity = CONFIG.light.hemiInt * L.hemi;
+  // Himmelskuppel neu einfaerben
+  const g = skyDome.geometry, pos = g.attributes.position, col = g.attributes.color;
+  const top = new THREE.Color(L.sky[0]), hor = new THREE.Color(L.sky[1]), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const t = clamp01((pos.getY(i) / 2000) * 1.35 + 0.06);
+    c.copy(hor).lerp(top, smooth(t));
+    col.setXYZ(i, c.r, c.g, c.b);
+  }
+  col.needsUpdate = true;
+  document.body.style.background = '#' + L.fog.toString(16).padStart(6, '0');
+}
+
 function applyTune(tune) {
   Object.assign(CONFIG.terrain, T_BASE, (tune && tune.terrain) || {});
   Object.assign(CONFIG.phys,    P_BASE, (tune && tune.phys)    || {});
@@ -614,7 +660,9 @@ const RACE_STYLE = {
   hairpin: { left: SECT.SWI_L,   right: SECT.SWI_R,   every: 4,
              fill: [SECT.STEEP, SECT.GATE] },
   glacier: { left: SECT.SWI_L,   right: SECT.SWI_R,   every: 3,
-             fill: [SECT.ICE, SECT.JUMP, SECT.STEEP] }
+             fill: [SECT.ICE, SECT.JUMP, SECT.STEEP] },
+  powder:  { left: SECT.CURVE_L, right: SECT.CURVE_R, every: 2,
+             fill: [SECT.WIDE, SECT.STEEP, SECT.JUMP] }
 };
 let raceStyle = 'flow';
 
@@ -1074,10 +1122,10 @@ function rebuildPiste() {
       const vi = base + ix, k = vi * 3;
       const x = arr[k] + ox, u = x - R.cx;
       const off = offPiste(u, R);
-      arr[k+1] = heightIn(x, R) + Math.sin(u * PASS_F) * T.passAmp * (1 - off);
-      // Cord-UV folgt der Mittellinie; ausserhalb der Piste auf einen festen
-      // Texelwert zusammenziehen -> die Rillen laufen weich aus.
-      ua[vi*2]     = lerp(u / CORD_TILE, 0.031, off);
+      // Im Tiefschnee gibt es keine Raupenspur — weder Faehrten noch Rillen
+      const groomed = T.powder ? 0 : (1 - off);
+      arr[k+1] = heightIn(x, R) + Math.sin(u * PASS_F) * T.passAmp * groomed;
+      ua[vi*2]     = lerp(u / CORD_TILE, 0.031, 1 - groomed);
       ua[vi*2 + 1] = 0.5;
       const c = paintSnow(x, R, off);
       ca[k] = c.r; ca[k+1] = c.g; ca[k+2] = c.b;
@@ -2667,11 +2715,11 @@ function startGame(mode, trackId) {
   if (State.mode === 'RACE') {
     const t = TRACKS.find(x => x.id === trackId) || TRACKS.find(x => x.id === State.trackId) || TRACKS[0];
     State.track = t; State.trackId = t.id; State.raceLen = t.len;
-    applyTune(t.tune);
+    applyTune(t.tune); applyLook(t.look);
     buildCourse('RACE', t.seed, t.style);
   } else {
     State.trackId = State.mode;
-    applyTune(null);
+    applyTune(null); applyLook(null);
     buildCourse(State.mode, 0x9e3779b9 ^ (State.mode === 'FREESTYLE' ? 0x77 : 0));
   }
   State.time = 0; State.finished = false;
@@ -2794,7 +2842,74 @@ function gameOver() {
   scOver.classList.add('on');
 }
 
+const GRADE_COL = { blau: '#1e78d8', rot: '#d8382f', schwarz: '#1d2836' };
+
+/* Pistenplan: jede Strecke ist eine Abfahrt vom Gipfel, eingefaerbt nach
+   Schwierigkeit wie im Skigebiet. Gezeichnet wird auf Canvas, angeklickt
+   werden daruebergelegte Knoepfe — das bleibt treffsicher und bedienbar. */
+function drawPisteMap() {
+  const cv = $('pistecv'), g = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  g.clearRect(0, 0, W, H);
+
+  // Berg
+  g.fillStyle = '#b9cee4';
+  g.beginPath(); g.moveTo(0, H); g.lineTo(W*0.13, H*0.30); g.lineTo(W*0.30, H*0.55);
+  g.lineTo(W*0.50, H*0.06); g.lineTo(W*0.70, H*0.52); g.lineTo(W*0.88, H*0.26);
+  g.lineTo(W, H); g.closePath(); g.fill();
+  g.fillStyle = '#ffffff';
+  g.beginPath(); g.moveTo(W*0.50, H*0.06); g.lineTo(W*0.575, H*0.24); g.lineTo(W*0.52, H*0.21);
+  g.lineTo(W*0.47, H*0.26); g.lineTo(W*0.425, H*0.24); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(W*0.13, H*0.30); g.lineTo(W*0.19, H*0.45); g.lineTo(W*0.145, H*0.42);
+  g.lineTo(W*0.09, H*0.46); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.55)';
+  g.fillRect(0, H*0.86, W, H*0.14);
+
+  const hits = $('pistehits');
+  hits.innerHTML = '';
+  const top = { x: W*0.50, y: H*0.10 };
+
+  TRACKS.forEach((t, i) => {
+    const open = Progress.has(t.id);
+    const endX = W * (0.13 + i * 0.148);
+    const endY = H * (0.74 + (i % 2) * 0.10);
+    const c1 = { x: lerp(top.x, endX, 0.35) + (i % 2 ? 34 : -34), y: lerp(top.y, endY, 0.40) };
+    const c2 = { x: lerp(top.x, endX, 0.75) + (i % 2 ? -26 : 26), y: lerp(top.y, endY, 0.75) };
+
+    g.strokeStyle = open ? GRADE_COL[t.grade] : '#9fb1c4';
+    g.lineWidth = open ? 7 : 5;
+    g.lineCap = 'round';
+    g.setLineDash(open ? [] : [9, 8]);
+    g.beginPath();
+    g.moveTo(top.x, top.y);
+    g.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, endX, endY);
+    g.stroke();
+    g.setLineDash([]);
+
+    const b = document.createElement('button');
+    b.className = 'pistehit' + (open ? '' : ' locked');
+    const px = endX / W * 100;
+    b.style.left = px + '%';
+    b.style.top  = (endY / H * 100) + '%';
+    // Randbeschriftungen nach innen ziehen, sonst laufen sie aus dem Rahmen
+    b.style.transform = px > 78 ? 'translate(-88%,-50%)'
+                      : px < 22 ? 'translate(-12%,-50%)'
+                      : 'translate(-50%,-50%)';
+    b.innerHTML = '<i style="background:' + GRADE_COL[t.grade] + '"></i>'
+                + t.name + (open ? '' : ' 🔒');
+    if (open) b.addEventListener('click', () => startGame('RACE', t.id));
+    hits.appendChild(b);
+  });
+
+  // Gipfelpunkt
+  g.fillStyle = '#15304d';
+  g.beginPath(); g.arc(top.x, top.y, 7, 0, Math.PI*2); g.fill();
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(top.x, top.y, 3, 0, Math.PI*2); g.fill();
+}
+
 function renderTracks() {
+  drawPisteMap();
   $('starCount').textContent = Progress.stars;
   const list = $('trackList');
   list.innerHTML = '';
@@ -2806,7 +2921,9 @@ function renderTracks() {
       try { const g = JSON.parse(localStorage.getItem('powderline_ghost_' + t.id) || 'null');
             return g ? g.t.toFixed(2) + ' s' : '—'; } catch (e) { return '—'; }
     })();
-    el.innerHTML = '<div><b>' + t.name + '</b><span>' + t.desc + '</span></div>';
+    el.innerHTML = '<div><b><span style="display:inline-block;width:9px;height:9px;border-radius:50%;'
+      + 'background:' + GRADE_COL[t.grade] + ';margin-right:7px"></span>' + t.name
+      + '</b><span>' + t.desc + '</span></div>';
     const meta = document.createElement('div');
     meta.className = 'meta';
     if (open) {
@@ -3098,7 +3215,8 @@ function updateVisuals(dt) {
   /* Schnee-Trail */
   if (State.now === 'PLAYING' && rider.grounded && speed > 3) {
     // Querbremse wirft eine deutlich groessere Schneefahne auf
-    const rate = (6 + speed * 2.2 * (0.35 + rider.edge)) * (1 + rider.braking * 1.8) * dt;
+    const rate = (6 + speed * 2.2 * (0.35 + rider.edge)) * (1 + rider.braking * 1.8)
+               * (1 + T.powder * 1.6) * dt;
     trailAcc += rate;
     forwardOf(rider.yaw, _f);
     _r.set(Math.cos(rider.yaw), 0, -Math.sin(rider.yaw));
