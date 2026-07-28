@@ -1930,7 +1930,7 @@ addMesh(upper, shapedBox(0.78, 0.14, 0.56, 0.06, t => ({ x: 1, z: 1 })),
 
 // Arme: Oberarm und Unterarm mit Ellbogen, dazu Handschuh
 const armL = new THREE.Group(), armR = new THREE.Group();
-armL.position.y = 0.76; armR.position.y = 0.76;
+armL.position.y = 0.82; armR.position.y = 0.82;
 upper.add(armL, armR);
 const upperArmGeo = shapedBox(0.22, 0.40, 0.23, 0.10, t => ({ x: 1.05 - t*0.10, z: 1.05 - t*0.10 }));
 const foreArmGeo  = shapedBox(0.19, 0.38, 0.20, 0.09, t => ({ x: 0.92 + t*0.14, z: 0.92 + t*0.14 }));
@@ -1963,9 +1963,10 @@ function applyStance(s) {
     bindings[0].rotation.y = STANCE_F * s;
     bindings[1].rotation.y = STANCE_B * s;
   }
-  armL.position.x = -0.52 * s; armR.position.x = 0.52 * s;
-  armL.rotation.x = -0.25;     armR.rotation.x = 0.20;
-  armBaseL = 0.85 * s;         armBaseR = -0.70 * s;
+  armL.position.x = -0.44 * s; armR.position.x = 0.44 * s;
+  // Ruhehaltung: Arme leicht nach vorn und aussen, nicht senkrecht baumelnd
+  armL.rotation.x = -0.55;     armR.rotation.x = -0.42;
+  armBaseL = 0.60 * s;         armBaseR = -0.52 * s;
 }
 applyStance(1);
 // Schal
@@ -2015,6 +2016,84 @@ const ghostRider = riderRoot.clone(true);
   ghostRider.traverse(o => { if (o.isMesh) { o.material = gm; o.castShadow = false; } });
   ghostRider.visible = false;
   scene.add(ghostRider);
+}
+
+/* ==========================================================================
+   FAHRSPUR — das Band im Schnee hinter dem Board
+   ========================================================================== */
+const TRAIL_PTS = 260;                       // Stuetzpunkte im Ringpuffer
+const trailPos = new Float32Array(TRAIL_PTS * 2 * 3);
+const trailCol = new Float32Array(TRAIL_PTS * 2 * 3);
+const trailGeo = new THREE.BufferGeometry();
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+trailGeo.setAttribute('color',    new THREE.BufferAttribute(trailCol, 3));
+{
+  // Dreiecksband ueber die Paare: (i,i+1) mit (i+2,i+3)
+  const idx = [];
+  for (let i = 0; i < TRAIL_PTS - 1; i++) {
+    const a = i*2, b = a+1, c = a+2, d = a+3;
+    idx.push(a, b, c, b, d, c);
+  }
+  trailGeo.setIndex(idx);
+}
+const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({
+  vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false,
+  polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
+trailMesh.frustumCulled = false;
+trailMesh.renderOrder = 1;
+scene.add(trailMesh);
+
+let trailLast = new THREE.Vector3(), trailInit = false;
+const _tc = new THREE.Color();
+function resetTrail() {
+  trailInit = false;
+  trailPos.fill(-9999);
+  trailGeo.attributes.position.needsUpdate = true;
+}
+/* Punkt anhaengen. Bewusst KEIN Ringpuffer: beim Umlauf wuerde das Band den
+   neuesten mit dem aeltesten Punkt verbinden und ein Dreieck quer ueber die
+   Karte spannen. Stattdessen durchschieben — bei ~8 Punkten pro Sekunde ist
+   das billig und die Spur bleibt zusammenhaengend.
+   Die Breite haengt am Kantenwinkel: sauber geschnitten eine schmale Linie,
+   gedriftet ein breites Band. */
+function pushTrail(x, y, z, rx, rz, edge, dark) {
+  trailPos.copyWithin(0, 6);
+  trailCol.copyWithin(0, 6);
+  const w = lerp(0.16, 0.62, clamp01(edge));
+  const i = (TRAIL_PTS - 1) * 6;
+  trailPos[i]   = x - rx*w; trailPos[i+1] = y; trailPos[i+2] = z - rz*w;
+  trailPos[i+3] = x + rx*w; trailPos[i+4] = y; trailPos[i+5] = z + rz*w;
+  _tc.copy(_cHi).lerp(_cSh, clamp01(dark));
+  trailCol[i] = _tc.r; trailCol[i+1] = _tc.g; trailCol[i+2] = _tc.b;
+  trailCol[i+3] = _tc.r; trailCol[i+4] = _tc.g; trailCol[i+5] = _tc.b;
+  // Die Spur blasst nach hinten aus, statt abrupt zu enden
+  for (let k = 0; k < TRAIL_PTS; k++) {
+    const f = k / (TRAIL_PTS - 1), j = k * 6;
+    const m = 0.25 + 0.75 * f;
+    for (let v = 0; v < 6; v += 3) {
+      trailCol[j+v]   = lerp(_cHi.r, trailCol[j+v],   m);
+      trailCol[j+v+1] = lerp(_cHi.g, trailCol[j+v+1], m);
+      trailCol[j+v+2] = lerp(_cHi.b, trailCol[j+v+2], m);
+    }
+  }
+  trailGeo.attributes.position.needsUpdate = true;
+  trailGeo.attributes.color.needsUpdate = true;
+}
+
+/* Fahrspur fortschreiben — neuer Stuetzpunkt alle paar Zentimeter Fahrt.
+   Bewusst als eigene Funktion, damit sie auch ohne Bildausgabe pruefbar ist. */
+function updateTrail() {
+  if (State.now === 'PLAYING' && rider.grounded && !rider.grinding) {
+    if (!trailInit) { trailLast.copy(rider.pos); trailInit = true; return; }
+    if (rider.pos.distanceToSquared(trailLast) > 0.42 * 0.42) {
+      trailLast.copy(rider.pos);
+      const rx = Math.cos(rider.yaw), rz = -Math.sin(rider.yaw);
+      const gy = terrainH(rider.pos.x, rider.pos.z) + 0.03;
+      pushTrail(rider.pos.x, gy, rider.pos.z, rx, rz,
+                Math.max(rider.edge, rider.braking),
+                clamp01(0.35 + rider.edge * 0.5 + rider.braking * 0.4));
+    }
+  } else { trailInit = false; }
 }
 
 /* ==========================================================================
@@ -2895,6 +2974,7 @@ function startGame(mode, trackId) {
   signAnchor = NaN; updateSigns(0);
   fenceAnchor = NaN; updateFences(0);
   for (let i = 0; i < PN; i++) { pLife[i] = 0; pPos[i*3+1] = -9999; }
+  resetTrail();
   scMenu.classList.remove('on');
   scOver.classList.remove('on');
   elHud.classList.add('on');
@@ -3325,20 +3405,20 @@ function updateVisuals(dt) {
   head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
   upper.position.y -= rider.fear * 0.16;
   upper.rotation.x -= rider.fear * 0.22 * rider.travelDir;
-  armL.position.y = 0.76 + rider.fear * 0.05;
-  armR.position.y = 0.76 + rider.fear * 0.05;
+  armL.position.y = 0.82 + rider.fear * 0.05;
+  armR.position.y = 0.82 + rider.fear * 0.05;
 
   // Arme: der kurveninnere Arm geht runter/raus, der aeussere hoch — Balance
   const swing = (crouch * 0.28 + rider.edge * 0.25) * rider.stance;
   const armBob = Math.sin(bobPhase * 0.85) * 0.11 * bobA;
   // Ellbogen beugen mit Hocke und Last — sonst wirken die Arme wie Bretter
-  const bend = -0.35 - crouch * 0.55 - gLoad * 0.35 - rider.fear * 0.9;
+  const bend = -0.72 - crouch * 0.55 - gLoad * 0.35 - rider.fear * 0.9;
   elbowL.rotation.x = bend + armBob * 0.4;
   elbowR.rotation.x = bend - armBob * 0.4;
   armL.rotation.z = armBaseL + swing - bodySway * 0.55 + armBob * 0.5;
   armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5;
-  armL.rotation.x = -0.25 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob;
-  armR.rotation.x =  0.20 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob;
+  armL.rotation.x = -0.55 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob;
+  armR.rotation.x = -0.42 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob;
   if (State.now === 'CRASHED') {
     riderTilt.rotation.x += State.crashT * 6.0;
     riderTilt.rotation.z += State.crashT * 4.0;
@@ -3395,6 +3475,7 @@ function updateVisuals(dt) {
            rndR(0.28, 0.62));
     }
   }
+  updateTrail();
   updateParticles(dt);
 
   /* Kamera — an der FAHRTRICHTUNG ausgerichtet, nicht am Yaw des Fahrers.
