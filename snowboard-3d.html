@@ -1196,6 +1196,23 @@ function roundedBox(w, h, d, r, seg = 3) {
   return g;
 }
 
+/* Verjuengter Koerper: eine abgerundete Box, deren Querschnitt ueber die Hoehe
+   skaliert wird. Damit entstehen Taille, Brustkorb und Schultern aus EINEM
+   Koerper statt aus gestapelten Kaesten — das war der Hauptgrund, warum die
+   Figur wie Bauklotzarbeit aussah.
+   prof(t) liefert fuer t=0 (unten) bis t=1 (oben) den Skalierungsfaktor. */
+function shapedBox(w, h, d, r, prof, seg = 5) {
+  const g = roundedBox(w, h, d, r, seg);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i);
+    const f = prof(clamp01(y / h + 0.5));
+    p.setXYZ(i, p.getX(i) * f.x, y, p.getZ(i) * f.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
 const _m4 = new THREE.Matrix4();
 function part(geo, color, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) {
   return { geo, color, matrix: new THREE.Matrix4().compose(
@@ -1871,39 +1888,63 @@ for (const z of [-0.38, 0.38]) {
   bindings.push(b);
 }
 
-// Beine — gebeugte Fahrhaltung, Fuesse quer zum Board
+// Beine — Oberschenkel und Schienbein mit Knie, Boots quer zum Board
 const legs = new THREE.Group();
 riderTilt.add(legs);
-const thighGeo = roundedBox(0.36, 0.52, 0.42, 0.13, 2);
-const shinGeo  = roundedBox(0.30, 0.42, 0.34, 0.11, 2);
+const thighGeo = shapedBox(0.34, 0.50, 0.38, 0.14,
+  t => ({ x: 1.02 - t * 0.14, z: 1.05 - t * 0.16 }));     // oben kraeftiger
+const shinGeo  = shapedBox(0.28, 0.44, 0.30, 0.12,
+  t => ({ x: 0.86 + t * 0.20, z: 0.88 + t * 0.20 }));     // zur Wade hin dicker
 const legF = new THREE.Group(), legB = new THREE.Group();
 legs.add(legF, legB);
-addMesh(legF, shinGeo,  lam(C.riderPants), 0, 0.00, 0.02);
-addMesh(legF, thighGeo, lam(C.riderPants), 0, 0.38, -0.06);
-addMesh(legB, shinGeo,  lam(C.riderPants), 0, 0.00, -0.02);
-addMesh(legB, thighGeo, lam(C.riderPants), 0, 0.38, 0.06);
-/* Boots: laenglich in Zeigerichtung. Ohne sie war nicht erkennbar, wohin die
-   Fuesse stehen — und damit auch nicht, welcher Fuss gerade vorne ist. */
 for (const leg of [legF, legB]) {
-  addMesh(leg, roundedBox(0.26, 0.20, 0.52, 0.07, 2), lam(0x232f3e), 0, -0.26, 0.06);
-  addMesh(leg, roundedBox(0.22, 0.09, 0.16, 0.04, 2), lam(0xd8dee7), 0, -0.20, 0.26);
+  addMesh(leg, thighGeo, lam(C.riderPants, false), 0, 0.36, -0.03);
+  addMesh(leg, shinGeo,  lam(C.riderPants, false), 0, -0.02, 0.02);
+  // Knie
+  addMesh(leg, new THREE.SphereGeometry(0.155, 10, 7), lam(C.riderPants, false), 0, 0.16, 0.05);
+  /* Boots: laenglich in Zeigerichtung, damit erkennbar ist, wohin die Fuesse
+     stehen — und damit auch, welcher Fuss gerade vorne ist. */
+  addMesh(leg, shapedBox(0.26, 0.22, 0.50, 0.08,
+    t => ({ x: 1, z: 1.0 - t * 0.12 })), lam(0x232f3e, false), 0, -0.27, 0.05);
+  addMesh(leg, roundedBox(0.235, 0.10, 0.15, 0.04, 2), lam(0xd8dee7), 0, -0.21, 0.25);
+  addMesh(leg, roundedBox(0.245, 0.07, 0.26, 0.03, 2), lam(0x9fb0c2), 0, -0.06, 0.02);
 }
 
-// Oberkoerper (Snowboard-Stance: zur Fahrtrichtung eingedreht, leicht vorgebeugt)
+// Oberkoerper — ein verjuengter Rumpf statt zweier Kaesten
 const upper = new THREE.Group();
 upper.position.y = 0.88;
 riderTilt.add(upper);
-addMesh(upper, roundedBox(0.86, 0.92, 0.62, 0.24, 4), lam(C.riderSuit, false), 0, 0.42, 0);
-// Schulterpartie etwas breiter -> Silhouette
-addMesh(upper, roundedBox(0.98, 0.34, 0.60, 0.17, 3), lam(C.riderSuit, false), 0, 0.74, 0);
-const armGeo = roundedBox(0.23, 0.78, 0.25, 0.11, 2);
+const torsoGeo = shapedBox(0.90, 1.04, 0.62, 0.22,
+  // schmale Huefte, Taille, breite Brust, dann Schultern
+  t => { const w = 0.80 + 0.34 * Math.sin(Math.min(1, t * 1.15) * Math.PI * 0.78)
+                 - 0.10 * Math.max(0, t - 0.88) * 8;
+         return { x: w, z: w * 0.92 }; }, 6);
+addMesh(upper, torsoGeo, lam(C.riderSuit, false), 0, 0.46, 0);
+// Kragen und Reissverschlussblende als Farbabsetzung
+addMesh(upper, shapedBox(0.74, 0.16, 0.56, 0.07, t => ({ x: 1, z: 1 })),
+  lam(0xc23f1c, false), 0, 0.95, 0);
+addMesh(upper, roundedBox(0.10, 0.72, 0.06, 0.03, 2), lam(0xc23f1c), 0, 0.50, 0.31);
+// Huefte/Gurt
+addMesh(upper, shapedBox(0.78, 0.14, 0.56, 0.06, t => ({ x: 1, z: 1 })),
+  lam(0x2b3b52, false), 0, -0.02, 0);
+
+// Arme: Oberarm und Unterarm mit Ellbogen, dazu Handschuh
 const armL = new THREE.Group(), armR = new THREE.Group();
 armL.position.y = 0.76; armR.position.y = 0.76;
 upper.add(armL, armR);
-addMesh(armL, armGeo, lam(C.riderSuit, false), 0, -0.36, 0);
-addMesh(armR, armGeo, lam(C.riderSuit, false), 0, -0.36, 0);
-addMesh(armL, new THREE.SphereGeometry(0.15, 8, 6), lam(0x2b3b52, false), 0, -0.74, 0);
-addMesh(armR, new THREE.SphereGeometry(0.15, 8, 6), lam(0x2b3b52, false), 0, -0.74, 0);
+const upperArmGeo = shapedBox(0.22, 0.40, 0.23, 0.10, t => ({ x: 1.05 - t*0.10, z: 1.05 - t*0.10 }));
+const foreArmGeo  = shapedBox(0.19, 0.38, 0.20, 0.09, t => ({ x: 0.92 + t*0.14, z: 0.92 + t*0.14 }));
+const elbowL = new THREE.Group(), elbowR = new THREE.Group();
+elbowL.position.y = -0.40; elbowR.position.y = -0.40;
+armL.add(elbowL); armR.add(elbowR);
+for (const [arm, elbow] of [[armL, elbowL], [armR, elbowR]]) {
+  addMesh(arm, upperArmGeo, lam(C.riderSuit, false), 0, -0.20, 0);
+  addMesh(arm, new THREE.SphereGeometry(0.115, 9, 7), lam(C.riderSuit, false), 0, -0.40, 0);
+  addMesh(elbow, foreArmGeo, lam(C.riderSuit, false), 0, -0.19, 0);
+  addMesh(elbow, shapedBox(0.20, 0.20, 0.17, 0.07, t => ({ x: 1, z: 1 })),
+    lam(0x2b3b52, false), 0, -0.42, 0.01);
+}
+
 /* Regular oder Switch: die Figur wird an der Board-Laengsachse gespiegelt,
    dadurch wechselt sichtbar das fuehrende Bein. */
 let armBaseL = 0.85, armBaseR = -0.70, hipBase = 0.30;
@@ -1930,18 +1971,41 @@ applyStance(1);
 // Schal
 addMesh(upper, new THREE.CylinderGeometry(0.31, 0.33, 0.18, 12), lam(0xffd25a, false), 0, 0.94, 0);
 // Kopf, Muetze, Bommel, Brille
-// Kopf in eigener Gruppe: so kann er sich unabhaengig vom Rumpf drehen
+/* Kopf mit Helm statt Zylindermuetze. Der Helm ist eine halbe Kugel, leicht
+   nach hinten gezogen; die Brille liegt als gekruemmtes Band davor statt als
+   flacher Kasten. Eigene Gruppe, damit der Kopf sich drehen kann. */
 const head = new THREE.Group();
-head.position.y = 1.24;
+head.position.y = 1.26;
 upper.add(head);
 const headParts = [];
-headParts.push(addMesh(head, new THREE.SphereGeometry(0.32, 14, 10), lam(C.riderSkin, false), 0, 0, 0.01));
-headParts.push(addMesh(head, new THREE.CylinderGeometry(0.335, 0.345, 0.34, 14), lam(C.riderHat, false), 0, 0.14, 0));
-headParts.push(addMesh(head, new THREE.SphereGeometry(0.115, 10, 8), lam(0xfff1f3, false), 0, 0.36, 0));
-const brim = addMesh(head, new THREE.TorusGeometry(0.335, 0.055, 6, 16), lam(0xfff1f3, false), 0, -0.005, 0);
-brim.rotation.set(Math.PI/2, 0, 0);
-headParts.push(brim);
-headParts.push(addMesh(head, roundedBox(0.58, 0.22, 0.20, 0.07, 2), lam(C.goggles, false), 0, 0, 0.20));
+// Hals
+headParts.push(addMesh(upper, new THREE.CylinderGeometry(0.15, 0.18, 0.20, 10), lam(C.riderSkin, false), 0, 1.10, 0));
+// Schaedel
+headParts.push(addMesh(head, new THREE.SphereGeometry(0.29, 16, 12), lam(C.riderSkin, false), 0, 0, 0.01));
+// Kinn/Wange etwas voller
+headParts.push(addMesh(head, shapedBox(0.34, 0.26, 0.32, 0.12, t => ({ x: 0.9 + t*0.14, z: 0.9 + t*0.12 })),
+  lam(C.riderSkin, false), 0, -0.13, 0.02));
+// Helmschale
+const helm = addMesh(head, new THREE.SphereGeometry(0.335, 18, 12, 0, Math.PI*2, 0, Math.PI*0.62),
+  lam(C.riderHat, false), 0, 0.045, -0.015);
+helm.scale.set(1, 0.95, 1.06);
+headParts.push(helm);
+// Helmrand
+const rim = addMesh(head, new THREE.TorusGeometry(0.315, 0.042, 8, 20), lam(0xb8253a, false), 0, 0.045, -0.015);
+rim.rotation.x = Math.PI/2;
+headParts.push(rim);
+// Brille: gekruemmtes Band ueber die Stirn
+const gog = addMesh(head, new THREE.TorusGeometry(0.30, 0.075, 8, 20, Math.PI * 0.85),
+  lam(C.goggles, false), 0, 0.035, 0.0);
+gog.rotation.set(Math.PI/2, 0, Math.PI * 0.075);
+gog.scale.set(1, 1, 0.62);
+headParts.push(gog);
+// Glas als heller Akzent
+const lens = addMesh(head, new THREE.TorusGeometry(0.30, 0.052, 8, 16, Math.PI * 0.62),
+  lam(0x7fd4f0, false), 0, 0.035, 0.035);
+lens.rotation.set(Math.PI/2, 0, Math.PI * 0.19);
+lens.scale.set(1, 1, 0.62);
+headParts.push(lens);
 
 /* Ghost: dieselbe Figur, nur durchscheinend blau */
 const ghostRider = riderRoot.clone(true);
@@ -2211,7 +2275,7 @@ const rider = {
   grounded: true, airTime: 0, charge: 0, crouch: 0,
   spinAcc: 0, edge: 0, onIce: 0, lastNormal: new THREE.Vector3(0, 1, 0),
   stance: 1, stanceAcc: 0, braking: 0, brakeSide: 1, brakeLatched: false, brakeHold: 0, travelDir: 1, slip: 0, slide: 0,
-  omega: 0, load: 1, squash: 0, popQ: -1, spinVel: 0, spinL: 0, flipVel: 0, flipL: 0, tuck: 0, povDir: 1, canFlip: false, grinding: false, grindTime: 0, grindLabel: '50-50', flip: 0, flipAcc: 0
+  omega: 0, load: 1, squash: 0, fear: 0, popQ: -1, spinVel: 0, spinL: 0, flipVel: 0, flipL: 0, tuck: 0, povDir: 1, canFlip: false, grinding: false, grindTime: 0, grindLabel: '50-50', flip: 0, flipAcc: 0
 };
 
 /* Jede Yaw-Aenderung laeuft hierdurch. Nach jeder halben Umdrehung wechselt
@@ -2239,7 +2303,7 @@ function resetRider(z, keepX) {
   rider.pitch = 0; rider.roll = 0;
   rider.grounded = true; rider.airTime = 0; rider.charge = 0; rider.crouch = 0;
   rider.spinAcc = 0; rider.edge = 0; rider.onIce = 0;
-  rider.stance = 1; rider.stanceAcc = 0; rider.braking = 0; rider.brakeSide = 1; rider.brakeLatched = false; rider.brakeHold = 0; rider.travelDir = 1; rider.povDir = 1; rider.slide = 0; rider.omega = 0; rider.load = 1; rider.squash = 0; rider.popQ = -1; rider.grinding = false; rider.grindTime = 0; rider.flip = 0; rider.flipAcc = 0; rider.canFlip = false; rider.spinVel = 0; rider.spinL = 0; rider.flipVel = 0; rider.flipL = 0; rider.tuck = 0;
+  rider.stance = 1; rider.stanceAcc = 0; rider.braking = 0; rider.brakeSide = 1; rider.brakeLatched = false; rider.brakeHold = 0; rider.travelDir = 1; rider.povDir = 1; rider.slide = 0; rider.omega = 0; rider.load = 1; rider.squash = 0; rider.popQ = -1; rider.fear = 0; rider.grinding = false; rider.grindTime = 0; rider.flip = 0; rider.flipAcc = 0; rider.canFlip = false; rider.spinVel = 0; rider.spinL = 0; rider.flipVel = 0; rider.flipL = 0; rider.tuck = 0;
   applyStance(1);
 }
 
@@ -3253,13 +3317,24 @@ function updateVisuals(dt) {
   // Schultern oeffnen deutlich in die Kurve, gegenlaeufig zur Huefte
   upper.rotation.y = -0.62 * rider.stance - bodySway * 0.62 * rider.stance;
   // Kopf schaut in die Kurve und dorthin, wo es hingeht
-  head.rotation.y = bodySway * 0.75 * rider.stance + 0.30 * rider.stance;
-  head.rotation.z = -rider.roll * 0.25;
-  head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1;
+  /* Angst-Pose (fuer die Verfolgung): Kopf dreht ueber die Schulter zurueck,
+     Schultern hoch, Koerper tief. Ueber rider.fear von 0 bis 1 mischbar. */
+  head.rotation.y = bodySway * 0.75 * rider.stance + 0.30 * rider.stance
+                  + rider.fear * 2.1 * rider.stance;
+  head.rotation.z = -rider.roll * 0.25 + rider.fear * 0.18;
+  head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
+  upper.position.y -= rider.fear * 0.16;
+  upper.rotation.x -= rider.fear * 0.22 * rider.travelDir;
+  armL.position.y = 0.76 + rider.fear * 0.05;
+  armR.position.y = 0.76 + rider.fear * 0.05;
 
   // Arme: der kurveninnere Arm geht runter/raus, der aeussere hoch — Balance
   const swing = (crouch * 0.28 + rider.edge * 0.25) * rider.stance;
   const armBob = Math.sin(bobPhase * 0.85) * 0.11 * bobA;
+  // Ellbogen beugen mit Hocke und Last — sonst wirken die Arme wie Bretter
+  const bend = -0.35 - crouch * 0.55 - gLoad * 0.35 - rider.fear * 0.9;
+  elbowL.rotation.x = bend + armBob * 0.4;
+  elbowR.rotation.x = bend - armBob * 0.4;
   armL.rotation.z = armBaseL + swing - bodySway * 0.55 + armBob * 0.5;
   armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5;
   armL.rotation.x = -0.25 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob;
