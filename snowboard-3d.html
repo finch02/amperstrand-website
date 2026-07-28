@@ -2062,7 +2062,10 @@ function applyStance(s) {
   armL.position.x = -0.44 * s; armR.position.x = 0.44 * s;
   // Ruhehaltung: Arme leicht nach vorn und aussen, nicht senkrecht baumelnd
   armL.rotation.x = -0.55;     armR.rotation.x = -0.42;
-  armBaseL = 0.60 * s;         armBaseR = -0.52 * s;
+  /* Rz(+t) schiebt einen nach unten zeigenden Arm nach +X. Der linke Arm sitzt
+     bei -x, braucht zum Abspreizen also einen NEGATIVEN Winkel. Vorher waren
+     beide invertiert — die Haende wanderten in den Rumpf. */
+  armBaseL = -0.60 * s;        armBaseR = 0.52 * s;
 }
 applyStance(1);
 // Schal
@@ -2218,8 +2221,8 @@ const partGeo = new THREE.BufferGeometry();
 partGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
 partGeo.setAttribute('color',    new THREE.BufferAttribute(pCol, 3));
 const particles = new THREE.Points(partGeo, new THREE.PointsMaterial({
-  size: 0.20, sizeAttenuation: true, map: flakeTex, vertexColors: true,
-  transparent: true, opacity: 0.85, depthWrite: false }));
+  size: 0.42, sizeAttenuation: true, map: flakeTex, vertexColors: true,
+  transparent: true, opacity: 0.7, depthWrite: false }));
 particles.frustumCulled = false;
 scene.add(particles);
 
@@ -2237,11 +2240,13 @@ function updateParticles(dt) {
     pLife[i] -= dt;
     const k = i*3;
     if (pLife[i] <= 0) { pPos[k+1] = -9999; continue; }
-    pVel[k+1] -= 4.5 * dt;
+    pVel[k+1] -= 3.0 * dt;
+    pVel[k]   *= 1 - 1.4 * dt;      // Luftwiderstand: die Wolke bleibt stehen
+    pVel[k+2] *= 1 - 1.4 * dt;
     pPos[k]   += pVel[k]   * dt;
     pPos[k+1] += pVel[k+1] * dt;
     pPos[k+2] += pVel[k+2] * dt;
-    const f = clamp01(pLife[i] * 1.6);
+    const f = clamp01(pLife[i] * 1.1);
     pCol[k] = lerp(_fogCol.r, 1, f); pCol[k+1] = lerp(_fogCol.g, 1, f); pCol[k+2] = lerp(_fogCol.b, 1, f);
   }
   partGeo.attributes.position.needsUpdate = true;
@@ -3577,11 +3582,14 @@ function updateVisuals(dt) {
     while (trailAcc >= 1) {
       trailAcc -= 1;
       const side = rndR(-0.35, 0.35);
-      emit(rider.pos.x - _f.x*0.9 + _r.x*side, rider.pos.y + 0.04, rider.pos.z - _f.z*0.9 + _r.z*side,
-           -rider.vel.x*0.06 + _r.x*rider.edge*rndR(-2.4, 2.4) + rndR(-0.4, 0.4),
-           rndR(0.6, 2.2) * (0.45 + rider.edge),
-           -rider.vel.z*0.06 + _r.z*rider.edge*rndR(-2.4, 2.4) + rndR(-0.4, 0.4),
-           rndR(0.28, 0.62));
+      // Fahne: hinter dem Board, seitlich aufgefaechert, nach oben ausgeworfen
+      const spread = 0.5 + rider.edge * 1.6;
+      emit(rider.pos.x - _f.x*1.0 + _r.x*side*spread, rider.pos.y + 0.06,
+           rider.pos.z - _f.z*1.0 + _r.z*side*spread,
+           -rider.vel.x*0.10 + _r.x*rider.edge*rndR(-4.5, 4.5) + rndR(-0.7, 0.7),
+           rndR(1.2, 4.0) * (0.5 + rider.edge * 1.3),
+           -rider.vel.z*0.10 + _r.z*rider.edge*rndR(-4.5, 4.5) + rndR(-0.7, 0.7),
+           rndR(0.5, 1.15));
     }
   }
   updateTrail();
