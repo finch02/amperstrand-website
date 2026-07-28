@@ -1,0 +1,3142 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#bfe0f7">
+<title>Powder Line — 3D Snowboard</title>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#dfeaf6;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:#15304d;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;touch-action:none;
+    -webkit-user-select:none;user-select:none}
+  canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+
+  /* --- Overlays --- */
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(120% 95% at 50% 45%,rgba(255,255,255,0) 55%,rgba(120,160,200,.20) 100%)}
+  #speed{position:fixed;inset:0;pointer-events:none;z-index:3;opacity:0;transition:opacity .18s linear}
+  #speed i{position:absolute;top:-10%;height:120%;width:26%;display:block;
+    background:repeating-linear-gradient(102deg,rgba(255,255,255,0) 0 14px,rgba(255,255,255,.55) 15px,rgba(255,255,255,0) 17px)}
+  #speed i.l{left:0;-webkit-mask-image:linear-gradient(90deg,#000,transparent);mask-image:linear-gradient(90deg,#000,transparent)}
+  #speed i.r{right:0;transform:scaleX(-1);-webkit-mask-image:linear-gradient(90deg,#000,transparent);mask-image:linear-gradient(90deg,#000,transparent)}
+  #flash{position:fixed;inset:0;pointer-events:none;z-index:4;background:#fff;opacity:0}
+
+  /* --- HUD --- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5;display:none;
+    padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 14px max(14px,env(safe-area-inset-left))}
+  #hud.on{display:block}
+  .row{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .pill{background:rgba(255,255,255,.86);border-radius:16px;padding:8px 14px;
+    box-shadow:0 8px 22px rgba(30,70,110,.16);line-height:1.1;backdrop-filter:blur(6px)}
+  .pill b{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7793ad;font-weight:800}
+  .pill span{font-size:clamp(18px,4.6vw,26px);font-weight:800;font-variant-numeric:tabular-nums}
+  #lives{font-size:20px;letter-spacing:2px}
+  #ghostGap{position:absolute;left:50%;top:64px;transform:translateX(-50%);font-weight:800;font-size:15px;
+    padding:4px 12px;border-radius:12px;background:rgba(255,255,255,.85);display:none}
+  #ghostGap.on{display:block}
+  #gateInfo{position:absolute;left:50%;top:96px;transform:translateX(-50%);font-weight:800;font-size:17px;
+    padding:5px 14px;border-radius:12px;background:rgba(255,255,255,.9);opacity:0;transition:opacity .15s}
+  #gateInfo.on{opacity:1}
+  #popInfo{position:absolute;left:50%;top:130px;transform:translateX(-50%);font-weight:800;font-size:16px;
+    padding:5px 14px;border-radius:12px;opacity:0;transition:opacity .12s}
+  #popInfo.on{opacity:1}
+  #combo{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%) scale(.6);opacity:0;
+    font-size:clamp(30px,9vw,58px);font-weight:900;color:#fff;text-shadow:0 4px 0 #f08a1e,0 10px 26px rgba(20,60,100,.35);
+    transition:transform .18s cubic-bezier(.2,1.6,.4,1),opacity .18s}
+  #combo.pop{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #charge{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));transform:translateX(-50%);
+    width:min(220px,46vw);height:9px;border-radius:9px;background:rgba(255,255,255,.6);overflow:hidden;opacity:0;transition:opacity .12s}
+  #charge i{display:block;height:100%;width:0%;border-radius:9px;background:linear-gradient(90deg,#ffd25a,#ff8a3d)}
+  /* Karte liegt semitransparent ueber der Szene — kein Panel, kein Rahmen */
+  #map{position:absolute;right:10px;top:calc(max(14px,env(safe-area-inset-top)) + 58px);
+    width:118px;height:200px;opacity:.85;
+    filter:drop-shadow(0 2px 5px rgba(20,60,100,.45))}
+  #map canvas{position:static;width:100%;height:100%;display:block}
+  #povBtn{pointer-events:auto;position:absolute;right:66px;bottom:max(16px,env(safe-area-inset-bottom));
+    width:44px;height:44px;border:0;border-radius:14px;background:rgba(255,255,255,.86);font-size:19px;cursor:pointer;
+    box-shadow:0 8px 22px rgba(30,70,110,.16)}
+  #muteBtn{pointer-events:auto;position:absolute;right:14px;bottom:max(16px,env(safe-area-inset-bottom));
+    width:44px;height:44px;border:0;border-radius:14px;background:rgba(255,255,255,.86);font-size:19px;cursor:pointer;
+    box-shadow:0 8px 22px rgba(30,70,110,.16)}
+
+  /* --- Screens --- */
+  .screen{position:fixed;inset:0;z-index:6;display:none;flex-direction:column;align-items:center;justify-content:center;
+    padding:26px;text-align:center;backdrop-filter:blur(3px);
+    background:radial-gradient(120% 110% at 50% 0%,rgba(157,196,232,.42),rgba(232,242,251,.62))}
+  .screen.on{display:flex}
+  .card{background:rgba(255,255,255,.94);border-radius:26px;padding:30px 26px;max-width:460px;width:100%;
+    box-shadow:0 26px 70px rgba(20,60,100,.25)}
+  h1{font-size:clamp(32px,8vw,54px);letter-spacing:-.03em;line-height:1;margin-bottom:6px}
+  h1 em{font-style:normal;color:#0a84ff}
+  .sub{color:#5a7791;font-size:15px;line-height:1.55;margin-bottom:18px}
+  .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-size:14px;color:#3d5f7d;
+    background:#f1f7fd;border-radius:16px;padding:14px 16px;margin-bottom:18px}
+  .keys kbd{font:inherit;font-weight:800;background:#fff;border:1px solid #d5e4f2;border-bottom-width:2px;
+    border-radius:7px;padding:2px 8px;font-size:12px;white-space:nowrap}
+  .btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:800;font-size:18px;color:#fff;
+    background:linear-gradient(#28a0ff,#0a7ae8);border-radius:16px;padding:15px 30px;width:100%;
+    box-shadow:0 10px 24px rgba(10,132,255,.35)}
+  .btn:active{transform:translateY(1px)}
+  .modes{display:flex;flex-direction:column;gap:10px}
+  .btn.ghostbtn{background:#eaf1f8;color:#15304d;box-shadow:none}
+  #pauseBtn{pointer-events:auto;position:absolute;right:118px;bottom:max(16px,env(safe-area-inset-bottom));
+    width:44px;height:44px;border:0;border-radius:14px;background:rgba(255,255,255,.86);font-size:17px;cursor:pointer;
+    box-shadow:0 8px 22px rgba(30,70,110,.16)}
+  .btn.mode{text-align:left;padding:13px 18px}
+  .btn.mode small{display:block;font-weight:600;font-size:12px;opacity:.85;margin-top:2px}
+  .btn.mode[data-mode="RACE"]{background:linear-gradient(#ffb648,#f2911c);box-shadow:0 10px 24px rgba(242,145,28,.35)}
+  .btn.mode[data-mode="FREESTYLE"]{background:linear-gradient(#7b5cff,#5c3ee0);box-shadow:0 10px 24px rgba(123,92,255,.35)}
+  .stats{display:flex;gap:10px;margin-bottom:18px}
+  .stat{flex:1;background:#f1f7fd;border-radius:16px;padding:12px 8px}
+  .stat b{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#7793ad}
+  .stat span{font-size:clamp(20px,5.5vw,28px);font-weight:900;font-variant-numeric:tabular-nums}
+  #fatal{display:none;position:fixed;inset:0;z-index:9;align-items:center;justify-content:center;padding:30px;
+    background:#eef5fb;text-align:center;font-size:15px;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="vignette"></div>
+<div id="speed"><i class="l"></i><i class="r"></i></div>
+<div id="flash"></div>
+
+<div id="hud">
+  <div class="row">
+    <div class="pill"><b>Distanz</b><span id="dist">0 m</span></div>
+    <div class="pill" style="text-align:center"><b id="midLbl">Score</b><span id="score">0</span></div>
+    <div class="pill" style="text-align:right"><b>Leben</b><span id="lives">●●●</span></div>
+  </div>
+  <div id="map"><canvas id="mapc" width="236" height="400"></canvas></div>
+  <div id="ghostGap"></div>
+  <div id="gateInfo"></div>
+  <div id="popInfo"></div>
+  <div id="combo"></div>
+  <div id="charge"><i></i></div>
+  <button id="pauseBtn" aria-label="Pause">⏸</button>
+  <button id="povBtn" aria-label="Perspektive wechseln">🎥</button>
+  <button id="muteBtn" aria-label="Ton an/aus">🔊</button>
+</div>
+
+<div class="screen on" id="menu">
+  <div class="card">
+    <h1>Powder<em>Line</em></h1>
+    <p class="sub">Carve den Hang runter, spring über die Roller und dreh saubere 360er. Drei Leben — der Berg hört nie auf.</p>
+    <div class="keys">
+      <kbd>A</kbd><span>links lenken / in der Luft drehen</span>
+      <kbd>D</kbd><span>rechts lenken / in der Luft drehen</span>
+      <kbd>B</kbd><span>quer bremsen — mit A/D die Bremsseite wählen</span>
+      <kbd>S</kbd><span>ducken / in der Luft: Backflip</span>
+      <kbd>W</kbd><span>in der Luft: Frontflip</span>
+      <kbd>C</kbd><span>Perspektive: Verfolger / Egosicht</span>
+      <kbd>Esc</kbd><span>Pause</span>
+      <kbd>Space</kbd><span>abspringen</span>
+      <kbd>Touch</kbd><span>Bildschirmhälfte lenkt, unten bremst, Tipp springt</span>
+    </div>
+    <div class="modes">
+      <button class="btn mode" data-mode="ENDLESS">Endlos<small>Freie Abfahrt, Highscore, ab und zu ein Funpark</small></button>
+      <button class="btn mode" data-mode="RACE">Rennen<small>1500 m auf Zeit — gegen deinen Ghost</small></button>
+      <button class="btn mode" data-mode="FREESTYLE">Freestyle<small>Durchgehend Park: Kicker, Rails, Tricks</small></button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="pause">
+  <div class="card">
+    <h1>Pause</h1>
+    <p class="sub" id="pauseSub"></p>
+    <div class="modes">
+      <button class="btn" id="resumeBtn">Weiter</button>
+      <button class="btn ghostbtn" id="toMenuBtn">Zurück ins Menü</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="over">
+  <div class="card">
+    <h1>Endstation</h1>
+    <p class="sub" id="overSub">Der Berg hat gewonnen. Nochmal?</p>
+    <div class="stats">
+      <div class="stat"><b>Score</b><span id="oScore">0</span></div>
+      <div class="stat"><b>Distanz</b><span id="oDist">0</span></div>
+      <div class="stat"><b>Best</b><span id="oBest">0</span></div>
+    </div>
+    <button class="btn" id="againBtn">Nochmal</button>
+  </div>
+</div>
+
+<div id="fatal"><div><b>Das Spiel konnte nicht starten.</b><br><span id="fatalMsg"></span></div></div>
+
+<script>
+  // Fallback, falls das Modul (three.js vom CDN) nicht laedt oder WebGL fehlt
+  window.__booted = false;
+  function __fatal(msg) {
+    var f = document.getElementById('fatal');
+    document.getElementById('fatalMsg').textContent = msg;
+    f.style.display = 'flex';
+  }
+  setTimeout(function () {
+    if (!window.__booted) __fatal('three.js konnte nicht vom CDN geladen werden — bitte Internetverbindung prüfen.');
+  }, 8000);
+  window.addEventListener('error', function (e) {
+    if (!window.__booted) __fatal((e && e.message) || 'Unbekannter Fehler.');
+  });
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ==========================================================================
+   CONFIG — alle Tuning-Werte an einem Ort
+   ========================================================================== */
+const CONFIG = {
+  color: {
+    snowHi:      0xffffff,
+    snowLo:      0xe4eef8,
+    snowShadow:  0xc8d8ea,
+    fog:         0xdfeaf6,
+    skyTop:      0x9dc4e8,
+    skyHorizon:  0xe8f2fb,
+    mountains:  [0x6d92c4, 0x8aa9d2, 0xa5bedd, 0xbed2e8],
+    trunk:       0x8a6746,
+    needleDark:  0x2e6349,
+    needleLite:  0x3c7d5f,
+    hutWall:     0xb8563f,
+    hutRoof:     0x5c4433,
+    window:      0xffca55,
+    rock:        0x8a929c,
+    signFace:    0xf2c53d,
+    signEdge:    0x1d2836,
+    signInk:     0x1d2836,
+    ice:         0xbfe3f2,
+    riderSuit:   0xf05a2a,
+    riderPants:  0x2b3b52,
+    riderHat:    0xe23b52,
+    riderSkin:   0xf3c9a4,
+    goggles:     0x223247,
+    boardTop:    0x1f9bd8,
+    boardBase:   0x14324a
+  },
+  sky:    { fogNear: 55, fogFar: 245 },
+  light:  { sunDir: [0.45, 0.78, 0.44], sunColor: 0xfff6e6, sunInt: 2.50,
+            hemiSky: 0xbcd9f5, hemiGround: 0xffffff, hemiInt: 1.30, shadowSpan: 34 },
+  camera: { back: 5.6, up: 4.5, lead: 9.0, lookDown: 1.0, lerp: 0.17, lateral: 2.2,
+            povUp: 1.95, povFwd: -0.32, povPitch: -0.34, povFov: 96, povArms: 0.85, povTurnDur: 0.34,
+            deadZone: 0.20, turnRate: 9.0,
+            fovMin: 82, fovMax: 95, fovSpeed: 34 },
+  terrain:{
+    slope0: 0.30, slope1: 0.52, steepenDist: 1600,   // Gefälle nimmt mit Distanz zu
+    width0: 30, width1: 17, narrowDist: 1500,        // Piste wird enger
+    camber: 0.16,                                    // lineare Querneigung (max ~9 Grad)
+    crossRoll: 1.7,                                  // Querwellen ueber die Pistenbreite
+    islandW: 8.5, islandH: 3.2,                      // Mittelinseln teilen die Piste
+    cliffDepth: 14, cliffShelf: 5, cliffSlope: 1.15, // Schulter, dann steiler Abhang
+    hazardGapZ: 26, hazardGapX: 13,                  // Mindestluecke zwischen Hindernissen
+    roll: 5.2,                                       // grosse Gelaendewellen
+    rollerAmp: 2.3,                                  // unregelmaessige Kuppen/Roller
+    bump: 0.42,                                      // feine Unebenheit
+    bankK: 0.10, bankPow: 1.45, bankMax: 24,         // Schneewaende am Pistenrand
+    groovePitch: 0.17,                               // Rillenabstand der Pistenraupe (m)
+    passAmp: 0.022, passWidth: 5.6                    // breite Raupen-Faehrten als Displacement
+  },
+  phys: {
+    gravity: 24.0,
+    rideHeight: 0.03,
+    steerRate: 1.05,        // rad/s Basis-Drehrate des Boards
+    pivotScale: 2.1,        // langsam: fast auf der Stelle pivotieren
+    carveScale: 0.62,       // schnell: traege, dafuer stabil
+    steerFalloff: 22,       // ab dieser Geschwindigkeit gilt carveScale
+    popSweet: 0.92, popTol: 0.45,   // Idealpunkt auf der Rampe und Toleranz
+    popWorst: 0.72, popBest: 1.32,  // Impulsfaktor je nach Timing
+    popWindow: 0.26,        // nur so lange nach dem Absprung entsteht Drehimpuls
+    spinTorque: 17.0,  spinLMax: 4.6,    // Drehimpuls um die Hochachse
+    flipTorque: 21.0,  flipLMax: 5.6,    // Drehimpuls fuer den Ueberschlag
+    tuckInertia: 0.42,      // Traegheitsmoment eingerollt (1 = gestreckt)
+    tuckRate: 7.0,          // wie schnell er sich ein- und ausrollt
+    landAssist: 0.42,       // ab so vielen Sekunden vor dem Boden zieht es gerade
+    landAssistRate: 9.0,
+    gripLoose: 2.0,         // Querdaempfung flach (driften)
+    gripEdge: 11.0,         // Querdaempfung auf der Kante (carven, schneidet sauber)
+    brakeGrip: 0.22,        // beim Bremsen loest der Grip -> das Board rutscht quer
+    brakeAngleMin: 0.42,    // Anstellwinkel beim kurzen Antippen (~24 Grad)
+    brakeRamp: 0.55,        // nach so vielen Sekunden Halten ist die Bremse voll
+    brakeMin: 0.11,         // Tap: Board schlaegt kurz aus, Tempo bleibt fast ganz
+    brakeAngle: 1.15,       // Zielwinkel zur Falllinie (~66 Grad) — bei ~90 Grad
+                            // waeren die beiden Bremsseiten als Board-Linie fast
+                            // identisch und die Seitenwahl wirkte zufaellig
+    brakeTurnRate: 6.0,     // wie schnell sich das Board quer stellt
+    brakeForce: 12.0,       // Verzoegerung bei voll quer stehendem Board (m/s^2)
+    brakeBase: 2.0,         // Grundbremsung auch ohne Querstellung
+    brakeLean: 0.62,        // Neigung zum Hang beim Querbremsen
+    loadMax: 3.2,           // Obergrenze fuers Lastvielfaches in der Kurve
+    flipLand: 1.05,         // Toleranz zur vollen Umdrehung beim Landen
+    railCatchX: 2.2,        // seitlicher Fangbereich der Rails
+    railCatchUp: 1.6, railCatchDown: 0.7,
+    railCatchAngle: 0.75,   // max. Winkelabweichung zur Rail (~43 Grad)
+    railAlign: 8.0,         // wie schnell er auf die Stange gezogen wird
+    railSpinRate: 2.6,      // rad/s Drehen auf der Stange (Boardslide)
+    railSettle: 2.0,        // ohne Eingabe sanft wieder laengs
+    carveDrag: 0.55,        // Verlust pro m/s verbleibendem Querrutschen
+    rollResist: 1.15,
+    iceResist: 0.28,
+    iceGrip: 0.35,
+    airDrag: 0.0062,
+    maxSpeed: 33,
+    jumpBase: 5.2,
+    jumpCharged: 9.6,
+    chargeTime: 0.55,
+    alignRate: 7.0,         // Daempfung der Ausrichtung an die Normale
+    landAngle: 1.00,        // ~57 Grad Toleranz
+    respawnBack: 26
+  },
+  game: { lives: 3, hazardStart: 800, comboMax: 5, airPointsPerSec: 10, grindPerSec: 45,
+          flip360: 500, flip720: 1300, gatePenalty: 2.0,
+          trick360: 300, trick540: 600, trick720: 1200 }
+};
+
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+const Q = IS_MOBILE
+  ? { nx: 88,  nz: 72,  trees: 190, rocks: 26, ice: 16, shadow: 1024, dpr: 1.6, particles: 260 }
+  : { nx: 124, nz: 96,  trees: 330, rocks: 44, ice: 26, shadow: 2048, dpr: 2.0, particles: 460 };
+
+/* ==========================================================================
+   Mathe-Helfer + Value Noise (selbst implementiert)
+   ========================================================================== */
+const clamp  = (v,a,b) => v < a ? a : v > b ? b : v;
+const clamp01= v => v < 0 ? 0 : v > 1 ? 1 : v;
+const lerp   = (a,b,t) => a + (b-a)*t;
+const smooth = t => t*t*(3-2*t);
+const smoothstep = (e0,e1,x) => smooth(clamp01((x-e0)/(e1-e0)));
+const wrapPi = a => { a %= Math.PI*2; if (a >  Math.PI) a -= Math.PI*2;
+                                      if (a < -Math.PI) a += Math.PI*2; return a; };
+// framerate-unabhaengige Daempfung
+const damp = (rate, dt) => 1 - Math.exp(-rate*dt);
+
+function hash2(i, j) {
+  let n = Math.imul(i, 374761393) + Math.imul(j, 668265263);
+  n = Math.imul(n ^ (n >>> 13), 1274126177);
+  n = n ^ (n >>> 16);
+  return (n >>> 0) / 4294967295;
+}
+function vnoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const u = smooth(x - xi), v = smooth(y - yi);
+  const a = hash2(xi, yi),     b = hash2(xi+1, yi);
+  const c = hash2(xi, yi+1),   d = hash2(xi+1, yi+1);
+  const ab = a + (b-a)*u, cd = c + (d-c)*u;
+  return ab + (cd-ab)*v;
+}
+function fbm2(x, y) {
+  return vnoise(x, y) * 0.62 + vnoise(x*2.03 + 11.7, y*2.03 - 4.3) * 0.26
+       + vnoise(x*4.11 - 7.1, y*4.11 + 9.9) * 0.12;
+}
+// deterministischer PRNG fuers Object-Pooling
+let _seed = 0x2f6f2b1;
+function rnd() { _seed = (Math.imul(_seed, 1664525) + 1013904223) >>> 0; return _seed / 4294967296; }
+const rndR = (a,b) => a + (b-a)*rnd();
+
+/* ==========================================================================
+   TERRAIN — reine Funktion, kein Raycast
+   Fahrtrichtung ist -Z. d = -z ist die zurueckgelegte Distanz.
+   ========================================================================== */
+const T = CONFIG.terrain;
+// Rillenperiode exakt auf das Pistengitter rasten -> kein Aliasing, sauberes Cordmuster
+const PISTE_W = 112, PISTE_D = 344;
+const CELL_X = PISTE_W / Q.nx, CELL_Z = PISTE_D / Q.nz;
+const PASS_F = Math.PI * 2 / T.passWidth;
+const SHIFT_X = 10;   // Rasterweite der seitlichen Mesh-Verschiebung
+
+function slopeAt(d) {
+  return T.slope0 + (T.slope1 - T.slope0) * clamp01(d / T.steepenDist);
+}
+/* --- STRECKENKOMPOSITION ---------------------------------------------------
+   Die Strecke ist KEIN Rauschen, sondern eine feste Abfolge benannter
+   Abschnitte. Rauschen kann nicht komponieren — es liefert immer denselben
+   Mittelwert, und genau das fuehlt sich monoton an. Hier wird die Strecke
+   einmal als Polylinie gebaut; Terrain, Hindernisse, Schilder und Karte lesen
+   danach alle aus derselben Tabelle. */
+
+const SECT = {
+  WIDE:    { id: 0, label: 'weit',          len: [190, 240], turn: 0.00, w: 1.30, slope: 0.95, cam: 0.0 },
+  CURVE_L: { id: 1, label: 'Linkskurve',    len: [170, 210], turn: -0.32, w: 1.00, slope: 1.05, cam: -0.5 },
+  CURVE_R: { id: 2, label: 'Rechtskurve',   len: [170, 210], turn:  0.32, w: 1.00, slope: 1.05, cam:  0.5 },
+  HAIR_L:  { id: 3, label: 'scharfe Linkskurve',  len: [140, 170], turn: -0.62, w: 0.88, slope: 0.85, cam: -0.9, cliff: true },
+  HAIR_R:  { id: 4, label: 'scharfe Rechtskurve', len: [140, 170], turn:  0.62, w: 0.88, slope: 0.85, cam:  0.9, cliff: true },
+  STEEP:   { id: 5, label: 'Steilhang',     len: [160, 210], turn: 0.00, w: 0.95, slope: 1.55, cam: 0.0 },
+  FLAT:    { id: 6, label: 'Flachstueck',   len: [120, 160], turn: 0.00, w: 1.15, slope: 0.45, cam: 0.0 },
+  GATE:    { id: 7, label: 'Engstelle',     len: [110, 145], turn: 0.00, w: 0.52, slope: 1.10, cam: 0.0 },
+  SPLIT:   { id: 8, label: 'Teilung',       len: [150, 190], turn: 0.00, w: 1.45, slope: 1.00, cam: 0.0, island: true },
+  ROCKS:   { id: 9, label: 'Felsfeld',      len: [150, 190], turn: 0.00, w: 1.20, slope: 1.00, cam: 0.0, rocks: true },
+  ICE:     { id: 10, label: 'Eisfeld',      len: [130, 170], turn: 0.00, w: 1.05, slope: 1.15, cam: 0.0, ice: true },
+  SWI_L:   { id: 13, label: 'Spitzkehre links',  len: [105, 140], turn: -0.95, w: 0.80, slope: 1.30, cam: -1.0 },
+  SWI_R:   { id: 14, label: 'Spitzkehre rechts', len: [105, 140], turn:  0.95, w: 0.80, slope: 1.30, cam:  1.0 },
+  JUMP:    { id: 12, label: 'Sprung',       len: [90, 120],  turn: 0.00, w: 1.15, slope: 1.10, cam: 0.0, jump: true },
+  PARK:    { id: 11, label: 'Funpark',      len: [280, 340], turn: 0.00, w: 1.55, slope: 0.90, cam: 0.0, park: true }
+};
+const SECT_BY_ID = Object.values(SECT).sort((a, b) => a.id - b.id);
+
+const COURSE_STEP = 8, COURSE_LEN = 16000;
+const CN = Math.floor(COURSE_LEN / COURSE_STEP);
+const cCx = new Float32Array(CN + 1);
+const cHw = new Float32Array(CN + 1);
+const cCam = new Float32Array(CN + 1);
+const cDrop = new Float32Array(CN + 1);
+const cIsl = new Float32Array(CN + 1);
+const cIslX = new Float32Array(CN + 1);
+const cCliff = new Float32Array(CN + 1);
+const cOuter = new Int8Array(CN + 1);
+const cRock = new Float32Array(CN + 1);
+const cIce = new Float32Array(CN + 1);
+const cPark = new Float32Array(CN + 1);
+const sections = [];            // {d0, d1, spec} — Grundlage fuer Schilder und Karte
+
+function pickNext(prev, prev2, d, rnd2, mode) {
+  if (mode === 'FREESTYLE') {
+    // Freestyle: fast durchgehend Park, dazwischen kurze Anfahrten
+    // Park darf hier auch direkt aufeinander folgen — es IST der Modus
+    const p = [SECT.PARK, SECT.PARK, SECT.PARK, SECT.PARK, SECT.WIDE, SECT.CURVE_L, SECT.CURVE_R];
+    for (let t = 0; t < 20; t++) {
+      const s = p[Math.floor(rnd2() * p.length)];
+      if (s === SECT.PARK || s !== prev) return s;
+    }
+    return SECT.PARK;
+  }
+  if (mode === 'RACE') {
+    /* Riesenslalom-Charakter: enge Wechselkurven, Steilstuecke, Spruenge.
+       Keine Felsen, kein Eis, keine Mittelinseln — im Rennen zaehlt die Linie. */
+    const p = [SECT.CURVE_L, SECT.CURVE_R, SECT.HAIR_L, SECT.HAIR_R,
+               SECT.STEEP, SECT.JUMP, SECT.GATE, SECT.WIDE];
+    for (let t = 0; t < 24; t++) {
+      const s = p[Math.floor(rnd2() * p.length)];
+      if (s === prev) continue;
+      if (prev && prev.turn !== 0 && s.turn !== 0 && Math.sign(s.turn) === Math.sign(prev.turn)) continue;
+      return s;
+    }
+    return SECT.CURVE_L;
+  }
+  // Schwierigkeit staffeln
+  const pool = [SECT.WIDE, SECT.CURVE_L, SECT.CURVE_R, SECT.STEEP, SECT.FLAT];
+  if (d > 350) pool.push(SECT.GATE, SECT.SPLIT, SECT.PARK);
+  if (d > 700) pool.push(SECT.HAIR_L, SECT.HAIR_R, SECT.ROCKS);
+  if (d > 1100) pool.push(SECT.ICE, SECT.HAIR_L, SECT.HAIR_R);
+  const bad = s =>
+    s === prev ||                                    // nie zweimal dasselbe
+    (prev && s.id === prev.id) ||
+    (prev && prev.turn !== 0 && s.turn !== 0 && Math.sign(s.turn) === Math.sign(prev.turn)) ||
+    (prev && prev.cliff && s.cliff) ||               // zwei Abgruende am Stueck: nein
+    (prev2 && prev2 === s && prev && prev.turn === 0);
+  for (let t = 0; t < 24; t++) {
+    const s = pool[Math.floor(rnd2() * pool.length)];
+    if (!bad(s)) return s;
+  }
+  return SECT.WIDE;
+}
+
+/* Ein Funpark besteht aus Bahnen: Kicker (Sprungschanzen) und Rails.
+   Beides wird als Feature-Liste am Abschnitt gespeichert; das Terrain formt die
+   Kicker, die Rails sind eigene Koerper mit Grind-Abfrage. */
+const parkRails = [];
+const raceGates = [];       // {d, x, side} — Tore im Rennen
+/* Tore duerfen nicht dort stehen, wo man sie nicht sehen kann: nicht auf einer
+   Schanze und nicht im Landebereich dahinter. Sonst faehrt man blind drauf zu. */
+function gateBlocked(d) {
+  const S = sectionAt(d);
+  if (S.spec.park) return true;
+  if (S.kickers) {
+    for (const K of S.kickers) {
+      const from = K.d - 12;                                  // Anlauf
+      const to   = K.d + K.len * (1 + KICK_BACK) + 28;        // Rampe + Landung
+      if (d > from && d < to) return true;
+    }
+  }
+  return false;
+}
+function buildGates(rnd2) {
+  raceGates.length = 0;
+  let side = 1;
+  for (let d = 200; d < COURSE_LEN; d += 62 + rnd2() * 26) {
+    let dd = d, tries = 0;
+    while (gateBlocked(dd) && tries++ < 14) dd += 10;          // hinter die Landung schieben
+    if (gateBlocked(dd)) continue;
+    const cx = courseX(dd), hw = halfWidthAt(dd);
+    const off = Math.min(hw * 0.55, 6 + rnd2() * 5);
+    raceGates.push({ d: dd, x: cx + side * off, side, judged: false, hit: false });
+    side = -side;
+  }
+}
+function buildPark(S, rnd2) {
+  S.kickers = [];
+  const lanes = [-11, 0, 11];
+  /* Aufbau in Reihen statt zufaellig verstreut: erst eine Rail-Reihe, dann eine
+     Kicker-Reihe. Vor jedem Kicker bleiben so RUN_IN Meter freier Anlauf —
+     ohne den ist eine 5-m-Schanze nicht sinnvoll anfahrbar. */
+  const RUN_IN = 30, ROW = 34;
+  let d = S.d0 + RUN_IN;
+  let k = 0;
+  while (d < S.d1 - 18) {
+    if (k % 2 === 0) {
+      // Kicker-Reihe: zwei der drei Bahnen bekommen eine Schanze
+      const skip = Math.floor(rnd2() * 3);
+      for (let li = 0; li < lanes.length; li++) {
+        if (li === skip) continue;                     // eine Bahn bleibt frei
+        const big = ((k / 2) + li) % 2 === 0;
+        S.kickers.push({ d, u: lanes[li], h: big ? 5.2 : 3.4, len: big ? 16 : 12, w: 4.2 });
+      }
+    } else {
+      // Rail-Reihe: Rails liegen ZWISCHEN den Kicker-Reihen, nie davor
+      for (let li = 0; li < lanes.length; li++) {
+        if (rnd2() > 0.6) continue;
+        parkRails.push({ d0: d, d1: d + 12 + rnd2() * 8, u: lanes[li], h: 0.8 + rnd2() * 0.6, sec: S });
+      }
+    }
+    d += ROW;
+    k++;
+  }
+}
+
+function buildCourse(mode, seedIn) {
+  let seed = seedIn >>> 0;
+  const rnd2 = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  sections.length = 0;
+  parkRails.length = 0;
+  raceGates.length = 0;
+
+  // 1) Abschnittsfolge festlegen
+  let d = 0, prev = null, prev2 = null, k = 0, lastTurn = -1;
+  while (d < COURSE_LEN) {
+    let spec;
+    if (d < 120) spec = SECT.WIDE;
+    else if (mode === 'FREESTYLE' && d < 260) spec = SECT.PARK;
+    else if (mode === 'RACE') {
+      /* Rennen als steile Abfahrt mit Spitzkehren: zwei Wechselkurven, dann
+         ein Zwischenstueck. Zufallsauswahl ergab zu weiche Boegen. */
+      if (k % 3 === 2) spec = [SECT.STEEP, SECT.JUMP, SECT.GATE][Math.floor(rnd2() * 3)];
+      else { lastTurn = -lastTurn; spec = lastTurn > 0 ? SECT.SWI_R : SECT.SWI_L; }
+      k++;
+    }
+    else spec = pickNext(prev, prev2, d, rnd2, mode);
+    const len = spec.len[0] + rnd2() * (spec.len[1] - spec.len[0]);
+    sections.push({ d0: d, d1: d + len, spec, islX: (rnd2() - 0.5) * 12 });
+    if (spec.park) buildPark(sections[sections.length - 1], rnd2);
+    if (spec.jump) {
+      const S = sections[sections.length - 1];
+      S.kickers = [{ d: S.d0 + len * 0.55, u: 0, h: 3.6, len: 15, w: 13 }];
+    }
+    prev2 = prev; prev = spec;
+    d += len;
+  }
+
+  // 2) Abschnitte in Kurven abtasten und integrieren
+  let x = 0, drop = 0;
+  let si = 0;
+  const BLEND = 42;                       // Uebergangslaenge zwischen Abschnitten
+  for (let i = 0; i <= CN; i++) {
+    const dd = i * COURSE_STEP;
+    while (si < sections.length - 1 && dd >= sections[si].d1) si++;
+    const S = sections[si], spec = S.spec;
+    // weich zwischen Abschnitten ueberblenden, damit nichts springt
+    const inT  = smoothstep(S.d0, S.d0 + BLEND, dd);
+    const outT = 1 - smoothstep(S.d1 - BLEND, S.d1, dd);
+    const w = Math.min(inT, outT);
+    const nxt = sections[Math.min(si + 1, sections.length - 1)].spec;
+    const prv = sections[Math.max(si - 1, 0)].spec;
+    const blendSpec = (key, dflt) => {
+      const a = prv[key] !== undefined ? prv[key] : dflt;
+      const b = spec[key] !== undefined ? spec[key] : dflt;
+      const c = nxt[key] !== undefined ? nxt[key] : dflt;
+      if (dd < S.d0 + BLEND) return lerp(a, b, inT);
+      if (dd > S.d1 - BLEND) return lerp(b, c, 1 - outT);
+      return b;
+    };
+
+    const turn = blendSpec('turn', 0) * smoothstep(30, 140, dd);
+    x += turn * COURSE_STEP;
+    cCx[i] = x;
+    cHw[i] = lerp(T.width0, T.width1, clamp01(dd / T.narrowDist)) * blendSpec('w', 1);
+    cCam[i] = blendSpec('cam', 0) * T.camber;
+
+    const slope = slopeAt(dd) * blendSpec('slope', 1);
+    drop += slope * COURSE_STEP;
+    cDrop[i] = drop;
+
+    cIsl[i]  = spec.island ? w : 0;
+    cIslX[i] = S.islX;
+    cRock[i] = spec.rocks ? w : 0;
+    cIce[i]  = spec.ice ? w : 0;
+    // Abgrund nur in der Mitte scharfer Kurven, nicht ueber die ganze Laenge
+    cCliff[i] = spec.cliff ? w * w : 0;
+    cPark[i] = (spec.park || spec.jump) ? 1 : 0;
+    cOuter[i] = spec.turn >= 0 ? -1 : 1;
+  }
+  if (mode === 'RACE') buildGates(rnd2);
+}
+buildCourse('ENDLESS', 0x9e3779b9);
+
+// O(1)-Abfrage mit linearer Interpolation
+function sampleC(arr, d) {
+  const t = clamp(d / COURSE_STEP, 0, CN - 1e-4);
+  const i = t | 0, f = t - i;
+  return arr[i] + (arr[i + 1] - arr[i]) * f;
+}
+function courseX(d)      { return d <= 0 ? 0 : sampleC(cCx, d); }
+function halfWidthAt(d)  { return d <= 0 ? cHw[0] : sampleC(cHw, d); }
+function baseDrop(d)     { return d <= 0 ? T.slope0 * d : sampleC(cDrop, d); }
+function sectionAt(d) {
+  let lo = 0, hi = sections.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (sections[m].d0 <= d) lo = m; else hi = m - 1; }
+  return sections[lo];
+}
+
+const _rowA = {}, _rowB = {};
+function rowData(d, R) {
+  R.d = d;
+  R.drop = baseDrop(d);
+  R.cx  = courseX(d);
+  R.hw  = halfWidthAt(d);
+  R.cam = d <= 0 ? 0 : sampleC(cCam, d);
+  R.isl = d <= 0 ? 0 : sampleC(cIsl, d);
+  R.islX = d <= 0 ? 0 : sampleC(cIslX, d);
+  R.rockField = d <= 0 ? 0 : sampleC(cRock, d);
+  R.iceField  = d <= 0 ? 0 : sampleC(cIce, d);
+  R.cliff = d <= 0 ? 0 : sampleC(cCliff, d);
+  R.outer = d <= 0 ? -1 : (cOuter[clamp(Math.round(d / COURSE_STEP), 0, CN)] || -1);
+  R.ramp = smoothstep(0, 90, d);
+  R.curv = (courseX(d + 9) - courseX(d - 9)) / 18;
+  R.park = d <= 0 ? 0 : sampleC(cPark, d);
+  R.kick = null;
+  if (R.park > 0.5) {
+    const S = sectionAt(d);
+    if (S.kickers) for (const K of S.kickers) {
+      if (d >= K.d - 1 && d <= K.d + K.len * (1 + KICK_BACK) + 1) { R.kick = K; break; }
+    }
+  }
+  return R;
+}
+
+/* Kicker: Anlauframpe, die zur Kante hin steiler wird und dort abrupt endet —
+   genau das katapultiert. Quer laeuft sie weich aus, damit man daneben
+   vorbeifahren kann. */
+const KICK_BACK = 1.15;   // Laenge des Landehangs in Vielfachen der Anlauflaenge
+function kickerH(u, R) {
+  const K = R.kick;
+  if (!K) return 0;
+  const du = Math.abs(u - K.u);
+  if (du > K.w) return 0;
+  const t = (R.d - K.d) / K.len;
+  if (t < 0) return 0;
+  const across = 1 - smoothstep(K.w - 1.2, K.w, du);
+  // Anlauf: zur Kante hin steiler
+  if (t <= 1) return Math.pow(t, 1.7) * K.h * across;
+  /* Rueckseite. Vorher endete die Rampe an der Kante abrupt — das ist eine
+     senkrechte Wand von ueber 5 m und physikalisch Unsinn. Jetzt faellt sie
+     als Landehang weich ab; abgehoben wird trotzdem, weil die Aufwaerts-
+     geschwindigkeit den Fahrer ueber den absinkenden Hang traegt. */
+  const b = (t - 1) / KICK_BACK;
+  if (b >= 1) return 0;
+  return K.h * (1 - smooth(b)) * across;
+}
+
+function bankAt(u, R) {
+  const t = Math.abs(u) - R.hw;
+  if (t <= 0) return 0;
+  const rise = Math.min(T.bankMax, Math.pow(t, T.bankPow) * T.bankK);
+  // Aussenseite einer scharfen Kurve -> Abbruch nach unten
+  if (R.cliff > 0.01 && Math.sign(u) === R.outer) {
+    // Schulter stehen lassen, damit die Kante nicht direkt am Pistenrand klebt
+    // Schulter, dann ein steiler, aber befahrbarer Hang — kein Loch
+    const over = t - T.cliffShelf;
+    const fall = over <= 0 ? 0 : -Math.min(T.cliffDepth, over * T.cliffSlope);
+    return lerp(rise, fall, R.cliff);
+  }
+  return rise;
+}
+
+// Hoehe fuer eine bereits berechnete Zeile
+function heightIn(x, R) {
+  const u = x - R.cx;                       // Abstand zur Mittellinie
+  let h = -R.drop;
+  // 1) grosse Gelaendewellen
+  h += (fbm2(x * 0.0125, R.d * 0.0095) - 0.5) * T.roll;
+  // 2) Kuppen und Mulden -> unregelmaessige Roller
+  h += (fbm2(x * 0.026, R.d * 0.042) - 0.5) * T.rollerAmp * R.ramp;
+  // 3) Querwellen: die Piste faellt mal nach links, mal nach rechts, mal flach
+  h += (fbm2(x * 0.052, R.d * 0.018) - 0.5) * T.crossRoll * R.ramp;
+  // 4) lineare Querneigung, ausserhalb der Piste eingefroren
+  h += clamp(u, -R.hw, R.hw) * R.cam * R.ramp;
+  // 5) Mittelinsel — teilt die Piste in zwei Linien
+  if (R.isl > 0) {
+    const t = Math.abs(u - R.islX) / T.islandW;
+    if (t < 1) { const c = Math.cos(t * Math.PI * 0.5); h += c * c * T.islandH * R.isl; }
+  }
+  // 6) feine Unebenheit
+  h += (vnoise(x * 0.11, R.d * 0.085) - 0.5) * T.bump;
+  h += kickerH(u, R);
+  return h + bankAt(u, R);
+}
+
+// Physik-Hoehe (ohne Rillen)
+function terrainH(x, z) { return heightIn(x, rowData(-z, _rowA)); }
+
+// Wie weit ausserhalb der praeparierten Piste (0 = Piste, 1 = Tiefschnee)
+function offPiste(u, R) { return smoothstep(R.hw - 2, R.hw + 6, Math.abs(u)); }
+// Breite Faehrten der Pistenraupe als sanftes Displacement (die feinen Rillen
+// macht die Cord-Textur — als Geometrie waeren sie nicht bezahlbar).
+function grooveIn(x, R) {
+  const u = x - R.cx;
+  return Math.sin(u * PASS_F) * T.passAmp * (1 - offPiste(u, R));
+}
+function terrainVis(x, z) { const R = rowData(-z, _rowA); return heightIn(x, R) + grooveIn(x, R); }
+
+const _n = new THREE.Vector3();
+function terrainNormal(x, z, out) {
+  const e = 0.65;
+  const R = rowData(-z, _rowA);
+  const hx = (heightIn(x+e, R) - heightIn(x-e, R)) / (2*e);
+  const hz = (terrainH(x, z+e) - terrainH(x, z-e)) / (2*e);
+  return (out || _n).set(-hx, 1, -hz).normalize();
+}
+
+/* ==========================================================================
+   RENDERER / SZENE / LICHT
+   ========================================================================== */
+const renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.dpr));
+renderer.setSize(window.innerWidth, window.innerHeight, false);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(CONFIG.color.fog, CONFIG.sky.fogNear, CONFIG.sky.fogFar);
+
+const camera = new THREE.PerspectiveCamera(CONFIG.camera.fovMin, window.innerWidth/window.innerHeight, 1.2, 4200);
+camera.position.set(0, 6, 8);
+
+const hemi = new THREE.HemisphereLight(CONFIG.light.hemiSky, CONFIG.light.hemiGround, CONFIG.light.hemiInt);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(CONFIG.light.sunColor, CONFIG.light.sunInt);
+sun.castShadow = true;
+sun.shadow.mapSize.set(Q.shadow, Q.shadow);
+sun.shadow.bias = -0.0012;
+sun.shadow.normalBias = 0.05;
+{
+  const s = CONFIG.light.shadowSpan, c = sun.shadow.camera;
+  c.left = -s; c.right = s; c.top = s; c.bottom = -s; c.near = 1; c.far = 190;
+  c.updateProjectionMatrix();
+}
+scene.add(sun);
+scene.add(sun.target);
+
+/* --- Himmel: Kuppel mit Vertex-Farbverlauf, kein Shader, kein Nebel --- */
+const skyDome = (() => {
+  const g = new THREE.SphereGeometry(2000, 20, 14);
+  const pos = g.attributes.position, n = pos.count;
+  const col = new Float32Array(n*3);
+  const top = new THREE.Color(CONFIG.color.skyTop), hor = new THREE.Color(CONFIG.color.skyHorizon);
+  const c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const t = clamp01((pos.getY(i)/2000) * 1.35 + 0.06);
+    c.copy(hor).lerp(top, smooth(t));
+    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const m = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.renderOrder = -10;
+  mesh.frustumCulled = false;
+  scene.add(mesh);
+  return mesh;
+})();
+
+/* ==========================================================================
+   BERGKULISSE — gestaffelte Low-Poly-Silhouetten, unbeleuchtet, nebelfrei
+   ========================================================================== */
+/* Eine Bergkette aus aneinandergereihten Gipfeln. Jeder Gipfel ist ein Dreieck
+   mit eigener Sonnen-/Schattenflanke — dadurch echte Low-Poly-Facetten statt
+   vertikaler Streifen. */
+function makeRidge(width, height, peaks, seed, baseCol, snowMix, snowLine) {
+  const P = [], C = [];
+  const cBase = new THREE.Color(baseCol);
+  const cSun  = cBase.clone().lerp(new THREE.Color(0xffffff), 0.20);
+  const cSnowSun  = new THREE.Color(0xffffff).lerp(cBase, snowMix * 0.55);
+  const cSnowShad = cSnowSun.clone().lerp(cBase, 0.40);
+  const base = -height * 2.6;
+  const tmp = new THREE.Color();
+  const colAt = (y, sunny, peakH, snowy) => {
+    // Fels wird zur Hoehe hin leicht heller; die Kappe ist explizit Schnee
+    const s = snowy ? 1 : smoothstep(snowLine * peakH, (snowLine + 0.22) * peakH, y) * 0.55;
+    return tmp.copy(sunny ? cSun : cBase).lerp(sunny ? cSnowSun : cSnowShad, s);
+  };
+  // Fels und Schnee getrennt sammeln: Kappen liegen exakt auf den Flanken.
+  // Erst alle Flanken, danach alle Kappen -> eindeutige Malreihenfolge.
+  const Ps = [], Cs = [];
+  const tri = (ax, ay, bx, by, cx, cy, sunny, peakH, snowy) => {
+    const tp = snowy ? Ps : P, tc = snowy ? Cs : C;
+    const pts = [[ax,ay],[bx,by],[cx,cy]];
+    for (const [x, y] of pts) {
+      tp.push(x, y, 0);
+      const c = colAt(y, sunny, peakH, snowy);
+      tc.push(c.r, c.g, c.b);
+    }
+  };
+  // Ein Gipfel: blaue Felsflanken (Sonne links, Schatten rechts) und darueber
+  // eine Schneekappe mit gezackter Unterkante — der Alpen-Cartoon-Look.
+  function peak(px, h, halfL, halfR, n0) {
+    // Grundkoerper: mehrere schmale Facetten je Flanke, jede leicht anders
+    // geneigt und schattiert -> die Flanke bekommt Grate und Rinnen.
+    const F = 4;
+    for (const [half, sunny, sign] of [[halfL, true, -1], [halfR, false, 1]]) {
+      let prev = 0;
+      for (let k = 0; k < F; k++) {
+        const jb = vnoise(n0 * 3.1 + (k+1) * 2.7 + (sign > 0 ? 30 : 0), n0 * 1.3);
+        // Fusspunkte nie ueber die Silhouette hinaus (sonst stehen Zipfel raus)
+        const b = k === F-1 ? 1 : ((k + 1) / F) * (0.86 + jb * 0.14);
+        const xa = px + sign * half * prev, xb = px + sign * half * b;
+        // jede zweite Facette leicht abgesetzt -> Grate und Rinnen
+        tri(px, h, xa, base, xb, base, jb > 0.55 ? !sunny : sunny, h, false);
+        prev = b;
+      }
+    }
+    // Schneekappe als Faecher vom Gipfel auf eine gezackte Unterkante.
+    // Punkt m liegt auf der Hoehe h*(1-f_m); f_m schwankt -> Zacken.
+    const M = 9, bx = [], by = [];
+    for (let m = 0; m <= M; m++) {
+      const jag = vnoise(n0 * 5.7 + m * 2.3, n0 * 1.7 + 9);
+      const f = 0.20 + jag * 0.34;                 // Tiefe der Schneezunge
+      const y = h * (1 - f);
+      const lx = px - halfL * f, rx = px + halfR * f;   // Flankenbreite auf dieser Hoehe
+      bx.push(lerp(lx, rx, m / M)); by.push(y);
+    }
+    for (let m = 0; m < M; m++) {
+      const sunny = (bx[m] + bx[m+1]) * 0.5 < px;
+      tri(px, h, bx[m], by[m], bx[m+1], by[m+1], sunny, h, true);
+    }
+  }
+
+  let x = -width/2, i = 0;
+  while (x < width/2 + height) {
+    const nh = vnoise(i*0.53 + seed, seed*0.31);
+    const nw = vnoise(i*0.87 + seed*1.7, seed*0.93 + 4);
+    const na = vnoise(i*1.31 + seed*2.3, seed*0.6);
+    const h = height * (0.46 + Math.pow(nh, 1.2) * 0.54);
+    const halfL = h * (1.45 + nw * 1.05);
+    const halfR = h * (1.45 + na * 1.05);
+    peak(x, h, halfL, halfR, i + seed);
+    // Vorgipfel bricht die Silhouette auf
+    if (nw > 0.45) {
+      const sh = h * (0.40 + nh * 0.24), sx = x + halfR * 0.70;
+      peak(sx, sh, sh * 1.7, sh * 1.5, i * 3.7 + seed);
+    }
+    x += halfR + h * (0.55 + nh * 0.75);
+    i++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(P.concat(Ps)), 3));
+  g.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(C.concat(Cs)), 3));
+  /* depthWrite:false — die Kulisse ist ein reiner Hintergrund. Sie schreibt
+     keine Tiefe, also koennen die Ebenen weder untereinander noch mit ihren
+     eigenen Schneekappen um dieselben Pixel streiten (genau das flackerte).
+     Die Reihenfolge macht renderOrder, verdeckt wird sie vom Terrain, das
+     danach mit Tiefe gezeichnet wird. */
+  return new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+    vertexColors: true, fog: false, side: THREE.DoubleSide, depthWrite: false }));
+}
+
+const mountains = new THREE.Group();
+scene.add(mountains);
+const RIDGE_LAYERS = [
+  { z: -560,  w: 2600, h: 300, segs: 0, snow: 0.10, line: 0.58 },
+  { z: -900,  w: 3800, h: 440, segs: 0, snow: 0.24, line: 0.52 },
+  { z: -1400, w: 5200, h: 610, segs: 0, snow: 0.42, line: 0.46 },
+  { z: -2100, w: 7000, h: 800, segs: 0, snow: 0.60, line: 0.40 }
+];
+RIDGE_LAYERS.forEach((L, i) => {
+  const m = makeRidge(L.w, L.h, L.segs, 13.7 + i*41.3, CONFIG.color.mountains[i], L.snow, L.h * L.line);
+  m.position.z = L.z;
+  m.renderOrder = -5 + i * -1;
+  m.frustumCulled = false;
+  mountains.add(m);
+});
+
+/* ==========================================================================
+   PISTE — feines Gitter, folgt dem Fahrer, Rillen per Vertex-Displacement
+   ========================================================================== */
+/* Pistenraupen-Cord: prozedural erzeugte Kachel, im Code gemalt, keine Datei.
+   Die UVs werden beim Rebuild entlang der Mittellinie gesetzt, dadurch folgen
+   die Rillen der Strecke und verschwinden per Mipmap/Aniso in der Ferne. */
+const CORD_GROOVES = 8;                       // Rillen pro Kachel
+const CORD_TILE = T.groovePitch * CORD_GROOVES;
+const cordTex = (() => {
+  const N = 128, H = 2;
+  const cv = document.createElement('canvas');
+  cv.width = N; cv.height = H;
+  const g = cv.getContext('2d');
+  const img = g.createImageData(N, H);
+  for (let x = 0; x < N; x++) {
+    const s = 0.5 - 0.5 * Math.cos(x / N * Math.PI * 2 * CORD_GROOVES);
+    // dunkle Rillenflanke leicht blaeulich, Kamm rein weiss
+    const r = Math.round(255 * (0.885 + 0.115 * s));
+    const gg = Math.round(255 * (0.910 + 0.090 * s));
+    const b  = Math.round(255 * (0.950 + 0.050 * s));
+    for (let y = 0; y < H; y++) {
+      const o = (y * N + x) * 4;
+      img.data[o] = r; img.data[o+1] = gg; img.data[o+2] = b; img.data[o+3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
+  return t;
+})();
+
+const snowMat = new THREE.MeshLambertMaterial({ vertexColors: true, map: cordTex });
+
+const pisteGeo = new THREE.PlaneGeometry(PISTE_W, PISTE_D, Q.nx, Q.nz);
+pisteGeo.rotateX(-Math.PI/2);
+// Aeussere Spalten nichtlinear nach aussen ziehen: ein Mesh deckt Piste UND
+// Talflanken bis 700 Einheiten ab. Innen bleibt das Raster exakt (Rillen!).
+{
+  const pa = pisteGeo.attributes.position.array;
+  const halfW = PISTE_W / 2, U0 = 0.72, OUT = 700;
+  for (let k = 0; k < pa.length; k += 3) {
+    const u = pa[k] / halfW, au = Math.abs(u);
+    if (au > U0) {
+      const t = (au - U0) / (1 - U0);
+      pa[k] = Math.sign(u) * (halfW * au + (OUT - halfW) * t*t*t);
+    }
+  }
+}
+pisteGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(pisteGeo.attributes.position.count*3), 3));
+const piste = new THREE.Mesh(pisteGeo, snowMat);
+piste.receiveShadow = true;
+piste.frustumCulled = false;
+scene.add(piste);
+
+const _cHi = new THREE.Color(CONFIG.color.snowHi);
+const _cLo = new THREE.Color(CONFIG.color.snowLo);
+const _cSh = new THREE.Color(CONFIG.color.snowShadow);
+const _ct  = new THREE.Color();
+
+function paintSnow(x, R, off) {
+  // ausserhalb der praeparierten Piste: kaelter / blaeulicher
+  _ct.copy(_cHi).lerp(_cLo, off * 0.55);
+  // sanfte Grossflaechen-Modulation, damit die Flaeche nicht tot wirkt
+  _ct.lerp(_cSh, clamp01((fbm2(x*0.021 + 3.1, R.d*0.017) - 0.5) * 0.22 + 0.03));
+  return _ct;
+}
+
+// Zeilenweise: alles rein Distanz-Abhaengige nur einmal pro Zeile rechnen.
+function rebuildPiste() {
+  const pos = pisteGeo.attributes.position, col = pisteGeo.attributes.color;
+  const uv = pisteGeo.attributes.uv;
+  const arr = pos.array, ca = col.array, ua = uv.array;
+  const ox = piste.position.x, oz = piste.position.z;
+  const stride = Q.nx + 1;
+  for (let iy = 0; iy <= Q.nz; iy++) {
+    const base = iy * stride;
+    const z = arr[base*3 + 2] + oz;
+    const R = rowData(-z, _rowB);
+    for (let ix = 0; ix <= Q.nx; ix++) {
+      const vi = base + ix, k = vi * 3;
+      const x = arr[k] + ox, u = x - R.cx;
+      const off = offPiste(u, R);
+      arr[k+1] = heightIn(x, R) + Math.sin(u * PASS_F) * T.passAmp * (1 - off);
+      // Cord-UV folgt der Mittellinie; ausserhalb der Piste auf einen festen
+      // Texelwert zusammenziehen -> die Rillen laufen weich aus.
+      ua[vi*2]     = lerp(u / CORD_TILE, 0.031, off);
+      ua[vi*2 + 1] = 0.5;
+      const c = paintSnow(x, R, off);
+      ca[k] = c.r; ca[k+1] = c.g; ca[k+2] = c.b;
+    }
+  }
+  pos.needsUpdate = true; col.needsUpdate = true; uv.needsUpdate = true;
+  pisteGeo.computeVertexNormals();
+}
+
+let pisteZ = NaN, pisteX = NaN;
+function updateTerrain(rx, rz) {
+  const wantZ = Math.round((rz - PISTE_D*0.5 + 62) / CELL_Z) * CELL_Z;
+  // seitlich nur in groben Schritten mitwandern — die Rillen kommen aus der
+  // Textur, das Gitter muss dafuer nicht ausgerichtet sein
+  const wantX = Math.round(rx / SHIFT_X) * SHIFT_X;
+  if (wantZ !== pisteZ || wantX !== pisteX) {
+    pisteZ = wantZ; pisteX = wantX;
+    piste.position.set(wantX, 0, wantZ);
+    rebuildPiste();
+  }
+}
+
+/* ==========================================================================
+   Geometrie-Helfer: Rounded Box + Merge mit Vertex-Farben
+   ========================================================================== */
+function roundedBox(w, h, d, r, seg = 3) {
+  const g = new THREE.BoxGeometry(w, h, d, seg, seg, seg);
+  const p = g.attributes.position;
+  const hx = Math.max(0, w/2 - r), hy = Math.max(0, h/2 - r), hz = Math.max(0, d/2 - r);
+  const v = new THREE.Vector3(), inn = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    inn.set(clamp(v.x,-hx,hx), clamp(v.y,-hy,hy), clamp(v.z,-hz,hz));
+    v.sub(inn);
+    const len = v.length();
+    if (len > 1e-6) v.multiplyScalar(r/len);
+    v.add(inn);
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+const _m4 = new THREE.Matrix4();
+function part(geo, color, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) {
+  return { geo, color, matrix: new THREE.Matrix4().compose(
+    new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(sx, sy, sz)) };
+}
+function mergeParts(parts) {
+  const chunks = [];
+  let total = 0;
+  for (const p of parts) {
+    const g = (p.geo.index ? p.geo.toNonIndexed() : p.geo.clone());
+    g.applyMatrix4(p.matrix);
+    if (!g.attributes.normal) g.computeVertexNormals();
+    const n = g.attributes.position.count;
+    const c = new THREE.Color(p.color);
+    chunks.push({ g, n, c }); total += n;
+  }
+  const P = new Float32Array(total*3), N = new Float32Array(total*3), C = new Float32Array(total*3);
+  let o = 0;
+  for (const ch of chunks) {
+    P.set(ch.g.attributes.position.array, o*3);
+    N.set(ch.g.attributes.normal.array, o*3);
+    for (let i = 0; i < ch.n; i++) { C[(o+i)*3] = ch.c.r; C[(o+i)*3+1] = ch.c.g; C[(o+i)*3+2] = ch.c.b; }
+    o += ch.n;
+    ch.g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(P, 3));
+  out.setAttribute('normal',   new THREE.BufferAttribute(N, 3));
+  out.setAttribute('color',    new THREE.BufferAttribute(C, 3));
+  out.computeBoundingSphere();
+  return out;
+}
+
+/* ==========================================================================
+   TANNEN — eine gemergte Geometrie, ein InstancedMesh
+   ========================================================================== */
+const treeGeo = (() => {
+  const cone  = new THREE.ConeGeometry(1, 1, 8, 1);
+  const trunk = new THREE.CylinderGeometry(0.11, 0.16, 1.0, 6, 1);
+  const C = CONFIG.color;
+  const p = [ part(trunk, C.trunk, 0, 0.5, 0) ];
+  // Segmente: unten breit, nach oben schlanker — schlanke Tannensilhouette
+  const segs = [
+    { y: 0.82, r: 1.02, h: 2.20, c: C.needleDark },
+    { y: 1.95, r: 0.80, h: 1.95, c: C.needleLite },
+    { y: 3.05, r: 0.55, h: 1.75, c: C.needleDark }
+  ];
+  const SNOW = 0.50;   // oberer Anteil jedes Segments traegt Schnee
+  for (const s of segs) {
+    p.push(part(cone, s.c, 0, s.y + s.h/2, 0, s.r, s.h, s.r));
+    // Schneekappe sitzt AUSSEN auf der Kegelspitze: gleiche Neigung, minimal groesser
+    const capH = s.h * SNOW, capR = s.r * SNOW * 1.05;
+    p.push(part(cone, C.snowHi, 0, s.y + s.h - capH/2 + 0.015, 0, capR, capH, capR));
+  }
+  const g = mergeParts(p);
+  cone.dispose(); trunk.dispose();
+  return g;
+})();
+
+const treeMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+const trees = new THREE.InstancedMesh(treeGeo, treeMat, Q.trees);
+trees.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+trees.castShadow = true;
+trees.frustumCulled = false;
+scene.add(trees);
+
+/* ==========================================================================
+   FELSEN + EISFLAECHEN
+   ========================================================================== */
+const rockGeo = (() => {
+  const src = new THREE.IcosahedronGeometry(1, 1);
+  // Verzerrung MUSS ortsbasiert sein, sonst zerfaellt das Mesh in lose Dreiecke
+  {
+    const sp = src.attributes.position;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < sp.count; i++) {
+      v.fromBufferAttribute(sp, i);
+      const f = 0.74 + vnoise(v.x*1.9 + 5.3, v.z*1.9 + v.y*1.3 + 2.7) * 0.46;
+      v.multiplyScalar(f);
+      v.y *= 0.72;
+      sp.setXYZ(i, v.x, v.y, v.z);
+    }
+  }
+  const g = src.index ? src.toNonIndexed() : src;
+  const p = g.attributes.position;
+  g.computeVertexNormals();
+  const nor = g.attributes.normal;
+  const col = new Float32Array(p.count*3);
+  const cr = new THREE.Color(CONFIG.color.rock), cs = new THREE.Color(CONFIG.color.snowHi), ct = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    ct.copy(cr).lerp(cs, smoothstep(0.30, 0.72, nor.getY(i)));
+    col[i*3] = ct.r; col[i*3+1] = ct.g; col[i*3+2] = ct.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return g;
+})();
+const rocks = new THREE.InstancedMesh(rockGeo,
+  new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), Q.rocks);
+rocks.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+rocks.castShadow = true;
+rocks.frustumCulled = false;
+scene.add(rocks);
+
+const iceGeo = (() => {
+  const g = new THREE.CircleGeometry(1, 16);
+  g.rotateX(-Math.PI/2);
+  // Rand unregelmaessig machen, damit es nicht nach aufgeklebter Scheibe aussieht
+  const p = g.attributes.position;
+  for (let i = 1; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i);
+    const f = 0.72 + vnoise(x*2.4 + 3, z*2.4 + 7) * 0.5;
+    p.setXYZ(i, x*f, 0, z*f);
+  }
+  g.computeVertexNormals();
+  return g;
+})();
+const icePatches = new THREE.InstancedMesh(iceGeo,
+  new THREE.MeshLambertMaterial({ color: CONFIG.color.ice, transparent: true, opacity: 0.55,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), Q.ice);
+icePatches.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+icePatches.frustumCulled = false;
+scene.add(icePatches);
+
+/* ==========================================================================
+   HUETTEN
+   ========================================================================== */
+function makeHut() {
+  const C = CONFIG.color, g = new THREE.Group();
+  const wall = new THREE.Mesh(roundedBox(3.4, 2.2, 4.0, 0.12, 2),
+    new THREE.MeshLambertMaterial({ color: C.hutWall, flatShading: true }));
+  wall.position.y = 1.1; wall.castShadow = true; g.add(wall);
+
+  const roofGeo = new THREE.CylinderGeometry(2.5, 2.5, 4.5, 3, 1, false);
+  const roof = new THREE.Mesh(roofGeo, new THREE.MeshLambertMaterial({ color: C.hutRoof, flatShading: true }));
+  roof.rotation.set(Math.PI/2, 0, Math.PI/6);
+  roof.scale.set(1.0, 1, 0.62);
+  roof.position.y = 2.05; roof.castShadow = true; g.add(roof);
+
+  const snow = new THREE.Mesh(roofGeo, new THREE.MeshLambertMaterial({ color: C.snowHi, flatShading: true }));
+  snow.rotation.copy(roof.rotation);
+  snow.scale.set(1.02, 0.94, 0.66);
+  snow.position.set(0, 2.16, 0); snow.castShadow = true; g.add(snow);
+
+  const winMat = new THREE.MeshLambertMaterial({ color: C.window, emissive: C.window, emissiveIntensity: 0.9 });
+  const winGeo = new THREE.BoxGeometry(0.62, 0.62, 0.1);
+  for (const [x, z, ry] of [[-0.8, 2.02, 0], [0.8, 2.02, 0], [1.72, -0.7, Math.PI/2]]) {
+    const w = new THREE.Mesh(winGeo, winMat);
+    w.position.set(x, 1.25, z); w.rotation.y = ry; g.add(w);
+  }
+  const chim = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.9, 0.42),
+    new THREE.MeshLambertMaterial({ color: 0x8b6a54, flatShading: true }));
+  chim.position.set(-1.0, 2.75, -0.9); chim.castShadow = true; g.add(chim);
+  g.userData.chimney = new THREE.Vector3(-1.0, 3.25, -0.9);
+  return g;
+}
+
+/* ==========================================================================
+   WARNSCHILDER — ein Piktogramm je Abschnittstyp, im Code gezeichnet.
+   Jedes Schild kuendigt an, was als NAECHSTES kommt.
+   ========================================================================== */
+function signTexture(draw) {
+  const N = 128, cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  // gelbe Raute mit dunklem Rand
+  g.fillStyle = '#1d2836';
+  g.fillRect(0, 0, N, N);
+  g.save(); g.translate(N/2, N/2); g.rotate(Math.PI/4);
+  g.fillStyle = '#f2c53d'; g.fillRect(-N*0.335, -N*0.335, N*0.67, N*0.67);
+  g.restore();
+  g.strokeStyle = '#1d2836'; g.fillStyle = '#1d2836';
+  g.lineWidth = 9; g.lineCap = 'round'; g.lineJoin = 'round';
+  draw(g, N);
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+// Pfeil-Helfer
+function arrow(g, pts, head) {
+  g.beginPath();
+  pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]));
+  g.stroke();
+  const [ax, ay] = pts[pts.length - 1], [bx, by] = pts[pts.length - 2];
+  const a = Math.atan2(ay - by, ax - bx), s = head || 17;
+  g.beginPath();
+  g.moveTo(ax, ay);
+  g.lineTo(ax - s*Math.cos(a - 0.5), ay - s*Math.sin(a - 0.5));
+  g.lineTo(ax - s*Math.cos(a + 0.5), ay - s*Math.sin(a + 0.5));
+  g.closePath(); g.fill();
+}
+const SIGN_ART = {
+  1: (g, N) => arrow(g, [[N*0.70, N*0.74], [N*0.70, N*0.52], [N*0.30, N*0.34]]),          // links
+  2: (g, N) => arrow(g, [[N*0.30, N*0.74], [N*0.30, N*0.52], [N*0.70, N*0.34]]),          // rechts
+  3: (g, N) => arrow(g, [[N*0.62, N*0.78], [N*0.66, N*0.46], [N*0.30, N*0.42], [N*0.34, N*0.28]]), // Haarnadel links
+  4: (g, N) => arrow(g, [[N*0.38, N*0.78], [N*0.34, N*0.46], [N*0.70, N*0.42], [N*0.66, N*0.28]]), // Haarnadel rechts
+  5: (g, N) => {                                                                          // Steilhang
+    g.beginPath(); g.moveTo(N*0.24, N*0.34); g.lineTo(N*0.76, N*0.34); g.lineTo(N*0.76, N*0.72);
+    g.closePath(); g.fill();
+  },
+  7: (g, N) => {                                                                          // Engstelle
+    g.beginPath(); g.moveTo(N*0.30, N*0.26); g.lineTo(N*0.44, N*0.50); g.lineTo(N*0.30, N*0.74); g.stroke();
+    g.beginPath(); g.moveTo(N*0.70, N*0.26); g.lineTo(N*0.56, N*0.50); g.lineTo(N*0.70, N*0.74); g.stroke();
+  },
+  8: (g, N) => {                                                                          // Teilung
+    g.beginPath(); g.moveTo(N*0.50, N*0.76); g.lineTo(N*0.50, N*0.56); g.stroke();
+    arrow(g, [[N*0.50, N*0.56], [N*0.28, N*0.30]], 15);
+    arrow(g, [[N*0.50, N*0.56], [N*0.72, N*0.30]], 15);
+  },
+  9: (g, N) => {                                                                          // Felsen
+    const rock = (cx, cy, r) => { g.beginPath(); g.moveTo(cx - r, cy + r*0.8);
+      g.lineTo(cx - r*0.4, cy - r); g.lineTo(cx + r*0.5, cy - r*0.7); g.lineTo(cx + r, cy + r*0.8);
+      g.closePath(); g.fill(); };
+    rock(N*0.38, N*0.60, N*0.16); rock(N*0.64, N*0.52, N*0.12);
+  },
+  10: (g, N) => {                                                                         // Eisfeld
+    g.lineWidth = 8;
+    for (const [x0, y0, x1, y1] of [[0.32,0.62,0.68,0.38],[0.34,0.38,0.52,0.68],[0.50,0.32,0.68,0.62]]) {
+      g.beginPath(); g.moveTo(N*x0, N*y0); g.lineTo(N*x1, N*y1); g.stroke();
+    }
+  }
+};
+SIGN_ART[13] = SIGN_ART[3];   // Spitzkehre links  -> Haarnadel-Piktogramm
+SIGN_ART[14] = SIGN_ART[4];   // Spitzkehre rechts
+// Abgrund bekommt eine eigene Marke, die ueber die Haarnadel gelegt wird
+const SIGN_CLIFF = (g, N) => {
+  g.lineWidth = 7;
+  g.beginPath(); g.moveTo(N*0.20, N*0.66); g.lineTo(N*0.46, N*0.66); g.stroke();
+  g.beginPath();
+  g.moveTo(N*0.46, N*0.66); g.lineTo(N*0.54, N*0.88); g.lineTo(N*0.80, N*0.88); g.lineTo(N*0.80, N*0.96);
+  g.lineTo(N*0.46, N*0.96); g.closePath(); g.fill();
+};
+
+const signPostGeo = new THREE.CylinderGeometry(0.075, 0.075, 2.4, 6);
+const signPlateGeo = new THREE.PlaneGeometry(1.5, 1.5);
+const signPostMat = new THREE.MeshLambertMaterial({ color: 0x54606e, flatShading: true });
+
+const SIGN_PER_TYPE = 3;
+const signTypes = {};
+for (const spec of SECT_BY_ID) {
+  const art = SIGN_ART[spec.id];
+  if (!art) continue;
+  const tex = signTexture((g, N) => { art(g, N); if (spec.cliff) SIGN_CLIFF(g, N); });
+  const plate = new THREE.InstancedMesh(signPlateGeo,
+    new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }), SIGN_PER_TYPE);
+  const post = new THREE.InstancedMesh(signPostGeo, signPostMat, SIGN_PER_TYPE);
+  plate.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  post.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  plate.castShadow = post.castShadow = true;
+  plate.frustumCulled = post.frustumCulled = false;
+  scene.add(plate, post);
+  signTypes[spec.id] = { plate, post };
+}
+
+/* Schilder aus der Abschnittstabelle setzen: fuer jeden Abschnitt im Sichtfeld
+   eins ~40 m davor, am Rand, dem Fahrer zugedreht. */
+let signAnchor = NaN;
+const signMarks = [];          // fuer die Karte
+function updateSigns(rz) {
+  const anchor = Math.round(-rz / 25) * 25;
+  if (anchor === signAnchor) return;
+  signAnchor = anchor;
+  const d0 = -rz, count = {};
+  signMarks.length = 0;
+  for (const S of sections) {
+    if (S.d1 < d0 - 20 || S.d0 > d0 + AHEAD_MAX) continue;
+    const t = signTypes[S.spec.id];
+    if (!t) continue;
+    const n = count[S.spec.id] || 0;
+    if (n >= SIGN_PER_TYPE) continue;
+    const d = S.d0 - 40;
+    if (d < d0 - 20) { count[S.spec.id] = n; continue; }
+    const R = rowData(d, _rowA);
+    const side = R.cliff > 0.2 ? -R.outer : (S.spec.turn > 0 ? -1 : 1);
+    const x = R.cx + side * (R.hw + 2.6);
+    const y = terrainH(x, -d);
+    _q.setFromAxisAngle(_up, side * -0.30);
+    _mx.compose(_pv.set(x, y + 2.85, -d), _q, _sv.set(1, 1, 1));
+    t.plate.setMatrixAt(n, _mx);
+    _mx.compose(_pv.set(x, y + 1.2, -d), _q, _sv.set(1, 1, 1));
+    t.post.setMatrixAt(n, _mx);
+    count[S.spec.id] = n + 1;
+    signMarks.push({ d, x, id: S.spec.id });
+  }
+  // ungenutzte Instanzen wegraeumen
+  for (const spec of SECT_BY_ID) {
+    const t = signTypes[spec.id];
+    if (!t) continue;
+    for (let n = count[spec.id] || 0; n < SIGN_PER_TYPE; n++) {
+      _mx.makeScale(0.0001, 0.0001, 0.0001); _mx.setPosition(0, -9999, 0);
+      t.plate.setMatrixAt(n, _mx); t.post.setMatrixAt(n, _mx);
+    }
+    t.plate.instanceMatrix.needsUpdate = true;
+    t.post.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/* ==========================================================================
+   RAILS — Grind-Stangen im Funpark
+   ========================================================================== */
+const railGeo = (() => {
+  const bar = new THREE.BoxGeometry(0.28, 0.22, 1);
+  const leg = new THREE.CylinderGeometry(0.07, 0.07, 1, 6);
+  return { bar, leg };
+})();
+const railMatBar = new THREE.MeshLambertMaterial({ color: 0xd8dde4, flatShading: true });
+const railMatLeg = new THREE.MeshLambertMaterial({ color: 0x44505f, flatShading: true });
+const RAIL_N = 6;
+const railObjs = [];
+for (let i = 0; i < RAIL_N; i++) {
+  const g = new THREE.Group();
+  const bar = new THREE.Mesh(railGeo.bar, railMatBar);
+  bar.castShadow = true; g.add(bar);
+  const legs = [new THREE.Mesh(railGeo.leg, railMatLeg), new THREE.Mesh(railGeo.leg, railMatLeg)];
+  legs.forEach(l => { l.castShadow = true; g.add(l); });
+  g.visible = false;
+  scene.add(g);
+  railObjs.push({ obj: g, bar, legs, rail: null });
+}
+// aktive Rails in Fahrernaehe an die Objekte binden
+function updateRails(rz) {
+  const d0 = -rz;
+  let n = 0;
+  for (const R of parkRails) {
+    if (R.d1 < d0 - 15 || R.d0 > d0 + 220) continue;
+    if (n >= RAIL_N) break;
+    const slot = railObjs[n++];
+    slot.rail = R;
+    const dm = (R.d0 + R.d1) / 2, len = R.d1 - R.d0;
+    const row = rowData(dm, _rowA);
+    const x = row.cx + R.u;
+    const yBase = heightIn(x, row);
+    R.x = x; R.top = yBase + R.h;
+    slot.obj.visible = true;
+    slot.obj.position.set(x, yBase, -dm);
+    slot.bar.scale.set(1, 1, len);
+    slot.bar.position.y = R.h;
+    slot.legs[0].scale.y = R.h; slot.legs[0].position.set(0, R.h/2, -len/2 + 0.5);
+    slot.legs[1].scale.y = R.h; slot.legs[1].position.set(0, R.h/2,  len/2 - 0.5);
+  }
+  for (let i = n; i < RAIL_N; i++) { railObjs[i].obj.visible = false; railObjs[i].rail = null; }
+}
+// Auf welcher Rail steht der Fahrer gerade? (null = keiner)
+/* Magnetische Rails: nicht millimetergenau treffen muessen. Wer ungefaehr
+   passend anfaehrt — seitlich im Fangbereich und halbwegs laengs ausgerichtet —
+   wird eingefangen. Sonst waeren Rails im Spiel praktisch nicht nutzbar. */
+function railUnder(x, z, y, yaw, vz, already) {
+  let best = null, bestDx = Infinity;
+  for (const s of railObjs) {
+    const R = s.rail;
+    if (!R || R.x === undefined) continue;
+    const d = -z;
+    if (d < R.d0 - 1 || d > R.d1) continue;
+    const dx = Math.abs(x - R.x);
+    if (dx > P.railCatchX) continue;
+    if (y > R.top + P.railCatchUp || y < R.top - P.railCatchDown) continue;
+    /* Rails liegen laengs (-Z). Zum EINFANGEN muss man grob laengs anfahren —
+       wer schon draufsteht, darf sich frei drehen (Boardslide), sonst wuerde
+       ihn die eigene Drehung sofort wieder runterwerfen. */
+    if (!already) {
+      const head = Math.abs(wrapPi(yaw));
+      if (Math.min(head, Math.PI - head) > P.railCatchAngle) continue;
+    }
+    if (vz > -2) continue;                       // muss sich bergab bewegen
+    if (dx < bestDx) { bestDx = dx; best = R; }
+  }
+  return best;
+}
+
+/* ==========================================================================
+   SLALOMTORE — Kippstangen mit Flaggenpanel, rot/blau abwechselnd
+   ========================================================================== */
+const gatePoleGeo = new THREE.CylinderGeometry(0.055, 0.055, 2.0, 6);
+const gateFlagGeo = new THREE.PlaneGeometry(0.95, 0.62);
+const gateMats = {
+  1:  { pole: new THREE.MeshLambertMaterial({ color: 0xd8382f }),
+        flag: new THREE.MeshLambertMaterial({ color: 0xe4453a, side: THREE.DoubleSide }) },
+  '-1': { pole: new THREE.MeshLambertMaterial({ color: 0x2f6ad8 }),
+        flag: new THREE.MeshLambertMaterial({ color: 0x3a76e4, side: THREE.DoubleSide }) }
+};
+const GATE_N = 7, GATE_HALF = 3.6;
+const gateObjs = [];
+for (let i = 0; i < GATE_N; i++) {
+  const g = new THREE.Group();
+  const parts = [];
+  for (let k = 0; k < 2; k++) {
+    const pole = new THREE.Mesh(gatePoleGeo, gateMats[1].pole);
+    pole.position.set(k ? GATE_HALF : -GATE_HALF, 1.0, 0);
+    pole.castShadow = true;
+    const flag = new THREE.Mesh(gateFlagGeo, gateMats[1].flag);
+    flag.position.set((k ? GATE_HALF : -GATE_HALF) + (k ? -0.5 : 0.5), 1.62, 0);
+    g.add(pole, flag);
+    parts.push({ pole, flag });
+  }
+  g.visible = false;
+  scene.add(g);
+  gateObjs.push({ obj: g, parts });
+}
+function updateGates(rz) {
+  if (State.mode !== 'RACE') { for (const s of gateObjs) s.obj.visible = false; return; }
+  const d0 = -rz;
+  let n = 0;
+  for (const G of raceGates) {
+    if (G.d < d0 - 12 || G.d > d0 + 190) continue;
+    if (n >= GATE_N) break;
+    const slot = gateObjs[n++];
+    const m = gateMats[String(G.side)] || gateMats[1];
+    for (const p of slot.parts) { p.pole.material = m.pole; p.flag.material = m.flag; }
+    slot.obj.visible = true;
+    slot.obj.position.set(G.x, terrainH(G.x, -G.d) - 0.1, -G.d);
+  }
+  for (let i = n; i < GATE_N; i++) gateObjs[i].obj.visible = false;
+}
+/* Torwertung: beim Passieren pruefen, ob der Fahrer zwischen den Stangen war. */
+function judgeGates(d, x) {
+  for (const G of raceGates) {
+    if (G.judged || G.d > d) continue;
+    G.judged = true;
+    G.hit = Math.abs(x - G.x) <= GATE_HALF;
+    if (G.hit) { State.gatesHit++; }
+    else { State.gatesMissed++; State.time += G.penalty = CONFIG.game.gatePenalty; flash(0.3); Audio.impact(0.4); }
+    showGateInfo(G.hit);
+  }
+}
+
+/* ==========================================================================
+   FANGZAUN — steht an den Abbruchkanten, wie im Rennsport
+   ========================================================================== */
+const fenceGeo = (() => {
+  const post = new THREE.CylinderGeometry(0.06, 0.06, 2.0, 5);
+  const net  = new THREE.BoxGeometry(0.05, 1.5, 4.0);
+  const p = [ part(post, 0x55606d, 0, 1.0, -2.0), part(net, 0xff7a3d, 0, 1.15, 0) ];
+  const g = mergeParts(p);
+  post.dispose(); net.dispose();
+  return g;
+})();
+const FENCE_N = 26;
+const fences = new THREE.InstancedMesh(fenceGeo,
+  new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true,
+    transparent: true, opacity: 0.9 }), FENCE_N);
+fences.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+fences.castShadow = true;
+fences.frustumCulled = false;
+scene.add(fences);
+
+let fenceAnchor = NaN;
+function updateFences(rz) {
+  const anchor = Math.round(-rz / 12) * 12;
+  if (anchor === fenceAnchor) return;
+  fenceAnchor = anchor;
+  const d0 = -rz;
+  let n = 0;
+  // entlang der Kante alle 4 m ein Segment, knapp innerhalb der Schulter
+  for (let d = Math.max(30, d0 - 10); d < d0 + 190 && n < FENCE_N; d += 4) {
+    const R = rowData(d, _rowA);
+    if (R.cliff < 0.30) continue;
+    const x = R.cx + R.outer * (R.hw + T.cliffShelf * 0.55);
+    _q.setFromAxisAngle(_up, 0);
+    _mx.compose(_pv.set(x, terrainH(x, -d) - 0.15, -d), _q, _sv.set(1, 1, 1));
+    fences.setMatrixAt(n++, _mx);
+  }
+  for (let i = n; i < FENCE_N; i++) {
+    _mx.makeScale(0.0001, 0.0001, 0.0001); _mx.setPosition(0, -9999, 0);
+    fences.setMatrixAt(i, _mx);
+  }
+  fences.instanceMatrix.needsUpdate = true;
+}
+
+const HUT_N = 5;
+const huts = [];
+for (let i = 0; i < HUT_N; i++) { const h = makeHut(); h.visible = false; scene.add(h); huts.push({ obj: h, z: 1e9 }); }
+
+// Rauch: ein gemeinsames Points-System fuer alle Huetten
+const SMOKE_PER_HUT = 10, SMOKE_N = HUT_N * SMOKE_PER_HUT;
+const smokeGeo = new THREE.BufferGeometry();
+smokeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SMOKE_N*3).fill(-9999), 3));
+const smoke = new THREE.Points(smokeGeo, new THREE.PointsMaterial({
+  color: 0xf2f6fa, size: 0.85, sizeAttenuation: true, transparent: true, opacity: 0.5, depthWrite: false }));
+smoke.frustumCulled = false;
+scene.add(smoke);
+const smokeLife = new Float32Array(SMOKE_N).map((_, i) => (i % SMOKE_PER_HUT) / SMOKE_PER_HUT);
+
+/* ==========================================================================
+   OBJECT POOLING — alles vor dem Fahrer neu platzieren
+   ========================================================================== */
+const AHEAD_MIN = 90, AHEAD_MAX = 300, BEHIND = 45;
+const _mx = new THREE.Matrix4(), _q = new THREE.Quaternion(), _pv = new THREE.Vector3(), _sv = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+
+const treeSlot = [], rockSlot = [], iceSlot = [];
+
+function hideInstance(mesh, i, z) {
+  _mx.makeScale(0.0001, 0.0001, 0.0001);
+  _mx.setPosition(0, -9999, z);
+  mesh.setMatrixAt(i, _mx);
+}
+
+function setTree(i, x, z, s, sy) {
+  const slot = treeSlot[i] || (treeSlot[i] = {});
+  slot.x = x; slot.z = z; slot.s = s;
+  _q.setFromAxisAngle(_up, rnd() * Math.PI * 2);
+  _mx.compose(_pv.set(x, terrainH(x, z) - 0.15, z), _q, _sv.set(s, s * sy, s));
+  trees.setMatrixAt(i, _mx);
+}
+function placeTree(i, rz, zForce) {
+  const z = zForce !== undefined ? zForce : rz - rndR(AHEAD_MIN, AHEAD_MAX);
+  const R = rowData(-z, _rowA);
+  // Mittelinseln bewalden: der Baum steht dann mitten in der Piste
+  if (R.isl > 0.55 && rnd() < 0.55) {
+    setTree(i, R.cx + R.islX + rndR(-2.8, 2.8), z, rndR(0.8, 1.35), rndR(0.95, 1.2));
+    return;
+  }
+  // An Abbruchkanten nicht auf die Aussenseite pflanzen — dort ist nichts mehr
+  let side = rnd() < 0.5 ? -1 : 1;
+  if (R.cliff > 0.30 && side === R.outer) side = -side;
+  // Randdichte variiert -> mal Waldgasse, mal offenes Feld
+  const dense = vnoise(-z * 0.0055, 27.9);
+  const near = rnd() < 0.30 + dense * 0.45;
+  const gap = near ? rndR(2.5, 18) : rndR(18, 85);
+  setTree(i, R.cx + side * (R.hw + gap), z, rndR(0.75, 1.7) * (near ? 1 : rndR(1.0, 1.5)), rndR(0.9, 1.3));
+}
+function placeRock(i, rz) {
+  const z = rz - rndR(AHEAD_MIN, AHEAD_MAX), d = -z;
+  const slot = rockSlot[i] || (rockSlot[i] = {});
+  slot.z = z;
+  // Felsen stehen nur in Felsfeld-Abschnitten
+  const R = rowData(d, _rowA);
+  if (R.rockField < 0.45) { slot.r = 0; hideInstance(rocks, i, z); return; }
+  const s = rndR(0.8, 1.9);
+  // Mindestluecke zu bereits gesetzten Felsen: es muss immer eine Linie
+  // durchgehen, sonst wird die Passage unfahrbar.
+  let x = 0, ok = false;
+  for (let t = 0; t < 8 && !ok; t++) {
+    x = R.cx + rndR(-R.hw + 2, R.hw - 2);
+    ok = true;
+    for (let j = 0; j < Q.rocks; j++) {
+      const o = rockSlot[j];
+      if (!o || o.r <= 0 || j === i) continue;
+      if (Math.abs(o.z - z) < T.hazardGapZ && Math.abs(o.x - x) < T.hazardGapX) { ok = false; break; }
+    }
+  }
+  if (!ok) { slot.r = 0; hideInstance(rocks, i, z); return; }
+  slot.x = x; slot.r = s * 0.8;
+  _q.setFromAxisAngle(_up, rnd() * Math.PI * 2);
+  _mx.compose(_pv.set(x, heightIn(x, R) - s * 0.30, z), _q, _sv.set(s, s * rndR(0.7, 1.1), s * rndR(0.8, 1.2)));
+  rocks.setMatrixAt(i, _mx);
+}
+function placeIce(i, rz) {
+  const z = rz - rndR(AHEAD_MIN, AHEAD_MAX), d = -z;
+  const slot = iceSlot[i] || (iceSlot[i] = {});
+  slot.z = z;
+  const R = rowData(d, _rowA);
+  if (R.iceField < 0.45) { slot.r = 0; hideInstance(icePatches, i, z); return; }
+  const r = rndR(3.5, 7.5);
+  const x = R.cx + rndR(-R.hw + r*0.4, R.hw - r*0.4);
+  slot.x = x; slot.r = r;
+  terrainNormal(x, z, _n);
+  _q.setFromUnitVectors(_up, _n);
+  _mx.compose(_pv.set(x, terrainH(x, z) + 0.07, z), _q, _sv.set(r, 1, r));
+  icePatches.setMatrixAt(i, _mx);
+}
+function placeHut(h, rz) {
+  const z = rz - rndR(AHEAD_MIN + 40, AHEAD_MAX);
+  const R = rowData(-z, _rowA);
+  const side = rnd() < 0.5 ? -1 : 1;
+  const x = R.cx + side * (R.hw + rndR(12, 40));
+  h.z = z;
+  h.obj.visible = true;
+  h.obj.position.set(x, terrainH(x, z) - 0.1, z);
+  h.obj.rotation.y = rndR(-0.6, 0.6) + (side < 0 ? 0.6 : -0.6);
+  const s = rndR(0.9, 1.25);
+  h.obj.scale.setScalar(s);
+}
+
+function seedWorld(rz) {
+  // Startbefuellung ueber die ganze Tiefe verteilen (nicht nur weit vorne)
+  for (let i = 0; i < Q.trees; i++) placeTree(i, rz, rz + BEHIND - rnd() * (AHEAD_MAX + BEHIND));
+  trees.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < Q.rocks; i++) placeRock(i, rz);
+  rocks.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < Q.ice; i++) placeIce(i, rz);
+  icePatches.instanceMatrix.needsUpdate = true;
+  huts.forEach(h => placeHut(h, rz));
+}
+
+function recycle(rz) {
+  let td = false, rd = false, id = false;
+  for (let i = 0; i < Q.trees; i++) if (treeSlot[i].z > rz + BEHIND) { placeTree(i, rz); td = true; }
+  for (let i = 0; i < Q.rocks; i++) if (rockSlot[i].z > rz + BEHIND) { placeRock(i, rz); rd = true; }
+  for (let i = 0; i < Q.ice;   i++) if (iceSlot[i].z  > rz + BEHIND) { placeIce(i, rz); id = true; }
+  if (td) trees.instanceMatrix.needsUpdate = true;
+  if (rd) rocks.instanceMatrix.needsUpdate = true;
+  if (id) icePatches.instanceMatrix.needsUpdate = true;
+  for (const h of huts) if (h.z > rz + BEHIND) placeHut(h, rz);
+}
+
+/* ==========================================================================
+   CHARAKTER
+   ========================================================================== */
+const C = CONFIG.color;
+const riderRoot = new THREE.Group();          // Yaw
+const riderTilt = new THREE.Group();          // Pitch + Roll
+riderRoot.add(riderTilt);
+scene.add(riderRoot);
+
+const lam = (color, flat = true) => new THREE.MeshLambertMaterial({ color, flatShading: flat });
+function addMesh(parent, geo, mat, x, y, z) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// Board — flach, breit, mit angehobener Nose/Tail
+const board = new THREE.Group();
+/* Die Deck-Unterseite lag bei +0.055 im riderTilt-Frame, dazu kamen 0.16
+   rideHeight — das Board schwebte also 21 cm ueber dem Schnee. Gruppe absenken,
+   damit die Unterseite bei ~0 liegt. */
+board.position.y = -0.075;
+riderTilt.add(board);
+{
+  const deck = roundedBox(0.56, 0.09, 2.30, 0.09, 4);
+  // Nose und Tail leicht aufbiegen (Rocker)
+  const dp = deck.attributes.position;
+  for (let i = 0; i < dp.count; i++) {
+    const z = dp.getZ(i);
+    dp.setY(i, dp.getY(i) + Math.pow(Math.abs(z) / 1.15, 3.2) * 0.30);
+  }
+  deck.computeVertexNormals();
+  addMesh(board, deck, lam(C.boardTop, false), 0, 0.10, 0);
+  addMesh(board, roundedBox(0.30, 0.055, 1.60, 0.05, 2), lam(0xf5f9ff), 0, 0.152, 0);
+}
+/* Bindungen sitzen QUER auf dem Board und sind angewinkelt — das ist das
+   Erkennungsmerkmal einer Snowboard-Stance. Vorher standen sie laengs, dadurch
+   sah es aus wie auf einem Brett stehen statt gebunden zu sein. */
+const bindings = [];
+for (const z of [-0.38, 0.38]) {
+  const b = new THREE.Group();
+  b.position.set(0, 0, z);
+  board.add(b);
+  addMesh(b, roundedBox(0.52, 0.10, 0.30, 0.05, 2), lam(0x1b2735), 0, 0.20, 0);
+  addMesh(b, roundedBox(0.42, 0.30, 0.24, 0.09, 2), lam(0x37485f), 0, 0.34, 0.01);
+  addMesh(b, roundedBox(0.46, 0.09, 0.10, 0.04, 2), lam(0xc8d2de), 0, 0.30, -0.10);
+  bindings.push(b);
+}
+
+// Beine — gebeugte Fahrhaltung, Fuesse quer zum Board
+const legs = new THREE.Group();
+riderTilt.add(legs);
+const thighGeo = roundedBox(0.36, 0.52, 0.42, 0.13, 2);
+const shinGeo  = roundedBox(0.30, 0.42, 0.34, 0.11, 2);
+const legF = new THREE.Group(), legB = new THREE.Group();
+legs.add(legF, legB);
+addMesh(legF, shinGeo,  lam(C.riderPants), 0, 0.00, 0.02);
+addMesh(legF, thighGeo, lam(C.riderPants), 0, 0.38, -0.06);
+addMesh(legB, shinGeo,  lam(C.riderPants), 0, 0.00, -0.02);
+addMesh(legB, thighGeo, lam(C.riderPants), 0, 0.38, 0.06);
+/* Boots: laenglich in Zeigerichtung. Ohne sie war nicht erkennbar, wohin die
+   Fuesse stehen — und damit auch nicht, welcher Fuss gerade vorne ist. */
+for (const leg of [legF, legB]) {
+  addMesh(leg, roundedBox(0.26, 0.20, 0.52, 0.07, 2), lam(0x232f3e), 0, -0.26, 0.06);
+  addMesh(leg, roundedBox(0.22, 0.09, 0.16, 0.04, 2), lam(0xd8dee7), 0, -0.20, 0.26);
+}
+
+// Oberkoerper (Snowboard-Stance: zur Fahrtrichtung eingedreht, leicht vorgebeugt)
+const upper = new THREE.Group();
+upper.position.y = 0.88;
+riderTilt.add(upper);
+addMesh(upper, roundedBox(0.86, 0.92, 0.62, 0.24, 4), lam(C.riderSuit, false), 0, 0.42, 0);
+// Schulterpartie etwas breiter -> Silhouette
+addMesh(upper, roundedBox(0.98, 0.34, 0.60, 0.17, 3), lam(C.riderSuit, false), 0, 0.74, 0);
+const armGeo = roundedBox(0.23, 0.78, 0.25, 0.11, 2);
+const armL = new THREE.Group(), armR = new THREE.Group();
+armL.position.y = 0.76; armR.position.y = 0.76;
+upper.add(armL, armR);
+addMesh(armL, armGeo, lam(C.riderSuit, false), 0, -0.36, 0);
+addMesh(armR, armGeo, lam(C.riderSuit, false), 0, -0.36, 0);
+addMesh(armL, new THREE.SphereGeometry(0.15, 8, 6), lam(0x2b3b52, false), 0, -0.74, 0);
+addMesh(armR, new THREE.SphereGeometry(0.15, 8, 6), lam(0x2b3b52, false), 0, -0.74, 0);
+/* Regular oder Switch: die Figur wird an der Board-Laengsachse gespiegelt,
+   dadurch wechselt sichtbar das fuehrende Bein. */
+let armBaseL = 0.85, armBaseR = -0.70, hipBase = 0.30;
+const STANCE_F = 0.38, STANCE_B = 0.22;   // Bindungswinkel vorne/hinten
+function applyStance(s) {
+  // Oberkoerper, Huefte, Fuesse und Bindungen zeigen alle auf DIESELBE Boardseite
+  upper.rotation.y = -0.62 * s;
+  hipBase = 0.30 * s;
+  legF.position.set(-0.05 * s, 0.44, -0.38 * s);
+  legB.position.set( 0.05 * s, 0.44,  0.38 * s);
+  legF.rotation.y = STANCE_F * s;
+  legB.rotation.y = STANCE_B * s;
+  legF.rotation.x = -0.10 * s;
+  legB.rotation.x =  0.10 * s;
+  if (bindings.length) {
+    bindings[0].rotation.y = STANCE_F * s;
+    bindings[1].rotation.y = STANCE_B * s;
+  }
+  armL.position.x = -0.52 * s; armR.position.x = 0.52 * s;
+  armL.rotation.x = -0.25;     armR.rotation.x = 0.20;
+  armBaseL = 0.85 * s;         armBaseR = -0.70 * s;
+}
+applyStance(1);
+// Schal
+addMesh(upper, new THREE.CylinderGeometry(0.31, 0.33, 0.18, 12), lam(0xffd25a, false), 0, 0.94, 0);
+// Kopf, Muetze, Bommel, Brille
+// Kopf in eigener Gruppe: so kann er sich unabhaengig vom Rumpf drehen
+const head = new THREE.Group();
+head.position.y = 1.24;
+upper.add(head);
+const headParts = [];
+headParts.push(addMesh(head, new THREE.SphereGeometry(0.32, 14, 10), lam(C.riderSkin, false), 0, 0, 0.01));
+headParts.push(addMesh(head, new THREE.CylinderGeometry(0.335, 0.345, 0.34, 14), lam(C.riderHat, false), 0, 0.14, 0));
+headParts.push(addMesh(head, new THREE.SphereGeometry(0.115, 10, 8), lam(0xfff1f3, false), 0, 0.36, 0));
+const brim = addMesh(head, new THREE.TorusGeometry(0.335, 0.055, 6, 16), lam(0xfff1f3, false), 0, -0.005, 0);
+brim.rotation.set(Math.PI/2, 0, 0);
+headParts.push(brim);
+headParts.push(addMesh(head, roundedBox(0.58, 0.22, 0.20, 0.07, 2), lam(C.goggles, false), 0, 0, 0.20));
+
+/* Ghost: dieselbe Figur, nur durchscheinend blau */
+const ghostRider = riderRoot.clone(true);
+{
+  const gm = new THREE.MeshLambertMaterial({ color: 0x6fb4ff, transparent: true, opacity: 0.38,
+    depthWrite: false, flatShading: true });
+  ghostRider.traverse(o => { if (o.isMesh) { o.material = gm; o.castShadow = false; } });
+  ghostRider.visible = false;
+  scene.add(ghostRider);
+}
+
+/* ==========================================================================
+   SCHNEE-PARTIKEL (Trail + Landungs-Burst)
+   ========================================================================== */
+const flakeTex = (() => {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 48;
+  const g = cv.getContext('2d');
+  const rg = g.createRadialGradient(24, 24, 0, 24, 24, 24);
+  rg.addColorStop(0,    'rgba(255,255,255,1)');
+  rg.addColorStop(0.45, 'rgba(255,255,255,0.85)');
+  rg.addColorStop(1,    'rgba(255,255,255,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 48, 48);
+  const t = new THREE.CanvasTexture(cv);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+
+const PN = Q.particles;
+const pPos = new Float32Array(PN*3).fill(-9999);
+const pCol = new Float32Array(PN*3).fill(1);
+const pVel = new Float32Array(PN*3);
+const pLife= new Float32Array(PN);
+const partGeo = new THREE.BufferGeometry();
+partGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+partGeo.setAttribute('color',    new THREE.BufferAttribute(pCol, 3));
+const particles = new THREE.Points(partGeo, new THREE.PointsMaterial({
+  size: 0.20, sizeAttenuation: true, map: flakeTex, vertexColors: true,
+  transparent: true, opacity: 0.85, depthWrite: false }));
+particles.frustumCulled = false;
+scene.add(particles);
+
+let pHead = 0;
+const _fogCol = new THREE.Color(CONFIG.color.fog);
+function emit(x, y, z, vx, vy, vz, life) {
+  const i = pHead; pHead = (pHead + 1) % PN;
+  pPos[i*3] = x; pPos[i*3+1] = y; pPos[i*3+2] = z;
+  pVel[i*3] = vx; pVel[i*3+1] = vy; pVel[i*3+2] = vz;
+  pLife[i] = life;
+}
+function updateParticles(dt) {
+  for (let i = 0; i < PN; i++) {
+    if (pLife[i] <= 0) continue;
+    pLife[i] -= dt;
+    const k = i*3;
+    if (pLife[i] <= 0) { pPos[k+1] = -9999; continue; }
+    pVel[k+1] -= 4.5 * dt;
+    pPos[k]   += pVel[k]   * dt;
+    pPos[k+1] += pVel[k+1] * dt;
+    pPos[k+2] += pVel[k+2] * dt;
+    const f = clamp01(pLife[i] * 1.6);
+    pCol[k] = lerp(_fogCol.r, 1, f); pCol[k+1] = lerp(_fogCol.g, 1, f); pCol[k+2] = lerp(_fogCol.b, 1, f);
+  }
+  partGeo.attributes.position.needsUpdate = true;
+  partGeo.attributes.color.needsUpdate = true;
+}
+function burst(x, y, z, n, power) {
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2, r = rndR(0.3, 1) * power;
+    emit(x + Math.cos(a)*0.3, y + 0.1, z + Math.sin(a)*0.3,
+         Math.cos(a)*r, rndR(1.5, 5.0) * (0.4 + power*0.12), Math.sin(a)*r, rndR(0.5, 1.1));
+  }
+}
+
+/* ==========================================================================
+   AUDIO — komplett prozedural (Web Audio API)
+   ========================================================================== */
+const Audio = (() => {
+  let ctx = null, master = null, glideGain = null, glideFilter = null, noiseBuf = null, muted = false, ready = false;
+  function makeNoise() {
+    const len = ctx.sampleRate * 2;
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) { const w = Math.random()*2-1; last = (last + 0.02*w)/1.02; d[i] = last*3.2; }
+    return buf;
+  }
+  function init() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.85; master.connect(ctx.destination);
+    noiseBuf = makeNoise();
+    glideFilter = ctx.createBiquadFilter();
+    glideFilter.type = 'lowpass'; glideFilter.frequency.value = 300; glideFilter.Q.value = 0.9;
+    glideGain = ctx.createGain(); glideGain.gain.value = 0;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    src.connect(glideFilter); glideFilter.connect(glideGain); glideGain.connect(master);
+    src.start();
+    ready = true;
+  }
+  function glide(speed, edge, grounded) {
+    if (!ready) return;
+    const t = ctx.currentTime;
+    const s = clamp01(speed / 34);
+    glideGain.gain.setTargetAtTime(grounded ? 0.05 + s*0.20 + edge*0.10 : 0.015, t, 0.09);
+    glideFilter.frequency.setTargetAtTime(240 + s*2600 + edge*900, t, 0.12);
+  }
+  function whoosh(power) {
+    if (!ready) return;
+    const t = ctx.currentTime;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.1;
+    f.frequency.setValueAtTime(380, t); f.frequency.exponentialRampToValueAtTime(1900, t+0.30);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.10 + 0.16*power, t+0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.42);
+    s.connect(f); f.connect(g); g.connect(master);
+    s.start(t); s.stop(t+0.45);
+  }
+  function impact(power) {
+    if (!ready) return;
+    const t = ctx.currentTime, p = clamp01(power);
+    const o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(42, t+0.20);
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.18 + 0.30*p, t+0.015);
+    og.gain.exponentialRampToValueAtTime(0.0001, t+0.30);
+    o.connect(og); og.connect(master); o.start(t); o.stop(t+0.32);
+
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900 + 1400*p;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.10 + 0.22*p, t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.26);
+    s.connect(f); f.connect(g); g.connect(master);
+    s.start(t); s.stop(t+0.28);
+  }
+  function chime(step) {
+    if (!ready) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'triangle';
+    o.frequency.setValueAtTime(520 * Math.pow(1.26, step), t);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+0.45);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+0.46);
+  }
+  function toggle() {
+    muted = !muted;
+    if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05);
+    return muted;
+  }
+  return { init, glide, whoosh, impact, chime, toggle };
+})();
+
+/* ==========================================================================
+   EINGABE
+   ========================================================================== */
+const input = { steer: 0, duck: false, brake: false, jump: false, jumpHeld: false, pitchIn: 0 };
+const keys = Object.create(null);
+const STEER_KEYS = { KeyA: -1, ArrowLeft: -1, KeyD: 1, ArrowRight: 1 };
+
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === 'Space') { input.jump = true; input.jumpHeld = true; }
+  if (e.code === 'Escape' || e.code === 'KeyP') setPaused(State.now === 'PLAYING');
+  if (e.code === 'KeyC') { State.pov = !State.pov; camInit = false; $('povBtn').textContent = State.pov ? '👁' : '🎥'; }
+  if (State.now === 'MENU' && (e.code === 'Space' || e.code === 'Enter')) startGame('ENDLESS');
+  if (State.now === 'GAMEOVER' && (e.code === 'Space' || e.code === 'Enter')) startGame(State.mode);
+  Audio.init();
+}, { passive: false });
+addEventListener('keyup', e => {
+  keys[e.code] = false;
+  if (e.code === 'Space') input.jumpHeld = false;
+});
+
+function readKeys() {
+  let s = 0;
+  for (const k in STEER_KEYS) if (keys[k]) s += STEER_KEYS[k];
+  input.steer = clamp(s + touchSteer, -1, 1);
+  input.duck  = !!(keys.KeyS || keys.ArrowDown);
+  /* In der Luft: zurueckziehen = Backflip, nach vorne = Frontflip.
+     rotation.x > 0 hebt die Nase und legt den Oberkoerper nach hinten — das IST
+     der Backflip. Also gehoert die Ruecktaste auf +1, nicht auf -1. */
+  input.pitchIn = (keys.KeyS || keys.ArrowDown ? 1 : 0) + (keys.KeyW || keys.ArrowUp ? -1 : 0);
+  input.brake = !!(keys.KeyB || keys.ShiftLeft || keys.ShiftRight) || touchBrake;
+}
+
+// --- Touch ---
+let touchSteer = 0, touchBrake = false;
+const touches = new Map();
+const cv = renderer.domElement;
+function touchUpdate() {
+  let s = 0, brake = false;
+  for (const t of touches.values()) {
+    s += t.x < innerWidth/2 ? -1 : 1;
+    if (t.y > innerHeight * 0.72) brake = true;   // unteres Band = Querbremse
+  }
+  touchSteer = clamp(s, -1, 1);
+  touchBrake = brake;
+}
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  Audio.init();
+  if (State.now === 'MENU' || State.now === 'GAMEOVER') { startGame(State.mode); return; }
+  for (const t of e.changedTouches) {
+    if (touches.size >= 1) { input.jump = true; }
+    touches.set(t.identifier, { x: t.clientX, y: t.clientY, t0: performance.now(), moved: 0 });
+  }
+  touchUpdate();
+}, { passive: false });
+cv.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const rec = touches.get(t.identifier);
+    if (!rec) continue;
+    rec.moved += Math.abs(t.clientX - rec.x) + Math.abs(t.clientY - rec.y);
+    rec.x = t.clientX; rec.y = t.clientY;
+  }
+  touchUpdate();
+}, { passive: false });
+function endTouch(e) {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const rec = touches.get(t.identifier);
+    if (rec && performance.now() - rec.t0 < 230 && rec.moved < 24) input.jump = true;
+    touches.delete(t.identifier);
+  }
+  touchUpdate();
+}
+cv.addEventListener('touchend', endTouch, { passive: false });
+cv.addEventListener('touchcancel', endTouch, { passive: false });
+
+/* ==========================================================================
+   SPIELZUSTAND
+   ========================================================================== */
+const P = CONFIG.phys, G = CONFIG.game;
+const State = {
+  now: 'MENU',
+  mode: 'ENDLESS',
+  time: 0, raceLen: 1500, finished: false,
+  ghost: null, ghostRec: null, ghostIdx: 0,
+  gatesHit: 0, gatesMissed: 0,
+  pov: false,
+  lives: G.lives,
+  score: 0, distScore: 0, airScore: 0, trickScore: 0,
+  maxDist: 0, combo: 1, crashT: 0, shake: 0,
+  best: 0
+};
+try { State.best = parseInt(localStorage.getItem('powderline_best') || '0', 10) || 0; } catch (e) { State.best = 0; }
+
+const rider = {
+  pos: new THREE.Vector3(0, 0, 0),
+  vel: new THREE.Vector3(0, 0, -8),
+  yaw: 0, pitch: 0, roll: 0,
+  grounded: true, airTime: 0, charge: 0, crouch: 0,
+  spinAcc: 0, edge: 0, onIce: 0, lastNormal: new THREE.Vector3(0, 1, 0),
+  stance: 1, stanceAcc: 0, braking: 0, brakeSide: 1, brakeLatched: false, brakeHold: 0, travelDir: 1, slip: 0, slide: 0,
+  omega: 0, load: 1, squash: 0, popQ: -1, spinVel: 0, spinL: 0, flipVel: 0, flipL: 0, tuck: 0, povDir: 1, canFlip: false, grinding: false, grindTime: 0, grindLabel: '50-50', flip: 0, flipAcc: 0
+};
+
+/* Jede Yaw-Aenderung laeuft hierdurch. Nach jeder halben Umdrehung wechselt
+   das fuehrende Bein — am Boden (Pivot) genauso wie in der Luft (180er). */
+function addYaw(delta) {
+  rider.yaw += delta;
+  rider.stanceAcc += delta;
+  const before = rider.stance;
+  while (rider.stanceAcc >=  Math.PI) { rider.stanceAcc -= Math.PI; rider.stance = -rider.stance; }
+  while (rider.stanceAcc <= -Math.PI) { rider.stanceAcc += Math.PI; rider.stance = -rider.stance; }
+  /* Ohne diesen Aufruf wechselte zwar der Wert, aber die Figur spiegelte sich
+     nie — das fuehrende Bein und die Haende blieben, wo sie waren. Genau
+     deshalb war der Stance-Wechsel in der Egoperspektive unsichtbar. */
+  if (rider.stance !== before) applyStance(rider.stance);
+}
+
+function resetRider(z, keepX) {
+  const x = keepX !== undefined ? keepX : courseX(-z);
+  rider.pos.set(x, 0, z);
+  rider.pos.y = terrainH(x, z) + P.rideHeight;
+  // in Richtung der Mittellinie ausrichten
+  const dz = 12;
+  rider.yaw = Math.atan2(-(courseX(-z + dz) - x), dz);
+  rider.vel.set(-Math.sin(rider.yaw)*10, 0, -Math.cos(rider.yaw)*10);
+  rider.pitch = 0; rider.roll = 0;
+  rider.grounded = true; rider.airTime = 0; rider.charge = 0; rider.crouch = 0;
+  rider.spinAcc = 0; rider.edge = 0; rider.onIce = 0;
+  rider.stance = 1; rider.stanceAcc = 0; rider.braking = 0; rider.brakeSide = 1; rider.brakeLatched = false; rider.brakeHold = 0; rider.travelDir = 1; rider.povDir = 1; rider.slide = 0; rider.omega = 0; rider.load = 1; rider.squash = 0; rider.popQ = -1; rider.grinding = false; rider.grindTime = 0; rider.flip = 0; rider.flipAcc = 0; rider.canFlip = false; rider.spinVel = 0; rider.spinL = 0; rider.flipVel = 0; rider.flipL = 0; rider.tuck = 0;
+  applyStance(1);
+}
+
+/* ==========================================================================
+   PHYSIK — Fixed Timestep 1/120 s
+   ========================================================================== */
+const FIXED = 1/120;
+const _f = new THREE.Vector3(), _r = new THREE.Vector3(), _tan = new THREE.Vector3();
+const _vd = new THREE.Vector3(), _nrm = new THREE.Vector3(), _tmp = new THREE.Vector3();
+
+function forwardOf(yaw, out) { return out.set(-Math.sin(yaw), 0, -Math.cos(yaw)); }
+
+function iceFactor(x, z) {
+  for (let i = 0; i < Q.ice; i++) {
+    const s = iceSlot[i];
+    if (!s || s.r <= 0) continue;
+    const dx = x - s.x, dz = z - s.z;
+    const d2 = dx*dx + dz*dz;
+    if (d2 < s.r*s.r) return 1 - Math.sqrt(d2)/s.r;
+  }
+  return 0;
+}
+/* Baumstaemme waren bisher gar nicht abgefragt — man fuhr glatt hindurch. */
+function hitsTree(x, z) {
+  for (let i = 0; i < Q.trees; i++) {
+    const s = treeSlot[i];
+    if (!s) continue;
+    const dz = z - s.z;
+    if (dz < -2.5 || dz > 2.5) continue;          // schneller Vorfilter
+    const dx = x - s.x;
+    const r = 0.42 * s.s + 0.4;                   // Stammradius plus Fahrerbreite
+    if (dx*dx + dz*dz < r*r) return true;
+  }
+  return false;
+}
+function hitsRock(x, z) {
+  for (let i = 0; i < Q.rocks; i++) {
+    const s = rockSlot[i];
+    if (!s || s.r <= 0) continue;
+    const dx = x - s.x, dz = z - s.z;
+    if (dx*dx + dz*dz < (s.r + 0.55) * (s.r + 0.55)) return true;
+  }
+  return false;
+}
+
+function crash(hard) {
+  if (State.now !== 'PLAYING') return;
+  State.now = 'CRASHED';
+  State.crashT = 0;
+  State.combo = 1;
+  State.shake = hard ? 1.0 : 0.6;
+  showCombo('');
+  Audio.impact(1.0);
+  burst(rider.pos.x, rider.pos.y, rider.pos.z, 34, 6);
+  flash(0.35);
+}
+
+function land() {
+  const speed = Math.hypot(rider.vel.x, rider.vel.z);
+  const velYaw = Math.atan2(-rider.vel.x, -rider.vel.z);
+  // Switch landen ist erlaubt: nur die Abweichung von der Board-Achse zaehlt,
+  // 180 Grad verdreht ist genauso sauber wie 0 Grad.
+  const raw = Math.abs(wrapPi(rider.yaw - velYaw));
+  const diff = raw > Math.PI/2 ? Math.PI - raw : raw;
+  const switchLand = raw > Math.PI/2;
+  const airTime = rider.airTime;
+  const impactV = Math.max(0, -rider.vel.y);
+  // Der Ueberschlag muss ausgedreht sein — auf dem Kopf landet niemand sauber
+  const flipOff = Math.abs(wrapPi(rider.flip));
+  // langsame Landungen gehen immer gut aus
+  const clean = speed < 6 ||
+    (diff < P.landAngle && Math.abs(rider.roll) < 1.15 && flipOff < P.flipLand);
+
+  rider.airTime = 0;
+  rider.squash = Math.min(1, impactV / 13);   // Beine federn den Aufprall ab
+  burst(rider.pos.x, rider.pos.y - 0.1, rider.pos.z, Math.min(26, 8 + impactV*1.6), 2 + impactV*0.35);
+
+  if (!clean && airTime > 0.30) { crash(impactV > 12); return; }
+  rider.flip = 0;                     // sauber gelandet -> Ueberschlag ausbuchen
+  rider.canFlip = false;
+
+  // Landewinkel korrigieren — ueber addYaw, damit der Stance-Zaehler stimmt
+  addYaw(wrapPi((switchLand ? velYaw + Math.PI : velYaw) - rider.yaw));
+  Audio.impact(clamp01(impactV / 18));
+  if (impactV > 11) State.shake = Math.max(State.shake, clamp01((impactV-11)/14) * 0.8);
+
+  if (airTime > 0.35) {
+    /* Benennung ueber gezaehlte HALBdrehungen statt ueber Schwellwerte:
+       eine volle Drehung = 2 Halbe = 360, anderthalb = 540, zwei = 720.
+       Damit kann die Anzeige nicht mehr danebenliegen. */
+    /* ABRUNDEN mit kleiner Toleranz statt kaufmaennisch runden: sonst wurde
+       aus einer halben Drehung ein voller Trick. 0.8 Umdrehungen zaehlen, 0.6
+       nicht mehr. */
+    const halves = Math.floor(Math.abs(rider.spinAcc) / Math.PI + 0.2);
+    const flipTurns = Math.floor(Math.abs(rider.flipAcc) / (Math.PI * 2) + 0.2);
+    let pts = 0, label = '';
+    if (halves >= 2) {
+      const deg = halves * 180;
+      // 360 -> 300, 540 -> 600, 720 -> 1200, danach linear weiter
+      pts = halves === 2 ? G.trick360 : halves === 3 ? G.trick540 : G.trick720 * (halves - 3);
+      label = String(deg);
+    }
+    if (flipTurns >= 1) {
+      pts += flipTurns === 1 ? G.flip360 : G.flip720 * (flipTurns - 1);
+      const base = rider.flipAcc > 0 ? 'Backflip' : 'Frontflip';
+      const name = flipTurns === 1 ? base : (flipTurns === 2 ? 'Double ' : flipTurns + 'x ') + base;
+      label = name + (label ? ' + ' + label : '');
+    }
+    State.combo = Math.min(G.comboMax, State.combo + 1);
+    if (pts > 0) {
+      State.trickScore += pts * State.combo;
+      showCombo(label + '  ×' + State.combo);
+      Audio.chime(Math.min(6, State.combo + (pts > 300 ? 2 : 0)));
+    } else {
+      showCombo('×' + State.combo);
+      Audio.chime(State.combo);
+    }
+  }
+  rider.spinAcc = 0;
+  rider.flipAcc = 0;
+}
+
+function step(dt) {
+  const st = input.steer;
+
+  /* --- Ducken / Vorspannen / Bremsen --- */
+  /* Bremse ist dosiert, nicht binär: kurz antippen = einmal kurz ausbrechen und
+     ein bisschen Tempo lassen, gedrueckt halten = voller Querstopp. Die
+     Haltedauer steuert Einschlagwinkel UND Bremskraft. */
+  const brakeOn = input.brake && rider.grounded;
+  rider.brakeHold = brakeOn ? Math.min(rider.brakeHold + dt, 2) : 0;
+  const engage = brakeOn ? Math.max(P.brakeMin, clamp01(rider.brakeHold / P.brakeRamp)) : 0;
+  // Loslassen faellt schneller ab als Aufbauen -> der Tap wirkt wie ein Kick
+  // Loslassen faellt schnell ab, damit ein Tap nicht nachbremst
+  rider.braking += (engage - rider.braking) * damp(brakeOn ? 15 : 14, dt);
+  // beim Bremsen geht der Fahrer automatisch tief
+  const wantCrouch = rider.grounded ? Math.max(input.duck ? 1 : 0, rider.braking * 0.75) : 0;
+  rider.crouch += (wantCrouch - rider.crouch) * damp(12, dt);
+  if (input.duck && rider.grounded) rider.charge = Math.min(1, rider.charge + dt / P.chargeTime);
+  else if (rider.grounded) rider.charge = Math.max(0, rider.charge - dt * 2.2);
+
+  terrainNormal(rider.pos.x, rider.pos.z, _nrm);
+
+  if (rider.grounded) {
+    rider.edge += (Math.max(Math.abs(st), rider.braking) - rider.edge) * damp(9, dt);
+    rider.onIce = iceFactor(rider.pos.x, rider.pos.z);
+
+    /* Lenken — langsam laesst sich das Board fast auf der Stelle pivotieren,
+       schnell dreht es traeger. */
+    const speed0 = rider.vel.length();
+    const steerScale = lerp(P.pivotScale, P.carveScale, clamp01(speed0 / P.steerFalloff));
+    // yaw waechst gegen den Uhrzeigersinn (nach links) -> D (st=+1) muss abziehen
+    const steerDelta = -st * P.steerRate * steerScale * dt * (1 - rider.onIce * 0.45);
+
+    /* QUERBREMSE.
+       Entscheidend fuers natuerliche Gefuehl: das Board richtet sich an der
+       FALLLINIE aus, nicht an der aktuellen Blickrichtung. Dadurch stellt es
+       sich immer richtig quer zum Hang — egal wie schraeg man gerade steht. */
+    let brakeDelta = 0;
+    if (rider.braking > 0.005) {
+      // Richtung bergab: der Gradient steckt bereits in der Normalen
+      const fallYaw = Math.atan2(-_nrm.x, -_nrm.z);
+      /* A und D behalten beim Bremsen ihre Lenkbedeutung: das Board DREHT sich
+         zur gedrueckten Seite. Dass das Heck dabei zur Gegenseite ausbricht,
+         ist die Folge davon und genau das erwartete Verhalten.
+         yaw waechst nach links -> rechts (side=+1) heisst minus. */
+      const ang = lerp(P.brakeAngleMin, P.brakeAngle, rider.braking);
+      const lineFor = side => fallYaw - side * ang;
+
+      /* Zur Ziel-Linie drehen, aber IMMER in Richtung der Eingabe. Beide
+         180-Grad-Repraesentanzen der Linie bremsen identisch — nur eine davon
+         dreht sichtbar in die gewuenschte Richtung. Weil hier die Drehrichtung
+         entscheidet und nicht, welches Ende die Nase ist, bleibt das Verhalten
+         beim Stance-Wechsel gleich. */
+      const rotTo = side => {
+        let v = wrapPi(lineFor(side) - rider.yaw);
+        if (Math.abs(v) > 0.02 && Math.sign(v) !== -side) v = wrapPi(v + Math.PI);
+        return v;
+      };
+
+      if (st !== 0) {
+        rider.brakeSide = Math.sign(st);          // Eingabe schlaegt alles
+      } else if (!rider.brakeLatched) {
+        // Ohne Lenkeingabe: die Seite mit der kuerzeren Drehung, einmal
+        // festgehalten — sonst kippt sie mitten im Stopp um.
+        rider.brakeSide = Math.abs(rotTo(1)) <= Math.abs(rotTo(-1)) ? 1 : -1;
+      }
+      rider.brakeLatched = true;
+      brakeDelta = rotTo(rider.brakeSide) * damp(P.brakeTurnRate, dt);
+    } else {
+      rider.brakeLatched = false;
+    }
+    const yawDelta = lerp(steerDelta, brakeDelta, rider.braking);
+    addYaw(yawDelta);
+    // Drehrate der Fahrtrichtung — Grundlage fuer die Zentripetalkraft unten
+    rider.omega += (Math.abs(yawDelta) / dt - rider.omega) * damp(18, dt);
+
+    /* Schwerkraft, dann auf die Tangentialebene projizieren */
+    rider.vel.y -= P.gravity * dt;
+    const vn = rider.vel.dot(_nrm);
+    if (vn < 0) rider.vel.addScaledVector(_nrm, -vn);
+
+    /* Laengs-/Quer-Zerlegung an der BOARD-ACHSE.
+       Ein Snowboard gleitet in beide Richtungen seiner Achse gleich gut. Deshalb
+       wird nur die QUERkomponente gedaempft und nie eine Fahrtrichtung erzwungen
+       — switch faehrt sich dadurch exakt wie regular, ohne Bremsen ins Nichts. */
+    forwardOf(rider.yaw, _f);
+    _tan.copy(_f).addScaledVector(_nrm, -_f.dot(_nrm));
+    if (_tan.lengthSq() > 1e-6) {
+      _tan.normalize();
+      const along = rider.vel.dot(_tan);
+      // Zeigt die Board-Nase mit oder gegen die Fahrtrichtung? (Hysterese gegen
+      // Flackern, wenn das Board exakt quer steht.) Alles, was koerperlich an der
+      // Fahrtrichtung haengt — Lean, Vorlage — muss hierauf bezogen sein.
+      if (along >  0.5) rider.travelDir =  1;
+      else if (along < -0.5) rider.travelDir = -1;
+      _vd.copy(rider.vel).addScaledVector(_tan, -along);      // Querkomponente
+      const latLen = _vd.length();
+      // In welche Richtung rutscht er quer? (Anteil auf der lokalen Rechts-Achse.)
+      // Braucht man, um sich beim Bremsen dagegen — also zum Hang — zu lehnen.
+      rider.slide = _vd.x * Math.cos(rider.yaw) - _vd.z * Math.sin(rider.yaw);
+      // Beim Bremsen loest sich der Grip -> das Board rutscht quer statt zu schneiden
+      const grip = lerp(P.gripLoose, P.gripEdge, rider.edge)
+                 * lerp(1, P.iceGrip, rider.onIce)
+                 * lerp(1, P.brakeGrip, rider.braking);
+      const keep = Math.exp(-grip * dt);
+      _vd.multiplyScalar(keep);
+      rider.vel.copy(_tan).multiplyScalar(along).add(_vd);
+      rider.slip = latLen;
+
+      let speed = rider.vel.length();
+      if (speed > 1e-4) {
+        /* Echte Kurvenbremsung ueber die NORMALKRAFT:
+           In einer engen Kurve muss die Kante die Zentripetalkraft a = v*omega
+           aufbringen. Zusammen mit der Hangnormalen ergibt das ein Lastvielfaches,
+           und Reibung skaliert mit der Normalkraft. Enger + schneller = mehr
+           Bremsung, voellig progressiv und ohne kuenstliche Sonderregel. */
+        const aLat = speed * rider.omega;
+        const nLoad = clamp(Math.hypot(P.gravity * _nrm.y, aLat) / P.gravity, 1, P.loadMax);
+        rider.load = nLoad;
+        const resist = lerp(P.rollResist, P.iceResist, rider.onIce) * nLoad;
+        // Bremswirkung skaliert damit, wie quer das Board tatsaechlich zur
+        // Fahrtrichtung steht — gerade gestellt bremst es kaum, voll quer maximal.
+        const cross = speed > 0.6 ? clamp01(latLen / speed) : 0;
+        const brake = rider.braking * (P.brakeBase + P.brakeForce * cross)
+                    * (1 - rider.onIce * 0.75);
+        // Reibungsverlust haengt am VERBLEIBENDEN Rutschen: ein sauber
+        // geschnittener Schwung kostet kaum Tempo, ein gedrifteter viel.
+        const slipDrag = latLen * P.carveDrag * nLoad * (1 - rider.onIce * 0.8);
+        speed -= (resist + brake + slipDrag + P.airDrag * speed * speed) * dt;
+        rider.vel.setLength(clamp(speed, 0, P.maxSpeed));
+      }
+    }
+
+    /* Absprung — mit Bewertung des Timings an der Schanzenkante.
+       Wer zu frueh abspringt, wird von der Rampe noch flach weitergetragen;
+       wer genau an der Kante poppt, nimmt den vollen Impuls mit. */
+    if (input.jump) {
+      const KR = rowData(-rider.pos.z, _rowA);
+      let q = -1;
+      if (KR.kick) {
+        const t = (KR.d - KR.kick.d) / KR.kick.len;
+        q = clamp01(1 - Math.abs(t - P.popSweet) / P.popTol);
+      }
+      rider.popQ = q;
+      const boost = q < 0 ? 1 : lerp(P.popWorst, P.popBest, q);
+      const power = (P.jumpBase + (P.jumpCharged - P.jumpBase) * rider.charge) * boost;
+      if (q >= 0) showPop(q);
+      rider.vel.addScaledVector(_nrm, power);
+      rider.grounded = false;
+      rider.airTime = 0.0001;
+      rider.spinAcc = 0;
+      rider.charge = 0;
+      rider.canFlip = true;                    // bewusster Absprung
+      rider.spinVel = 0; rider.spinL = 0; rider.flipVel = 0; rider.flipL = 0; rider.tuck = 0;
+      Audio.whoosh(clamp01(power / P.jumpCharged));
+      burst(rider.pos.x, rider.pos.y, rider.pos.z, 14, 3);
+    }
+  } else {
+    /* --- Luft --- */
+    rider.airTime += dt;
+    rider.edge += (0 - rider.edge) * damp(4, dt);
+    /* DREHIMPULSERHALTUNG statt freier Beschleunigung.
+       In der Luft laesst sich kein Drehimpuls erzeugen — er entsteht beim
+       Absprung aus der Kante. Danach gilt omega = L / I: wer sich einrollt,
+       verkleinert das Traegheitsmoment und dreht schneller; wer sich streckt,
+       wird langsamer. Genau so steuert man einen 720er. */
+    const pin = rider.canFlip ? input.pitchIn : 0;
+    // Nur im kurzen Absprungfenster wird Drehimpuls aufgebaut (der "Pop")
+    if (rider.airTime < P.popWindow) {
+      rider.spinL = clamp(rider.spinL - st * P.spinTorque * dt, -P.spinLMax, P.spinLMax);
+      rider.flipL = clamp(rider.flipL + pin * P.flipTorque * dt, -P.flipLMax, P.flipLMax);
+    }
+    // Einrollen: Tasten gedrueckt = kompakt = kleines Traegheitsmoment
+    const wantTuck = (st !== 0 || pin !== 0) ? 1 : 0;
+    rider.tuck += (wantTuck - rider.tuck) * damp(P.tuckRate, dt);
+    const inertia = lerp(1, P.tuckInertia, rider.tuck);
+
+    rider.spinVel = rider.spinL / inertia;
+    rider.flipVel = rider.flipL / inertia;
+    const spin = rider.spinVel * dt;
+    addYaw(spin);
+    rider.spinAcc += spin;
+    const fl = rider.flipVel * dt;
+    rider.flip += fl;
+    rider.flipAcc += fl;
+
+    /* Landehilfe: kurz vor dem Boden zieht sich die Drehung selbst auf die
+       naechste saubere Lage. Man muss die Taste also nicht auf die
+       Millisekunde loslassen — die Absicht zaehlt, nicht das Timing. */
+    const gy = terrainH(rider.pos.x, rider.pos.z) + P.rideHeight;
+    const fall = Math.max(0.1, -rider.vel.y);
+    const tToGround = (rider.pos.y - gy) / fall;
+    if (rider.vel.y < 0 && tToGround < P.landAssist) {
+      // guter Absprung = mehr Zug auf die saubere Lage
+      const k = (1 - tToGround / P.landAssist) * P.landAssistRate
+              * (rider.popQ < 0 ? 0.8 : lerp(0.45, 1.5, rider.popQ));
+      const velYawA = Math.atan2(-rider.vel.x, -rider.vel.z);
+      const off = wrapPi(rider.yaw - velYawA);
+      const snapY = velYawA + Math.round(off / Math.PI) * Math.PI;
+      addYaw(wrapPi(snapY - rider.yaw) * damp(k, dt));
+      const snapF = Math.round(rider.flip / (Math.PI * 2)) * Math.PI * 2;
+      rider.flip += (snapF - rider.flip) * damp(k, dt);
+    }
+    rider.vel.y -= P.gravity * dt;
+    rider.vel.multiplyScalar(1 - 0.02 * dt);
+    State.airScore += G.airPointsPerSec * dt;
+  }
+  input.jump = false;
+
+  /* --- Integration --- */
+  rider.pos.addScaledVector(rider.vel, dt);
+
+  /* --- Rail-Grind: Stange schlaegt Boden --- */
+  const onRail = railUnder(rider.pos.x, rider.pos.z, rider.pos.y, rider.yaw, rider.vel.z, rider.grinding);
+  if (onRail && rider.vel.y <= 1.0) {
+    const pull = damp(P.railAlign, dt);
+    rider.pos.y += (onRail.top + P.rideHeight - rider.pos.y) * pull;
+    rider.pos.x += (onRail.x - rider.pos.x) * pull;          // magnetisch auf die Linie
+    /* Auf der Stange darf gedreht werden: mit A/D dreht das Board quer
+       (Boardslide). Nur OHNE Eingabe wird es sanft laengs stabilisiert —
+       vorher habe ich es hart laengs gezwungen, damit war Drehen unmoeglich. */
+    if (st !== 0) {
+      addYaw(-st * P.railSpinRate * dt);
+    } else {
+      let ay = wrapPi(0 - rider.yaw);
+      if (Math.abs(ay) > Math.PI/2) ay = wrapPi(ay + Math.PI);
+      addYaw(ay * damp(P.railSettle, dt));
+    }
+    /* Quergeschwindigkeit auf die Stange umlenken statt sie zu vernichten:
+       erst vx wegdaempfen, dann die horizontale Geschwindigkeit wieder auf den
+       alten Betrag skalieren. Sonst bremst jede Rail den Fahrer aus. */
+    const hz0 = Math.hypot(rider.vel.x, rider.vel.z);
+    rider.vel.x *= (1 - pull);
+    const hz1 = Math.hypot(rider.vel.x, rider.vel.z);
+    if (hz1 > 1e-4) { const k = hz0 / hz1; rider.vel.x *= k; rider.vel.z *= k; }
+    if (rider.vel.y < 0) rider.vel.y = 0;
+    rider.grounded = true;
+    rider.flip = 0;
+    // Winkel zur Stange, auf 0..90 Grad reduziert (Board ist symmetrisch)
+    let rel = Math.abs(wrapPi(rider.yaw));
+    if (rel > Math.PI/2) rel = Math.PI - rel;
+    const cross = rel / (Math.PI/2);                 // 0 = laengs, 1 = quer
+    const name = cross > 0.62 ? 'Boardslide' : cross > 0.28 ? 'Shifty' : '50-50';
+    if (!rider.grinding || name !== rider.grindLabel) {
+      rider.grindLabel = name;
+      showCombo(name);
+      if (!rider.grinding) Audio.chime(3);
+    }
+    rider.grinding = true;
+    rider.grindTime += dt;
+    // quer stehen bringt mehr Punkte als einfach laengs rutschen
+    State.trickScore += G.grindPerSec * (1 + cross * 0.9) * dt * State.combo;
+    rider.airTime = 0;
+    State.maxDist = Math.max(State.maxDist, -rider.pos.z);
+    return;
+  }
+  if (rider.grinding) {
+    rider.grinding = false;
+    // Grind sauber beendet -> zaehlt als saubere Landung fuer die Combo
+    if (rider.grindTime > 0.4) {
+      State.combo = Math.min(G.comboMax, State.combo + 1);
+      showCombo(rider.grindLabel + '  ×' + State.combo);
+      Audio.chime(Math.min(6, State.combo + 1));
+    }
+    rider.grindTime = 0;
+    rider.flip = 0; rider.flipAcc = 0; rider.canFlip = false; rider.spinVel = 0; rider.spinL = 0; rider.flipVel = 0; rider.flipL = 0; rider.tuck = 0;
+  }
+
+  /* --- Bodenkontakt --- */
+  const gh = terrainH(rider.pos.x, rider.pos.z) + P.rideHeight;
+  if (rider.pos.y <= gh) {
+    const wasAir = !rider.grounded;
+    rider.pos.y = gh;
+    rider.grounded = true;
+    if (wasAir) {
+      land();
+      if (State.now !== 'PLAYING') return;
+    }
+    terrainNormal(rider.pos.x, rider.pos.z, _nrm);
+    const vn2 = rider.vel.dot(_nrm);
+    if (vn2 < 0) rider.vel.addScaledVector(_nrm, -vn2);
+  } else if (rider.pos.y > gh + 0.12) {
+    if (rider.grounded) {
+      // Uebergang in die Luft ohne Absprung: nur ueber eine Rampe zaehlt
+      rider.canFlip = !!rowData(-rider.pos.z, _rowA).kick;
+    }
+    rider.grounded = false;
+  }
+
+  /* --- Ausrichtung gedaempft an die Normale --- */
+  rider.lastNormal.lerp(_nrm, damp(rider.grounded ? P.alignRate : 2.2, dt)).normalize();
+  forwardOf(rider.yaw, _f);
+  // gilt fuer beide Stances: das Board ist eine starre Achse, die -Z-Seite folgt
+  // dem Hang, egal ob sie gerade bergab oder bergauf zeigt
+  const targetPitch = Math.asin(clamp(-rider.lastNormal.dot(_f), -1, 1));
+  rider.pitch += (targetPitch - rider.pitch) * damp(9, dt);
+
+  // In die Kurve legen. rotation.z liegt im Board-Frame — bei Switch ist der um
+  // 180 Grad gedreht, deshalb muss travelDir mit hinein, sonst kippt er nach aussen.
+  const carveRoll = (rider.grounded
+    ? -st * 0.78 * clamp01(rider.vel.length() / 13)
+    : -st * 0.30) * rider.travelDir;
+  // Beim Bremsen zaehlt nicht die Lenkung, sondern wohin er wegrutscht: er legt
+  // sich GEGEN die Rutschrichtung, also zum Hang. Andersrum steigt die Kante ein
+  // und es haut ihn hin. rotation.z > 0 kippt nach lokal -X, slide > 0 rutscht
+  // nach lokal +X -> gleiches Vorzeichen ist die Hangseite.
+  const brakeRoll = clamp(rider.slide / 3.5, -1, 1) * P.brakeLean;
+  const targetRoll = lerp(carveRoll, brakeRoll, rider.braking);
+  rider.roll += (clamp(targetRoll, -0.95, 0.95) - rider.roll) * damp(8, dt);
+
+  /* --- Hindernisse --- */
+  if (rider.grounded && hitsRock(rider.pos.x, rider.pos.z)) { crash(true); return; }
+  if (rider.pos.y < terrainH(rider.pos.x, rider.pos.z) + 4.5 && hitsTree(rider.pos.x, rider.pos.z)) {
+    crash(true);
+    return;
+  }
+
+  /* Blickrichtung fuer die Egoperspektive. Bewusst in JEDEM Schritt, auch in
+     der Luft: sonst startet die Kopfdrehung erst beim Aufsetzen. So laeuft sie
+     schon an, waehrend man sich noch dreht. Schwelle 0.15 heisst: der Kopf
+     geht ab etwa 81 Grad Drehung mit. */
+  {
+    const vh = Math.hypot(rider.vel.x, rider.vel.z);
+    if (vh > 2) {
+      const d = (-Math.sin(rider.yaw) * rider.vel.x - Math.cos(rider.yaw) * rider.vel.z) / vh;
+      if (d > 0.15) rider.povDir = 1;
+      else if (d < -0.15) rider.povDir = -1;
+    }
+  }
+
+  /* --- Sicherheitsnetz gegen NaN --- */
+  if (!Number.isFinite(rider.pos.x) || !Number.isFinite(rider.pos.y) || !Number.isFinite(rider.pos.z)) {
+    resetRider(-State.maxDist);
+  }
+
+  State.maxDist = Math.max(State.maxDist, -rider.pos.z);
+}
+
+/* ==========================================================================
+   HUD / SCREENS
+   ========================================================================== */
+const $ = id => document.getElementById(id);
+const elDist = $('dist'), elScore = $('score'), elLives = $('lives'), elCombo = $('combo');
+const elCharge = $('charge'), elChargeBar = elCharge.firstElementChild;
+const elSpeed = $('speed'), elFlash = $('flash'), elHud = $('hud');
+const scMenu = $('menu'), scOver = $('over');
+
+function showPop(q) {
+  const el = $('popInfo');
+  const good = q > 0.72, mid = q > 0.38;
+  el.textContent = good ? 'Absprung: perfekt' : mid ? 'Absprung: gut' : 'Absprung: zu früh';
+  el.style.background = good ? 'rgba(47,174,90,.92)' : mid ? 'rgba(242,197,61,.92)' : 'rgba(224,75,58,.92)';
+  el.style.color = mid && !good ? '#3a2b00' : '#fff';
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(showPop._t);
+  showPop._t = setTimeout(() => el.classList.remove('on'), 800);
+}
+
+function showGateInfo(hit) {
+  const el = $('gateInfo');
+  el.textContent = hit ? 'Tor ✓' : 'Tor verpasst  +' + CONFIG.game.gatePenalty.toFixed(0) + ' s';
+  el.style.color = hit ? '#2fae5a' : '#e04b3a';
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(showGateInfo._t);
+  showGateInfo._t = setTimeout(() => el.classList.remove('on'), 900);
+}
+
+let comboTimer = 0;
+function showCombo(text) {
+  if (!text) { elCombo.classList.remove('pop'); comboTimer = 0; return; }
+  elCombo.textContent = text;
+  elCombo.classList.remove('pop');
+  void elCombo.offsetWidth;
+  elCombo.classList.add('pop');
+  comboTimer = 1.1;
+}
+let flashV = 0;
+function flash(v) { flashV = Math.max(flashV, v); }
+
+let hudCache = { d: -1, s: -1, l: -1 };
+function updateHUD() {
+  const d = Math.floor(State.maxDist);
+  const s = Math.floor(State.distScore + State.airScore + State.trickScore);
+  State.score = s;
+  if (d !== hudCache.d) { elDist.textContent = d + ' m'; hudCache.d = d; }
+  if (State.mode === 'RACE') {
+    elScore.textContent = State.time.toFixed(2);
+  } else if (s !== hudCache.s) { elScore.textContent = s.toLocaleString('de-DE'); hudCache.s = s; }
+  if (State.lives !== hudCache.l) {
+    elLives.textContent = '●'.repeat(Math.max(0, State.lives)) + '○'.repeat(Math.max(0, G.lives - State.lives));
+    hudCache.l = State.lives;
+  }
+}
+
+const GHOST_DT = 0.08;
+function ghostKey() { return 'powderline_ghost_' + State.raceLen; }
+
+function startGame(mode) {
+  Audio.init();
+  if (mode) State.mode = mode;
+  // Strecke passend zum Modus neu bauen (Rennen: fester Seed = immer dieselbe)
+  buildCourse(State.mode, State.mode === 'RACE' ? 0x51ce4d : (0x9e3779b9 ^ (State.mode === 'FREESTYLE' ? 0x77 : 0)));
+  State.time = 0; State.finished = false;
+  State.gatesHit = 0; State.gatesMissed = 0;
+  State.ghostRec = State.mode === 'RACE' ? [] : null;
+  State.ghostIdx = 0;
+  State.ghost = null;
+  if (State.mode === 'RACE') {
+    try { const raw = localStorage.getItem(ghostKey()); if (raw) State.ghost = JSON.parse(raw); } catch (e) { State.ghost = null; }
+  }
+  ghostRider.visible = !!State.ghost;
+  $('midLbl').textContent = State.mode === 'RACE' ? 'Zeit' : 'Score';
+  $('ghostGap').classList.toggle('on', !!State.ghost);
+  State.now = 'PLAYING';
+  State.lives = G.lives;
+  State.distScore = State.airScore = State.trickScore = State.maxDist = 0;
+  State.combo = 1; State.shake = 0; State.crashT = 0;
+  hudCache = { d: -1, s: -1, l: -1 };
+  _seed = 0x2f6f2b1;
+  resetRider(0);
+  pisteZ = NaN;
+  updateTerrain(0, 0);
+  seedWorld(0);
+  signAnchor = NaN; updateSigns(0);
+  fenceAnchor = NaN; updateFences(0);
+  for (let i = 0; i < PN; i++) { pLife[i] = 0; pPos[i*3+1] = -9999; }
+  scMenu.classList.remove('on');
+  scOver.classList.remove('on');
+  elHud.classList.add('on');
+  showCombo('');
+}
+
+function finishRace() {
+  State.finished = true;
+  State.now = 'GAMEOVER';
+  elHud.classList.remove('on');
+  ghostRider.visible = false;
+  const t = State.time;
+  const prev = State.ghost ? State.ghost.t : Infinity;
+  let msg;
+  if (t < prev) {
+    try { localStorage.setItem(ghostKey(), JSON.stringify({ t: +t.toFixed(2), rec: State.ghostRec })); } catch (e) { /* egal */ }
+    msg = isFinite(prev) ? 'Bestzeit! ' + (prev - t).toFixed(2) + ' s schneller.' : 'Erste Bestzeit gesetzt.';
+  } else {
+    msg = (t - prev).toFixed(2) + ' s langsamer als dein Ghost.';
+  }
+  $('overSub').textContent = msg;
+  document.querySelector('#over h1').textContent = 'Im Ziel';
+  $('oScore').textContent = t.toFixed(2) + ' s';
+  $('oDist').textContent = State.gatesHit + '/' + (State.gatesHit + State.gatesMissed) + ' Tore';
+  $('oBest').textContent = isFinite(prev) ? Math.min(prev, t).toFixed(2) + ' s' : t.toFixed(2) + ' s';
+  scOver.classList.add('on');
+}
+
+const scPause = $('pause');
+function setPaused(on) {
+  if (on && State.now !== 'PLAYING') return;
+  if (!on && State.now !== 'PAUSED') return;
+  State.now = on ? 'PAUSED' : 'PLAYING';
+  scPause.classList.toggle('on', on);
+  elHud.classList.toggle('on', !on);
+  if (on) {
+    $('pauseSub').textContent = State.mode === 'RACE'
+      ? State.time.toFixed(2) + ' s · ' + Math.floor(State.maxDist) + ' m'
+      : Math.floor(State.maxDist) + ' m · ' + State.score.toLocaleString('de-DE') + ' Punkte';
+    last = performance.now();   // Zeitsprung nach dem Fortsetzen vermeiden
+  } else {
+    last = performance.now();
+    acc = 0;
+  }
+}
+$('pauseBtn').addEventListener('click', e => { e.stopPropagation(); setPaused(State.now === 'PLAYING'); });
+$('resumeBtn').addEventListener('click', () => setPaused(false));
+$('toMenuBtn').addEventListener('click', () => {
+  State.now = 'MENU';
+  scPause.classList.remove('on');
+  elHud.classList.remove('on');
+  scOver.classList.remove('on');
+  ghostRider.visible = false;
+  scMenu.classList.add('on');
+});
+
+function gameOver() {
+  State.now = 'GAMEOVER';
+  elHud.classList.remove('on');
+  ghostRider.visible = false;
+  document.querySelector('#over h1').textContent = 'Endstation';
+  const s = Math.floor(State.distScore + State.airScore + State.trickScore);
+  if (s > State.best) {
+    State.best = s;
+    try { localStorage.setItem('powderline_best', String(s)); } catch (e) { /* privater Modus */ }
+    $('overSub').textContent = 'Neuer Bestwert! Der Berg ist beeindruckt.';
+  } else {
+    $('overSub').textContent = 'Der Berg hat gewonnen. Nochmal?';
+  }
+  $('oScore').textContent = s.toLocaleString('de-DE');
+  $('oDist').textContent = Math.floor(State.maxDist) + ' m';
+  $('oBest').textContent = State.best.toLocaleString('de-DE');
+  scOver.classList.add('on');
+}
+
+document.querySelectorAll('.btn.mode').forEach(b =>
+  b.addEventListener('click', () => startGame(b.dataset.mode)));
+$('againBtn').addEventListener('click', () => startGame(State.mode));
+$('povBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  State.pov = !State.pov; camInit = false;
+  e.currentTarget.textContent = State.pov ? '👁' : '🎥';
+});
+$('muteBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  Audio.init();
+  e.currentTarget.textContent = Audio.toggle() ? '🔇' : '🔊';
+});
+
+/* --- Minikarte: zeigt den Streckenverlauf voraus, Abbruchkanten und Warnungen --- */
+const mapCv = $('mapc'), mapCtx = mapCv.getContext('2d');
+const MAP_AHEAD = 520, MAP_BACK = 60;          // dargestellter Streckenabschnitt (m)
+let mapTick = 0;
+
+/* Die Karte zeichnet die ECHTE Strecke: sie fragt dieselbe courseX/halfWidth ab,
+   aus der auch das Terrain gebaut wird. Der Ausschnitt ist an der Mittellinie
+   ausgerichtet, der Fahrer bewegt sich als Punkt darin. */
+function drawMap() {
+  const W = mapCv.width, H = mapCv.height, g = mapCtx;
+  const d0 = -rider.pos.z;
+  const span = MAP_AHEAD + MAP_BACK;
+  const sy = H / span;
+
+  // Querskala so waehlen, dass die Strecke im Ausschnitt immer ganz reinpasst
+  let minX = Infinity, maxX = -Infinity;
+  const rows = [];
+  for (let d = d0 - MAP_BACK; d <= d0 + MAP_AHEAD; d += 10) {
+    const R = rowData(d, _rowA);
+    rows.push({ d, cx: R.cx, hw: R.hw, cliff: R.cliff, outer: R.outer,
+                isl: R.isl, islX: R.islX, rock: R.rockField, ice: R.iceField });
+    if (R.cx - R.hw < minX) minX = R.cx - R.hw;
+    if (R.cx + R.hw > maxX) maxX = R.cx + R.hw;
+  }
+  minX = Math.min(minX, rider.pos.x); maxX = Math.max(maxX, rider.pos.x);
+  const midX = (minX + maxX) / 2;
+  const sx = W / Math.max(60, (maxX - minX) * 1.18);
+  const px = x => W/2 + (x - midX) * sx;
+  const py = d => H - (d - (d0 - MAP_BACK)) * sy;
+
+  g.clearRect(0, 0, W, H);
+
+  // Pistenband
+  g.beginPath();
+  rows.forEach((r, i) => { const x = px(r.cx - r.hw), y = py(r.d); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  for (let i = rows.length - 1; i >= 0; i--) g.lineTo(px(rows[i].cx + rows[i].hw), py(rows[i].d));
+  g.closePath();
+  g.fillStyle = 'rgba(255,255,255,.55)';
+  g.fill();
+  g.strokeStyle = 'rgba(28,72,116,.65)'; g.lineWidth = 3; g.stroke();
+
+  // Eisfelder als blaue Flaeche
+  const band = (test, style) => {
+    g.fillStyle = style; let run = null;
+    for (const r of rows) {
+      if (test(r)) { if (!run) run = [r]; else run.push(r); }
+      else if (run) { fillRun(run); run = null; }
+    }
+    if (run) fillRun(run);
+    function fillRun(rs) {
+      g.beginPath();
+      rs.forEach((r, i) => { const x = px(r.cx - r.hw), y = py(r.d); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+      for (let i = rs.length - 1; i >= 0; i--) g.lineTo(px(rs[i].cx + rs[i].hw), py(rs[i].d));
+      g.closePath(); g.fill();
+    }
+  };
+  band(r => r.ice > 0.45, 'rgba(120,200,235,.65)');
+  band(r => r.rock > 0.45, 'rgba(120,128,140,.45)');
+
+  // Mittelinsel (Baumkante in der Mitte) als eigene Flaeche
+  g.fillStyle = 'rgba(46,99,73,.85)';
+  let isl = null;
+  for (const r of rows) {
+    if (r.isl > 0.35) { (isl || (isl = [])).push(r); }
+    else if (isl) { drawIsl(isl); isl = null; }
+  }
+  if (isl) drawIsl(isl);
+  function drawIsl(rs) {
+    g.beginPath();
+    rs.forEach((r, i) => { const x = px(r.cx + r.islX - T.islandW*0.8), y = py(r.d); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    for (let i = rs.length - 1; i >= 0; i--) g.lineTo(px(rs[i].cx + rs[i].islX + T.islandW*0.8), py(rs[i].d));
+    g.closePath(); g.fill();
+  }
+
+  // Einzelne Felsen und Eisflaechen als Punkte
+  g.fillStyle = 'rgba(60,70,84,.95)';
+  for (let i = 0; i < Q.rocks; i++) {
+    const o = rockSlot[i]; if (!o || o.r <= 0) continue;
+    const dd = -o.z; if (dd < d0 - MAP_BACK || dd > d0 + MAP_AHEAD) continue;
+    g.beginPath(); g.arc(px(o.x), py(dd), 3, 0, Math.PI*2); g.fill();
+  }
+
+  // Abhangkanten markieren
+  g.lineWidth = 5; g.strokeStyle = 'rgba(224,75,58,.9)';
+  let open = false;
+  for (const r of rows) {
+    if (r.cliff > 0.30) {
+      const x = px(r.cx + r.outer * r.hw), y = py(r.d);
+      if (!open) { g.beginPath(); g.moveTo(x, y); open = true; } else g.lineTo(x, y);
+    } else if (open) { g.stroke(); open = false; }
+  }
+  if (open) g.stroke();
+
+  // 100-m-Marken
+  g.strokeStyle = 'rgba(28,72,116,.30)'; g.lineWidth = 2;
+  for (let m = Math.ceil(d0 / 100) * 100; m < d0 + MAP_AHEAD; m += 100) {
+    const r = rows[Math.round((m - (d0 - MAP_BACK)) / 10)];
+    if (!r) continue;
+    const y = py(m);
+    g.beginPath(); g.moveTo(px(r.cx - r.hw), y); g.lineTo(px(r.cx + r.hw), y); g.stroke();
+  }
+
+  // Slalomtore: Strich quer zur Strecke, rot/blau wie im Gelaende
+  for (const G of raceGates) {
+    if (G.d < d0 - MAP_BACK || G.d > d0 + MAP_AHEAD) continue;
+    const y = py(G.d), gx = px(G.x);
+    const half = Math.max(3, GATE_HALF * sx);
+    g.strokeStyle = G.judged && !G.hit ? 'rgba(120,120,120,.7)'
+                  : G.side > 0 ? 'rgba(216,56,47,.95)' : 'rgba(47,106,216,.95)';
+    g.lineWidth = 3;
+    g.beginPath(); g.moveTo(gx - half, y); g.lineTo(gx + half, y); g.stroke();
+  }
+
+  // Warnschilder als kleine Marken am Rand
+  g.fillStyle = '#f2c53d'; g.strokeStyle = '#1d2836'; g.lineWidth = 2;
+  for (const m of signMarks) {
+    if (m.d < d0 - MAP_BACK || m.d > d0 + MAP_AHEAD) continue;
+    const x = px(m.x), y = py(m.d);
+    g.save(); g.translate(x, y); g.rotate(Math.PI/4);
+    g.fillRect(-4, -4, 8, 8); g.strokeRect(-4, -4, 8, 8);
+    g.restore();
+  }
+
+  // Fahrer als aktueller Punkt mit Blickrichtung
+  const rx = px(rider.pos.x), ry = py(d0);
+  g.save(); g.translate(rx, ry); g.rotate(-rider.yaw);
+  g.beginPath(); g.moveTo(0, -13); g.lineTo(0, 5);
+  g.strokeStyle = '#0a84ff'; g.lineWidth = 3; g.lineCap = 'round'; g.stroke();
+  g.restore();
+  g.beginPath(); g.arc(rx, ry, 6, 0, Math.PI*2);
+  g.fillStyle = '#0a84ff'; g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = 3; g.stroke();
+}
+
+/* ==========================================================================
+   VISUALS pro Frame
+   ========================================================================== */
+const camTarget = new THREE.Vector3();
+const camLook = new THREE.Vector3();
+const _camDesired = new THREE.Vector3();
+let camInit = false, camYaw = 0;
+let bodySway = 0, bodyLoad = 0, bobPhase = 0;
+// konstante Blicksenkung, damit Board und Haende im Bild liegen
+const _povTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), CONFIG.camera.povPitch);
+const _povSwitch = new THREE.Quaternion();
+const _povAxis = new THREE.Vector3(0, 1, 0);
+let povOff = 0, povFrom = 0, povTo = 0, povT = 1;   // Kopfdrehung beim Stance-Wechsel
+let trailAcc = 0;
+
+function updateVisuals(dt) {
+  const speed = rider.vel.length();
+
+  /* Fahrer */
+  riderRoot.position.copy(rider.pos);
+  riderRoot.rotation.y = rider.yaw;
+  riderTilt.rotation.set(rider.pitch + rider.flip, 0, rider.roll);
+  /* Koerperdynamik. Bisher kippte nur der ganze Block — jetzt arbeitet der
+     Fahrer IM Block: Beine federn unter Last, der Oberkoerper bleibt
+     aufrechter als das Board (Angulation), Schultern oeffnen in die Kurve,
+     Arme balancieren gegen. */
+  const crouch = rider.crouch;
+  // sanft nachgezogene Lenkgroesse, damit nichts zuckt
+  bodySway += (input.steer * rider.travelDir - bodySway) * damp(6, dt);
+  bodyLoad += ((rider.load - 1) - bodyLoad) * damp(7, dt);
+  const gLoad = clamp01(bodyLoad / 1.4);
+  rider.squash *= Math.exp(-5.5 * dt);
+
+  /* Der Fahrer stand bisher still, sobald man nicht lenkte — die Animation
+     haing allein an der Lenkeingabe. Jetzt kommt Grundbewegung dazu:
+     dauerhafte Kniebeuge mit dem Tempo, ein Wippen ueber die zurueckgelegte
+     Strecke und das Einfedern nach der Landung. */
+  bobPhase += speed * dt * 1.15;
+  const bobA = clamp01(speed / 20);
+  const bobLeg = Math.sin(bobPhase) * 0.016 * bobA;
+  const bobUp  = Math.sin(bobPhase * 2 + 1.1) * 0.022 * bobA;
+  const ride = clamp01(speed / 28) * 0.07;          // schneller = tiefere Grundhaltung
+
+  // Knie: Grundbeuge, Kurvenlast, Landestoss — mit deutlich groesserem Hub
+  legs.scale.y = 1 - crouch * 0.40 - gLoad * 0.24 - rider.squash * 0.38 - ride + bobLeg;
+  /* Beide Beine beugen in DIESELBE Richtung — vorher hatten Vorder- und
+     Hinterbein entgegengesetzte Vorzeichen, er ging also gleichzeitig nach
+     vorn und nach hinten in die Knie. Die Beugerichtung haengt an der
+     Fahrtrichtung; nur der Stance-Versatz der Fuesse bleibt gegenlaeufig. */
+  const knee = (rider.squash * 0.42 + ride * 1.6 + bobLeg * 3) * rider.travelDir;
+  legF.rotation.z = bodySway * 0.22;
+  legB.rotation.z = bodySway * 0.22;
+  legF.rotation.x = -0.14 * rider.stance + knee;
+  legB.rotation.x =  0.14 * rider.stance + knee;
+  // Huefte arbeitet gegen den Oberkoerper — das erzeugt die Verwindung
+  legs.rotation.y = hipBase + bodySway * 0.30 * rider.stance;
+  legs.rotation.z = -rider.roll * 0.12;
+
+  upper.position.y = 0.88 - crouch * 0.36 - gLoad * 0.18 - rider.squash * 0.32 - ride + bobUp;
+  /* NEGATIV: rotation.x > 0 kippt den Oberkoerper nach HINTEN. Alle Terme
+     hatten positives Vorzeichen — er fuhr also dauerhaft in Rücklage. */
+  upper.rotation.x = -(crouch * 0.50 + clamp01(speed / 40) * 0.22 + gLoad * 0.20
+                       + rider.squash * 0.45 + ride) * rider.travelDir;
+  // Angulation: Oberkoerper haelt gegen die Boardneigung, statt starr mitzukippen
+  upper.rotation.z = -rider.roll * 0.48 - bodySway * 0.22;
+  // Schultern oeffnen deutlich in die Kurve, gegenlaeufig zur Huefte
+  upper.rotation.y = -0.62 * rider.stance - bodySway * 0.62 * rider.stance;
+  // Kopf schaut in die Kurve und dorthin, wo es hingeht
+  head.rotation.y = bodySway * 0.75 * rider.stance + 0.30 * rider.stance;
+  head.rotation.z = -rider.roll * 0.25;
+  head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1;
+
+  // Arme: der kurveninnere Arm geht runter/raus, der aeussere hoch — Balance
+  const swing = (crouch * 0.28 + rider.edge * 0.25) * rider.stance;
+  const armBob = Math.sin(bobPhase * 0.85) * 0.11 * bobA;
+  armL.rotation.z = armBaseL + swing - bodySway * 0.55 + armBob * 0.5;
+  armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5;
+  armL.rotation.x = -0.25 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob;
+  armR.rotation.x =  0.20 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob;
+  if (State.now === 'CRASHED') {
+    riderTilt.rotation.x += State.crashT * 6.0;
+    riderTilt.rotation.z += State.crashT * 4.0;
+  }
+
+  /* Welt folgt */
+  updateTerrain(rider.pos.x, rider.pos.z);
+  recycle(rider.pos.z);
+  updateSigns(rider.pos.z);
+  updateRails(rider.pos.z);
+  updateGates(rider.pos.z);
+  updateFences(rider.pos.z);
+  mountains.position.set(rider.pos.x * 0.35, rider.pos.y - 95, rider.pos.z);
+  skyDome.position.copy(camera.position);
+
+  /* Sonne + Schattenkamera folgen */
+  const sd = CONFIG.light.sunDir;
+  sun.target.position.copy(rider.pos);
+  sun.position.set(rider.pos.x + sd[0]*70, rider.pos.y + sd[1]*70, rider.pos.z + sd[2]*70);
+
+  /* Rauch */
+  const sp = smokeGeo.attributes.position.array;
+  for (let h = 0; h < huts.length; h++) {
+    const hut = huts[h], vis = hut.obj.visible;
+    for (let k = 0; k < SMOKE_PER_HUT; k++) {
+      const i = h*SMOKE_PER_HUT + k;
+      smokeLife[i] += dt * 0.34;
+      if (smokeLife[i] > 1) smokeLife[i] -= 1;
+      if (!vis) { sp[i*3+1] = -9999; continue; }
+      const t = smokeLife[i], s = hut.obj.scale.x;
+      const c = hut.obj.userData.chimney;
+      sp[i*3]   = hut.obj.position.x + c.x*s + Math.sin(t*6 + i)*t*1.6;
+      sp[i*3+1] = hut.obj.position.y + c.y*s + t*5.5;
+      sp[i*3+2] = hut.obj.position.z + c.z*s + Math.cos(t*5 + i)*t*1.2;
+    }
+  }
+  smokeGeo.attributes.position.needsUpdate = true;
+
+  /* Schnee-Trail */
+  if (State.now === 'PLAYING' && rider.grounded && speed > 3) {
+    // Querbremse wirft eine deutlich groessere Schneefahne auf
+    const rate = (6 + speed * 2.2 * (0.35 + rider.edge)) * (1 + rider.braking * 1.8) * dt;
+    trailAcc += rate;
+    forwardOf(rider.yaw, _f);
+    _r.set(Math.cos(rider.yaw), 0, -Math.sin(rider.yaw));
+    while (trailAcc >= 1) {
+      trailAcc -= 1;
+      const side = rndR(-0.35, 0.35);
+      emit(rider.pos.x - _f.x*0.9 + _r.x*side, rider.pos.y + 0.04, rider.pos.z - _f.z*0.9 + _r.z*side,
+           -rider.vel.x*0.06 + _r.x*rider.edge*rndR(-2.4, 2.4) + rndR(-0.4, 0.4),
+           rndR(0.6, 2.2) * (0.45 + rider.edge),
+           -rider.vel.z*0.06 + _r.z*rider.edge*rndR(-2.4, 2.4) + rndR(-0.4, 0.4),
+           rndR(0.28, 0.62));
+    }
+  }
+  updateParticles(dt);
+
+  /* Kamera — an der FAHRTRICHTUNG ausgerichtet, nicht am Yaw des Fahrers.
+     Dadurch bleibt sie bei Drehungen und Switch-Landungen immer hinten. */
+  const camCfg = CONFIG.camera;
+  /* Egoperspektive: Kamera sitzt auf Kopfhoehe, Fahrer wird ausgeblendet,
+     damit er nicht die eigene Sicht verdeckt. */
+  if (State.pov) {
+    /* Kamera sitzt IM Kopf und uebernimmt die Koerperorientierung — dadurch
+       dreht sie beim Backflip mit. Rumpf, Arme und Board bleiben sichtbar,
+       nur der Kopf wird ausgeblendet (sonst schaut man von innen dagegen). */
+    riderRoot.visible = true;
+    for (const m of headParts) m.visible = false;
+    /* Haende nach vorne ins Blickfeld holen. Die Arme sind ueber applyStance
+       bereits an der Stance gespiegelt, also liegt die fuehrende Hand
+       automatisch auf der richtigen Seite. */
+    armL.rotation.x -= camCfg.povArms;
+    armR.rotation.x -= camCfg.povArms;
+    armL.rotation.z = armBaseL * 0.5;
+    armR.rotation.z = armBaseR * 0.5;
+    riderTilt.updateWorldMatrix(true, false);
+    /* Stance-Wechsel: der Blick dreht wie ein KOPF mit und wieder zurueck.
+       Bewusst KEIN exponentielles Daempfen — das ist bei t=0 am schnellsten,
+       reisst also sofort los und laeuft dann aus. Genau das liest sich als
+       Sprung. Stattdessen feste Dauer mit weichem Ein- und Auslauf. */
+    const offTarget = rider.povDir < 0 ? Math.PI : 0;
+    if (offTarget !== povTo) { povFrom = povOff; povTo = offTarget; povT = 0; }
+    if (povT < 1) {
+      povT = Math.min(1, povT + dt / camCfg.povTurnDur);
+      povOff = povFrom + wrapPi(povTo - povFrom) * smooth(povT);
+    } else {
+      povOff = povTo;
+    }
+    // Kamerasitz wandert mit: bei Switch liegt "hinter dem Kopf" auf der anderen Seite
+    camera.position.set(0, camCfg.povUp - rider.crouch * 0.30, -camCfg.povFwd * Math.cos(povOff))
+      .applyMatrix4(riderTilt.matrixWorld);
+    /* Kamera STARR an der Koerperorientierung. Vorher war sie nur anteilig
+       gedaempft (Pitch 50 %, Roll 55 %) — dadurch wanderte das Board staendig
+       im Bild und man konnte die Landung nicht einschaetzen. Jetzt steht es
+       fest im Blickfeld, und Rollen wie Ueberschlag kommen automatisch mit. */
+    riderTilt.getWorldQuaternion(camera.quaternion);
+    /* Bei Switch zeigt die Board-Nase entgegen der Fahrtrichtung — ohne den
+       Ausgleich um die Koerperhochachse blickte die Kamera den Hang hinauf.
+       Nachgefuehrt wird nur am Boden, damit es mitten im Ueberschlag nicht
+       umspringt. */
+    _povSwitch.setFromAxisAngle(_povAxis, povOff);
+    camera.quaternion.multiply(_povSwitch);
+    camera.quaternion.multiply(_povTilt);
+    camYaw = rider.yaw;
+    if (State.shake > 0.001) {
+      const sh = State.shake * 0.35;
+      camera.position.x += (Math.random()-0.5) * sh;
+      camera.position.y += (Math.random()-0.5) * sh;
+      State.shake *= Math.exp(-6 * dt);
+    }
+    const pf = camCfg.povFov + clamp01(speed / camCfg.fovSpeed) * 8;
+    if (Math.abs(camera.fov - pf) > 0.02) { camera.fov += (pf - camera.fov) * damp(3, dt); camera.updateProjectionMatrix(); }
+    elSpeed.style.opacity = String(clamp01((speed - 18) / 16) * 0.85);
+    if (comboTimer > 0) { comboTimer -= dt; if (comboTimer <= 0) elCombo.classList.remove('pop'); }
+    if (flashV > 0.001) { flashV *= Math.exp(-7 * dt); elFlash.style.opacity = String(flashV); }
+    Audio.glide(speed, rider.edge, rider.grounded && State.now === 'PLAYING');
+    if ((mapTick++ % 3) === 0 && State.now !== 'MENU') drawMap();
+    return;
+  }
+  riderRoot.visible = true;
+  for (const m of headParts) m.visible = true;
+
+  const aimYaw = speed > 2.5 ? Math.atan2(-rider.vel.x, -rider.vel.z) : rider.yaw;
+  // Totzone: kleine Schwuenge lassen die Kamera stehen (kein Mitschwimmen),
+  // groessere Richtungswechsel holt sie dann zuegig auf.
+  const err = wrapPi(aimYaw - camYaw);
+  const eff = Math.sign(err) * Math.max(0, Math.abs(err) - camCfg.deadZone);
+  camYaw += eff * damp(camCfg.turnRate, dt);
+  forwardOf(camYaw, _f);
+  _r.set(Math.cos(camYaw), 0, -Math.sin(camYaw));
+  _camDesired.copy(rider.pos)
+    .addScaledVector(_f, -camCfg.back)
+    // Kamera weicht nach AUSSEN aus -> der Fahrer wandert im Bild in die Kurve
+    .addScaledVector(_r, -input.steer * camCfg.lateral)
+    .add(_tmp.set(0, camCfg.up + rider.crouch * -0.3, 0));
+  const groundClear = terrainH(_camDesired.x, _camDesired.z) + 2.0;
+  if (_camDesired.y < groundClear) _camDesired.y = groundClear;
+
+  if (!camInit) { camTarget.copy(_camDesired); camInit = true; }
+  camTarget.lerp(_camDesired, damp(camCfg.lerp * 60, dt));
+  camera.position.copy(camTarget);
+
+  if (State.shake > 0.001) {
+    const s = State.shake * 0.55;
+    camera.position.x += (Math.random()-0.5) * s;
+    camera.position.y += (Math.random()-0.5) * s;
+    State.shake *= Math.exp(-6 * dt);
+  }
+
+  // Blickpunkt vor dem Fahrer, leicht abgesenkt -> Blick von oben auf die Piste
+  _tmp.copy(rider.pos).addScaledVector(_f, camCfg.lead);
+  _tmp.y = terrainH(_tmp.x, _tmp.z) + 1.2 - camCfg.lookDown;
+  camLook.lerp(_tmp, damp(7, dt));
+  camera.lookAt(camLook);
+
+  const fov = lerp(camCfg.fovMin, camCfg.fovMax, clamp01(speed / camCfg.fovSpeed));
+  if (Math.abs(camera.fov - fov) > 0.02) { camera.fov += (fov - camera.fov) * damp(3, dt); camera.updateProjectionMatrix(); }
+
+  /* Speedlines / Flash / Combo */
+  elSpeed.style.opacity = String(clamp01((speed - 22) / 18) * 0.75);
+  if (flashV > 0.001) { flashV *= Math.exp(-7 * dt); elFlash.style.opacity = String(flashV); }
+  else if (elFlash.style.opacity !== '0') elFlash.style.opacity = '0';
+  if (comboTimer > 0) { comboTimer -= dt; if (comboTimer <= 0) elCombo.classList.remove('pop'); }
+
+  if (State.now === 'PLAYING') {
+    const ch = rider.charge;
+    elCharge.style.opacity = ch > 0.02 ? '1' : '0';
+    elChargeBar.style.width = (ch * 100).toFixed(0) + '%';
+  } else elCharge.style.opacity = '0';
+
+  if ((mapTick++ % 3) === 0 && State.now !== 'MENU') drawMap();
+
+  Audio.glide(speed, rider.edge, rider.grounded && State.now === 'PLAYING');
+}
+
+/* ==========================================================================
+   HAUPTSCHLEIFE
+   ========================================================================== */
+let acc = 0, last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = (now - last) / 1000;
+  last = now;
+  if (!(dt > 0)) dt = 0.016;
+  dt = Math.min(dt, 0.1);
+
+  if (State.now === 'PLAYING') {
+    readKeys();
+    acc += dt;
+    let steps = 0;
+    while (acc >= FIXED && steps < 8) {
+      step(FIXED);
+      acc -= FIXED;
+      steps++;
+      if (State.now !== 'PLAYING') { acc = 0; break; }
+    }
+    State.distScore = Math.floor(State.maxDist);
+
+    if (State.mode === 'RACE') {
+      State.time += dt;
+      // Ghost aufzeichnen
+      const rec = State.ghostRec;
+      if (rec && State.time >= rec.length * GHOST_DT) {
+        rec.push(+rider.pos.x.toFixed(2), +rider.pos.y.toFixed(2), +rider.pos.z.toFixed(2), +rider.yaw.toFixed(3));
+      }
+      // Ghost abspielen
+      if (State.ghost && State.ghost.rec) {
+        const g = State.ghost.rec, i = Math.min(Math.floor(State.time / GHOST_DT), g.length/4 - 1);
+        if (i >= 0) {
+          const k = i * 4;
+          ghostRider.position.set(g[k], g[k+1], g[k+2]);
+          ghostRider.rotation.y = g[k+3];
+          const gap = (-g[k+2]) - State.maxDist;
+          const el = $('ghostGap');
+          el.textContent = (gap >= 0 ? '+' : '') + gap.toFixed(0) + ' m';
+          el.style.color = gap >= 0 ? '#e04b3a' : '#2fae5a';
+        }
+      }
+      judgeGates(-rider.pos.z, rider.pos.x);
+      if (State.maxDist >= State.raceLen && !State.finished) finishRace();
+    }
+    updateHUD();
+  } else if (State.now === 'CRASHED') {
+    State.crashT += dt;
+    rider.vel.y -= CONFIG.phys.gravity * dt * 0.4;
+    rider.vel.multiplyScalar(1 - 2.2 * dt);
+    rider.pos.addScaledVector(rider.vel, dt);
+    const gh = terrainH(rider.pos.x, rider.pos.z) + P.rideHeight;
+    if (rider.pos.y < gh) { rider.pos.y = gh; rider.vel.y = 0; }
+    if (State.crashT > 1.15) {
+      State.lives--;
+      hudCache.l = -1;
+      if (State.lives <= 0) { gameOver(); }
+      else {
+        const z = rider.pos.z + P.respawnBack;
+        // auf die Mittellinie zurueck, aber nicht komplett quer versetzt
+        resetRider(z, lerp(rider.pos.x, courseX(-z), 0.7));
+        camYaw = rider.yaw;
+        camInit = false;
+        pisteZ = NaN;
+        State.now = 'PLAYING';
+        flash(0.2);
+      }
+    }
+    updateHUD();
+  } else if (State.now === 'PAUSED') {
+    dt = 0;                       // Welt einfrieren, Bild weiter zeichnen
+  } else {
+    // MENU / GAMEOVER: Kamera dreht sanft weiter, Szene bleibt lebendig
+    rider.pos.z -= dt * 3;
+    rider.pos.y = terrainH(rider.pos.x, rider.pos.z) + P.rideHeight;
+    rider.vel.set(0, 0, -3);
+  }
+
+  updateVisuals(dt);
+  renderer.render(scene, camera);
+}
+
+/* ==========================================================================
+   RESIZE + BOOT
+   ========================================================================== */
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.dpr));
+  // updateStyle=false: die Groesse kommt aus dem CSS (100%/100%), der Puffer aus innerWidth/Height
+  renderer.setSize(w, h, false);
+}
+addEventListener('resize', onResize);
+addEventListener('orientationchange', () => setTimeout(onResize, 120));
+
+resetRider(0);
+updateTerrain(0, 0);
+seedWorld(0);
+camInit = false;
+onResize();
+window.__booted = true;
+requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>
