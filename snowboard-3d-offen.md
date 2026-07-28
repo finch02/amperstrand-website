@@ -83,7 +83,57 @@ Alle drei fehlen dort komplett:
 - **Steine** — Klassen existieren (klein überspringbar, groß nicht), erscheinen
   aber nur in `ROCKS`-Abschnitten, die im Fluchtmodus nicht vorkommen.
 
-## 8. Shop
+## 8. Optik im Detail
+
+Aus einer früheren Abfrage hatte der Nutzer diese vier Punkte ausdrücklich
+angekreuzt — nur „Fahrer zu klobig" ist bearbeitet:
+
+- **Schnee zu flach.** Die Pistenfläche wirkt wie Papier. Es fehlen Tiefe,
+  Glitzern und weiche Verwehungen. Die Cord-Textur allein reicht nicht.
+- **Bäume zu simpel.** Kegel bleiben als Kegel erkennbar, der Schnee liegt zu
+  gleichmäßig auf. Nie überarbeitet worden.
+- **Berge zu flach.** Teilweise verbessert (Dunstverlauf, Tiefenversatz), laut
+  Nutzer weiterhin nicht genug.
+- **Funpark sieht nicht gut aus.** Kicker sind reine Terrain-Ausbeulungen ohne
+  erkennbare Kante, ohne Anlauf-Markierung, ohne Knuckle.
+
+## 9. Streckenvariabilität
+
+- **„Der Strecke fehlt visuelle Abwechslung einfach."** Mehrfach genannt, nie
+  zufriedenstellend gelöst. Die Abschnittstabelle (`SECT`) müsste mehr Typen und
+  bessere Verkettungsregeln bekommen.
+- **Abzweigung in den Funpark fehlt.** Ursprünglich gewünscht: im Endlosmodus
+  teilt sich die Strecke gelegentlich und man kann in einen Park mit Rampen und
+  Stangen abbiegen. Aktuell tauchen Parks nur fest in der Abfolge auf, es gibt
+  keine Wahl.
+
+## 10. Menü
+
+- **„Menü immer noch ausbaubar."** Zweimal genannt, nie konkretisiert. Beim
+  Nutzer nachfragen, was fehlt. Aktuell: Sterne, drei Modusknöpfe, Pistenplan,
+  Streckenliste.
+
+## 11. Karte
+
+- **„Die Karte ist noch nicht genau genug."** Zeigt inzwischen Pistenband,
+  Mittelinseln, Fels- und Eisfelder, Abgrundkanten, Tore und Schilder. Was
+  fehlt, ist offen — nachfragen.
+
+## 12. Rennen gegen andere
+
+- Gewünscht war: „Rennen gegen andere **oder** virtuelle Gegner (Ghost bzw.
+  Zeit)". Umgesetzt ist nur der eigene Ghost. Gegner-Fahrer (KI oder
+  Mehrspieler) fehlen komplett.
+
+## 13. Unklar, beim Nutzer nachfragen
+
+- **„Parameter müssen realistischer."** Nie präzisiert. Tempo? Kurvenradien?
+  Sprunghöhen? Ohne Konkretisierung nicht bearbeitbar.
+- **„Der Kopf soll sich mitdrehen, wo wir uns aber schon sehen können."** Kopf
+  dreht bereits bis 0,75 rad in die Kurve. Unklar, ob es um mehr Drehung oder um
+  Erkennbarkeit aus der Verfolgerdistanz geht.
+
+## 14. Shop
 
 - Münzen werden gezählt und in `localStorage` gespeichert (`Progress.coins`),
   es gibt nur nichts zu kaufen.
