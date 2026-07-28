@@ -46,6 +46,10 @@
   #popInfo{position:absolute;left:50%;top:130px;transform:translateX(-50%);font-weight:800;font-size:16px;
     padding:5px 14px;border-radius:12px;opacity:0;transition:opacity .12s}
   #popInfo.on{opacity:1}
+  #countdown{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-weight:900;
+    font-size:clamp(56px,16vw,120px);color:#fff;text-shadow:0 5px 0 #0a84ff,0 14px 34px rgba(20,60,100,.4);
+    opacity:0;transition:opacity .1s;pointer-events:none}
+  #countdown.on{opacity:1}
   #combo{position:absolute;left:50%;top:34%;transform:translate(-50%,-50%) scale(.6);opacity:0;
     font-size:clamp(30px,9vw,58px);font-weight:900;color:#fff;text-shadow:0 4px 0 #f08a1e,0 10px 26px rgba(20,60,100,.35);
     transition:transform .18s cubic-bezier(.2,1.6,.4,1),opacity .18s}
@@ -144,6 +148,7 @@
   <div id="ghostGap"></div>
   <div id="gateInfo"></div>
   <div id="popInfo"></div>
+  <div id="countdown"></div>
   <div id="combo"></div>
   <div id="charge"><i></i></div>
   <button id="pauseBtn" aria-label="Pause">⏸</button>
@@ -183,6 +188,7 @@
     <p class="sub" id="pauseSub"></p>
     <div class="modes">
       <button class="btn" id="resumeBtn">Weiter</button>
+      <button class="btn ghostbtn" id="restartBtn">Von vorne starten</button>
       <button class="btn ghostbtn" id="toMenuBtn">Zurück ins Menü</button>
     </div>
   </div>
@@ -331,7 +337,7 @@ const CONFIG = {
     respawnBack: 26
   },
   game: { lives: 3, hazardStart: 800, comboMax: 5, airPointsPerSec: 10, grindPerSec: 45,
-          flip360: 500, flip720: 1300, gatePenalty: 2.0,
+          flip360: 500, flip720: 1300, gatePenalty: 2.0, countdown: 3.6,
           trick360: 300, trick540: 600, trick720: 1200 }
 };
 
@@ -527,6 +533,7 @@ const cCx = new Float32Array(CN + 1);
 const cHw = new Float32Array(CN + 1);
 const cCam = new Float32Array(CN + 1);
 const cDrop = new Float32Array(CN + 1);
+const cSlope = new Float32Array(CN + 1);   // wirksame Neigung je Stuetzstelle
 const cIsl = new Float32Array(CN + 1);
 const cIslX = new Float32Array(CN + 1);
 const cCliff = new Float32Array(CN + 1);
@@ -739,8 +746,14 @@ function buildCourse(mode, seedIn, style) {
     cCam[i] = blendSpec('cam', 0) * T.camber;
 
     const slope = slopeAt(dd) * blendSpec('slope', 1);
-    drop += slope * COURSE_STEP;
+    /* Das Gefaelle soll ENTLANG DER STRECKE konstant sein. Pro Meter Z legt
+       ein Quergang die Weglaenge L zurueck, also faellt die Hoehe pro Meter Z
+       um slope*L. (Geteilt statt multipliziert ergaebe ein fast flaches
+       Gelaende — 1800 m Weg bei 100 m Hoehenverlust.) */
+    const Lc = Math.sqrt(1 + turn * turn);
+    drop += slope * Lc * COURSE_STEP;
     cDrop[i] = drop;
+    cSlope[i] = slope;
 
     cIsl[i]  = spec.island ? w : 0;
     cIslX[i] = S.islX;
@@ -785,6 +798,7 @@ function rowData(d, R) {
   R.outer = d <= 0 ? -1 : (cOuter[clamp(Math.round(d / COURSE_STEP), 0, CN)] || -1);
   R.ramp = smoothstep(0, 90, d);
   R.curv = (courseX(d + 9) - courseX(d - 9)) / 18;
+  R.slope = d <= 0 ? T.slope0 : sampleC(cSlope, d);
   R.park = d <= 0 ? 0 : sampleC(cPark, d);
   R.kick = null;
   if (R.park > 0.5) {
@@ -844,7 +858,16 @@ function heightIn(x, R) {
   h += (fbm2(x * 0.026, R.d * 0.042) - 0.5) * T.rollerAmp * R.ramp;
   // 3) Querwellen: die Piste faellt mal nach links, mal nach rechts, mal flach
   h += (fbm2(x * 0.052, R.d * 0.018) - 0.5) * T.crossRoll * R.ramp;
-  // 4) lineare Querneigung, ausserhalb der Piste eingefroren
+  /* 4a) DAS PROFIL FOLGT DEM VERLAUF.
+     Ohne diesen Term faellt das Gelaende stur nach -Z, waehrend die Piste bis
+     zu 63 Grad quer laeuft — die Falllinie zieht einen dann dauernd von der
+     Strecke, was sich als unbefahrbar anfuehlt. Die Querneigung -slope*curv*u
+     kippt den Hang gerade so, dass die Falllinie entlang der Piste zeigt.
+     Ausserhalb der Piste ausgeblendet, sonst laeuft die Flanke davon. */
+  const uProf = clamp(u, -R.hw * 1.5, R.hw * 1.5);
+  const Lp = Math.sqrt(1 + R.curv * R.curv);
+  h -= (R.slope / Lp) * R.curv * uProf * R.ramp;
+  // 4b) zusaetzliche gestalterische Querneigung
   h += clamp(u, -R.hw, R.hw) * R.cam * R.ramp;
   // 5) Mittelinsel — teilt die Piste in zwei Linien
   if (R.isl > 0) {
@@ -1641,6 +1664,34 @@ function updateFences(rz) {
   fences.instanceMatrix.needsUpdate = true;
 }
 
+/* ==========================================================================
+   STARTBOGEN — steht im Rennen am Anfang der Strecke
+   ========================================================================== */
+const startGate = (() => {
+  const g = new THREE.Group();
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x2b3b52, flatShading: true });
+  const bannerMat = new THREE.MeshLambertMaterial({ color: 0x0a84ff, flatShading: true });
+  for (const x of [-5.6, 5.6]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 6.2, 8), postMat);
+    p.position.set(x, 3.1, 0); p.castShadow = true; g.add(p);
+  }
+  const banner = new THREE.Mesh(roundedBox(11.8, 1.3, 0.3, 0.12, 2), bannerMat);
+  banner.position.y = 6.0; banner.castShadow = true; g.add(banner);
+  // Torfahnen als Akzent
+  for (const [x, c] of [[-5.6, 0xd8382f], [5.6, 0x2f6ad8]]) {
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8),
+      new THREE.MeshLambertMaterial({ color: c, side: THREE.DoubleSide }));
+    f.position.set(x + (x < 0 ? 0.9 : -0.9), 4.6, 0); g.add(f);
+  }
+  // Startrampe: kurze Plattform, von der aus es losgeht
+  const ramp = new THREE.Mesh(roundedBox(11, 0.6, 7, 0.3, 2),
+    new THREE.MeshLambertMaterial({ color: 0xf2f7fb, flatShading: true }));
+  ramp.position.set(0, -0.35, 3.4); ramp.receiveShadow = true; g.add(ramp);
+  g.visible = false;
+  scene.add(g);
+  return g;
+})();
+
 const HUT_N = 5;
 const huts = [];
 for (let i = 0; i < HUT_N; i++) { const h = makeHut(); h.visible = false; scene.add(h); huts.push({ obj: h, z: 1e9 }); }
@@ -2142,9 +2193,9 @@ const P = CONFIG.phys, G = CONFIG.game;
 const State = {
   now: 'MENU',
   mode: 'ENDLESS',
-  time: 0, raceLen: 1200, finished: false, track: null, trackId: 'tal',
+  time: 0, pathDist: 0, raceLen: 1200, finished: false, track: null, trackId: 'tal',
   ghost: null, ghostRec: null, ghostIdx: 0,
-  gatesHit: 0, gatesMissed: 0,
+  gatesHit: 0, gatesMissed: 0, countdown: 0,
   pov: false,
   lives: G.lives,
   score: 0, distScore: 0, airScore: 0, trickScore: 0,
@@ -2577,7 +2628,7 @@ function step(dt) {
     // quer stehen bringt mehr Punkte als einfach laengs rutschen
     State.trickScore += G.grindPerSec * (1 + cross * 0.9) * dt * State.combo;
     rider.airTime = 0;
-    State.maxDist = Math.max(State.maxDist, -rider.pos.z);
+    State.maxDist = State.pathDist;
     return;
   }
   if (rider.grinding) {
@@ -2659,7 +2710,11 @@ function step(dt) {
     resetRider(-State.maxDist);
   }
 
-  State.maxDist = Math.max(State.maxDist, -rider.pos.z);
+  /* Zurueckgelegter WEG statt Z-Fortschritt. Auf einem Quergang legt man pro
+     Meter Z ein Vielfaches zurueck — mit dem Z-Mass waere eine Spitzkehren-
+     strecke scheinbar endlos, obwohl man normal faehrt. */
+  State.pathDist += Math.hypot(rider.vel.x, rider.vel.z) * dt;
+  State.maxDist = State.pathDist;
 }
 
 /* ==========================================================================
@@ -2691,6 +2746,16 @@ function showGateInfo(hit) {
   showGateInfo._t = setTimeout(() => el.classList.remove('on'), 900);
 }
 
+let lastCount = null;
+function showCount(t) {
+  const el = $('countdown');
+  if (t === lastCount) return;
+  lastCount = t;
+  el.textContent = t;
+  el.classList.toggle('on', !!t);
+  if (t) Audio.chime(t === 'LOS!' ? 6 : 2);
+}
+
 let comboTimer = 0;
 function showCombo(text) {
   if (!text) { elCombo.classList.remove('pop'); comboTimer = 0; return; }
@@ -2719,6 +2784,7 @@ function updateHUD() {
 }
 
 const GHOST_DT = 0.08;
+const RACE_START_Z = 18;   // Startposition oberhalb des Bogens
 // v2: Geister aus der fehlerhaften Aufzeichnung sind unbrauchbar
 function ghostKey() { return 'powderline_ghost2_' + State.trackId; }
 
@@ -2737,6 +2803,7 @@ function startGame(mode, trackId) {
   }
   State.time = 0; State.finished = false;
   State.gatesHit = 0; State.gatesMissed = 0;
+  State.countdown = State.mode === 'RACE' ? CONFIG.game.countdown : 0;
   State.ghostRec = State.mode === 'RACE' ? [] : null;
   State.ghostIdx = 0;
   State.ghost = null;
@@ -2748,14 +2815,19 @@ function startGame(mode, trackId) {
   $('ghostGap').classList.toggle('on', !!State.ghost);
   State.now = 'PLAYING';
   State.lives = G.lives;
-  State.distScore = State.airScore = State.trickScore = State.maxDist = 0;
+  State.distScore = State.airScore = State.trickScore = State.maxDist = State.pathDist = 0;
   State.combo = 1; State.shake = 0; State.crashT = 0;
   hudCache = { d: -1, s: -1, l: -1 };
   _seed = 0x2f6f2b1;
-  resetRider(0);
+  // Im Rennen oberhalb des Startbogens aufsetzen, damit man durch ihn hindurchfaehrt
+  resetRider(State.mode === 'RACE' ? RACE_START_Z : 0);
   pisteZ = NaN;
   updateTerrain(0, 0);
   seedWorld(0);
+  startGate.visible = State.mode === 'RACE';
+  if (startGate.visible) {
+    startGate.position.set(courseX(0), terrainH(0, 0) - 0.1, RACE_START_Z - 12);
+  }
   signAnchor = NaN; updateSigns(0);
   fenceAnchor = NaN; updateFences(0);
   for (let i = 0; i < PN; i++) { pLife[i] = 0; pPos[i*3+1] = -9999; }
@@ -2824,6 +2896,11 @@ function setPaused(on) {
 }
 $('pauseBtn').addEventListener('click', e => { e.stopPropagation(); setPaused(State.now === 'PLAYING'); });
 $('resumeBtn').addEventListener('click', () => setPaused(false));
+$('restartBtn').addEventListener('click', () => {
+  scPause.classList.remove('on');
+  State.now = 'PLAYING';           // damit startGame sauber uebernimmt
+  startGame(State.mode, State.trackId);
+});
 $('toMenuBtn').addEventListener('click', () => {
   State.now = 'MENU';
   scPause.classList.remove('on');
@@ -3374,7 +3451,16 @@ function frame(now) {
   if (!(dt > 0)) dt = 0.016;
   dt = Math.min(dt, 0.1);
 
-  if (State.now === 'PLAYING') {
+  if (State.now === 'PLAYING' && State.countdown > 0) {
+    // Startphase: Fahrer steht am Bogen, Uhr laeuft noch nicht
+    State.countdown -= dt;
+    rider.vel.set(0, 0, 0);
+    rider.pos.y = terrainH(rider.pos.x, rider.pos.z) + P.rideHeight;
+    const n = Math.ceil(State.countdown - 0.6);
+    showCount(n > 0 ? String(n) : 'LOS!');
+    if (State.countdown <= 0) { showCount(''); rider.vel.set(0, 0, -6); acc = 0; }
+    updateHUD();
+  } else if (State.now === 'PLAYING') {
     readKeys();
     acc += dt;
     let steps = 0;
@@ -3398,12 +3484,17 @@ function frame(now) {
       }
       // Ghost abspielen
       if (State.ghost && State.ghost.rec) {
-        const g = State.ghost.rec, i = Math.min(Math.floor(State.time / GHOST_DT), g.length/4 - 1);
-        if (i >= 0) {
-          const k = i * 4;
-          ghostRider.position.set(g[k], g[k+1], g[k+2]);
-          ghostRider.rotation.y = g[k+3];
-          const gap = (-g[k+2]) - State.maxDist;
+        /* Zwischen den Stuetzpunkten interpolieren. Ohne das springt der Geist
+           nur alle 80 ms — bei 60 fps steht er vier von fuenf Frames still,
+           und genau das sieht aus, als haenge er. */
+        const g = State.ghost.rec, n = g.length / 4;
+        const f = clamp(State.time / GHOST_DT, 0, n - 1);
+        const i = Math.min(Math.floor(f), n - 2);
+        if (i >= 0 && n >= 2) {
+          const a = i * 4, b = a + 4, u = clamp01(f - i);
+          ghostRider.position.set(lerp(g[a], g[b], u), lerp(g[a+1], g[b+1], u), lerp(g[a+2], g[b+2], u));
+          ghostRider.rotation.y = g[a+3] + wrapPi(g[b+3] - g[a+3]) * u;
+          const gap = (-ghostRider.position.z) - (-rider.pos.z);
           const el = $('ghostGap');
           el.textContent = (gap >= 0 ? '+' : '') + gap.toFixed(0) + ' m';
           el.style.color = gap >= 0 ? '#e04b3a' : '#2fae5a';
