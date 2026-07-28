@@ -426,6 +426,7 @@ const P_BASE = Object.assign({}, CONFIG.phys);
 /* Jede Strecke bekommt ihr eigenes Licht- und Farbklima. Schnee, Baeume und
    Berge werden ueber material.color eingefaerbt (multipliziert sich mit den
    Vertexfarben), der Himmel bekommt neue Vertexfarben. Kein Neuaufbau noetig. */
+let lastLookSun = 1, lastLookHemi = 1;
 function applyLook(look) {
   const L = look || { sky:[0x8fbde8,0xe8f2fb], fog:0xdfeaf6, near:60, far:260,
                       snow:0xffffff, tree:0xffffff, mtn:0xffffff, sun:1.0, hemi:1.0, sunCol:0xfff6e6 };
@@ -437,6 +438,7 @@ function applyLook(look) {
   sun.color.setHex(L.sunCol);
   sun.intensity = CONFIG.light.sunInt * L.sun;
   hemi.intensity = CONFIG.light.hemiInt * L.hemi;
+  lastLookSun = L.sun; lastLookHemi = L.hemi;
   // Himmelskuppel neu einfaerben
   const g = skyDome.geometry, pos = g.attributes.position, col = g.attributes.color;
   const top = new THREE.Color(L.sky[0]), hor = new THREE.Color(L.sky[1]), c = new THREE.Color();
@@ -1748,13 +1750,26 @@ const startGate = (() => {
 const TUNNEL_SEG = 14, ICICLE_N = 7;
 const tunnelSegs = [];
 {
-  const archGeo = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true, 0, Math.PI);
-  const archMat = new THREE.MeshLambertMaterial({ color: 0xbcd6ea, flatShading: true,
+  const archGeo = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true, 0, Math.PI);
+  // Fels statt Eis: innen dunkel, damit es sich wie eine Hoehle anfuehlt
+  const archMat = new THREE.MeshLambertMaterial({ color: 0x2b3444, flatShading: true,
     side: THREE.BackSide });
+  // Lichtloecher im Fels und Fackeln an der Wand
+  const holeGeo = new THREE.CircleGeometry(0.85, 10);
+  const holeMat = new THREE.MeshBasicMaterial({ color: 0xfff4d8, side: THREE.DoubleSide, fog: false });
+  const torchGeo = new THREE.ConeGeometry(0.28, 0.7, 7);
+  const torchMat = new THREE.MeshBasicMaterial({ color: 0xff9a3c, fog: false });
   for (let i = 0; i < TUNNEL_SEG; i++) {
     const m = new THREE.Mesh(archGeo, archMat);
     m.rotation.z = Math.PI / 2;
     m.visible = false;
+    const holes = [];
+    for (let h = 0; h < 2; h++) {
+      const mesh = new THREE.Mesh(h ? torchGeo : holeGeo, h ? torchMat : holeMat);
+      scene.add(mesh);
+      holes.push(mesh);
+    }
+    m.userData = { holes };
     scene.add(m);
     tunnelSegs.push(m);
   }
@@ -1780,6 +1795,16 @@ function updateTunnel(rz, dt) {
     if (R.tunnel < 0.4) continue;
     const m = tunnelSegs[n++];
     m.visible = true;
+    // Lichtloecher und Fackeln an diesem Segment
+    const holes = m.userData.holes;
+    for (let hIdx = 0; hIdx < holes.length; hIdx++) {
+      const a = (hash2(Math.round(d), hIdx) - 0.5) * 1.9;
+      holes[hIdx].position.set(Math.sin(a) * R.hw * 0.74,
+        terrainH(R.cx, -d) - 1.2 + Math.cos(a) * R.hw * 0.74 + 0.2,
+        -d + (hIdx - 0.5) * 5);
+      holes[hIdx].position.x += R.cx;
+      holes[hIdx].lookAt(R.cx, terrainH(R.cx, -d), -d);
+    }
     // Der Bogen muss auf dem Schnee aufsitzen, nicht darueber schweben
     m.position.set(R.cx, terrainH(R.cx, -d) - 1.2, -d);
     m.scale.set(R.hw * 0.78, 11.5, R.hw * 0.78);
@@ -1796,7 +1821,11 @@ function updateTunnel(rz, dt) {
       }
     }
   }
-  for (let i = n; i < TUNNEL_SEG; i++) tunnelSegs[i].visible = false;
+  for (let i = n; i < TUNNEL_SEG; i++) {
+    tunnelSegs[i].visible = false;
+    for (const h of tunnelSegs[i].userData.holes) h.visible = false;
+  }
+  for (let i = 0; i < n; i++) for (const h of tunnelSegs[i].userData.holes) h.visible = true;
 
   /* Zapfen: haengen, wackeln als Vorwarnung, fallen, verschwinden. */
   for (const I of icicles) {
@@ -3233,7 +3262,7 @@ function startGame(mode, trackId) {
   } else if (State.mode === 'ESCAPE') {
     State.trackId = 'ESCAPE';
     // Tiefschnee-Werte plus enge Baumgassen
-    applyTune({ terrain: { slope0: 0.36, slope1: 0.50, width0: 26, width1: 20, camber: 0.14,
+    applyTune({ terrain: { slope0: 0.36, slope1: 0.50, width0: 15, width1: 11, camber: 0.16,
                            roll: 6.5, rollerAmp: 2.8, bump: 0.9, powder: 1,
                            treeNear: 2.0, treeGap: 0.4 },
                 phys:    { cruiseSpeed: 19, boostSpeed: 30, rollResist: 2.4,
@@ -3640,7 +3669,7 @@ const camTarget = new THREE.Vector3();
 const camLook = new THREE.Vector3();
 const _camDesired = new THREE.Vector3();
 let camInit = false, camYaw = 0;
-let bodySway = 0, bodyLoad = 0, bobPhase = 0;
+let bodySway = 0, bodyLoad = 0, bobPhase = 0, tunnelDark = 0;
 // konstante Blicksenkung, damit Board und Haende im Bild liegen
 const _povTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), CONFIG.camera.povPitch);
 const _povSwitch = new THREE.Quaternion();
@@ -3736,6 +3765,14 @@ function updateVisuals(dt) {
   updateGates(rider.pos.z);
   updateFences(rider.pos.z);
   updateTunnel(rider.pos.z, dt);
+  /* In der Hoehle wird es dunkel — nur die Lichtloecher und Fackeln leuchten.
+     Sonne und Aufhellung werden weich heruntergefahren. */
+  const inTun = rowData(-rider.pos.z, _rowA).tunnel;
+  tunnelDark += (inTun - tunnelDark) * damp(2.5, dt);
+  if (tunnelDark > 0.002) {
+    sun.intensity = CONFIG.light.sunInt * lastLookSun * (1 - tunnelDark * 0.88);
+    hemi.intensity = CONFIG.light.hemiInt * lastLookHemi * (1 - tunnelDark * 0.75);
+  }
   mountains.position.set(rider.pos.x * 0.35, rider.pos.y - 95, rider.pos.z);
   skyDome.position.copy(camera.position);
 
