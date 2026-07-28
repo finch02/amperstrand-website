@@ -271,6 +271,7 @@ const CONFIG = {
     width0: 30, width1: 17, narrowDist: 1500,        // Piste wird enger
     camber: 0.16,                                    // lineare Querneigung (max ~9 Grad)
     crossRoll: 1.7,                                  // Querwellen ueber die Pistenbreite
+    icicleWarn: 26, icicleShake: 0.55,   // Vorwarnstrecke und Zitterdauer
     islandW: 8.5, islandH: 3.2,                      // Mittelinseln teilen die Piste
     cliffDepth: 14, cliffShelf: 5, cliffSlope: 1.15, // Schulter, dann steiler Abhang
     hazardGapZ: 26, hazardGapX: 13,                  // Mindestluecke zwischen Hindernissen
@@ -323,7 +324,8 @@ const CONFIG = {
     carveDrag: 0.55,        // Verlust pro m/s verbleibendem Querrutschen
     rollResist: 1.15,
     iceResist: 0.28,
-    iceGrip: 0.35,
+    iceGrip: 0.10,          // auf Eis greift die Kante kaum noch
+    iceSlide: 5.5,          // seitliches Wegdriften, wenn man auf Eis lenkt
     airDrag: 0.0062,
     cruiseSpeed: 17,        // Grundgeschwindigkeit ohne Eingabe
     boostSpeed: 31,         // mit gehaltener Beschleunigungstaste
@@ -522,6 +524,7 @@ const SECT = {
   ICE:     { id: 10, label: 'Eisfeld',      len: [130, 170], turn: 0.00, w: 1.05, slope: 1.15, cam: 0.0, ice: true },
   SWI_L:   { id: 13, label: 'Spitzkehre links',  len: [95, 125], turn: -1.95, w: 1.05, slope: 1.45, cam: -1.0 },
   SWI_R:   { id: 14, label: 'Spitzkehre rechts', len: [95, 125], turn:  1.95, w: 1.05, slope: 1.45, cam:  1.0 },
+  TUNNEL:  { id: 15, label: 'Eistunnel',    len: [110, 150], turn: 0.00, w: 0.72, slope: 1.05, cam: 0.0, tunnel: true },
   JUMP:    { id: 12, label: 'Sprung',       len: [90, 120],  turn: 0.00, w: 1.15, slope: 1.10, cam: 0.0, jump: true },
   PARK:    { id: 11, label: 'Funpark',      len: [280, 340], turn: 0.00, w: 1.55, slope: 0.90, cam: 0.0, park: true }
 };
@@ -541,6 +544,7 @@ const cOuter = new Int8Array(CN + 1);
 const cRock = new Float32Array(CN + 1);
 const cIce = new Float32Array(CN + 1);
 const cPark = new Float32Array(CN + 1);
+const cTunnel = new Float32Array(CN + 1);
 const sections = [];            // {d0, d1, spec} — Grundlage fuer Schilder und Karte
 
 function pickNext(prev, prev2, d, rnd2, mode) {
@@ -571,7 +575,7 @@ function pickNext(prev, prev2, d, rnd2, mode) {
   const pool = [SECT.WIDE, SECT.CURVE_L, SECT.CURVE_R, SECT.STEEP, SECT.FLAT];
   if (d > 350) pool.push(SECT.GATE, SECT.SPLIT, SECT.PARK);
   if (d > 700) pool.push(SECT.HAIR_L, SECT.HAIR_R, SECT.ROCKS);
-  if (d > 1100) pool.push(SECT.ICE, SECT.HAIR_L, SECT.HAIR_R);
+  if (d > 1100) pool.push(SECT.ICE, SECT.HAIR_L, SECT.HAIR_R, SECT.TUNNEL);
   const bad = s =>
     s === prev ||                                    // nie zweimal dasselbe
     (prev && s.id === prev.id) ||
@@ -762,6 +766,7 @@ function buildCourse(mode, seedIn, style) {
     // Abgrund nur in der Mitte scharfer Kurven, nicht ueber die ganze Laenge
     cCliff[i] = spec.cliff ? w * w : 0;
     cPark[i] = (spec.park || spec.jump) ? 1 : 0;
+    cTunnel[i] = spec.tunnel ? w : 0;
     cOuter[i] = spec.turn >= 0 ? -1 : 1;
   }
   if (mode === 'RACE') buildGates(rnd2);
@@ -800,6 +805,7 @@ function rowData(d, R) {
   R.curv = (courseX(d + 9) - courseX(d - 9)) / 18;
   R.slope = d <= 0 ? T.slope0 : sampleC(cSlope, d);
   R.park = d <= 0 ? 0 : sampleC(cPark, d);
+  R.tunnel = d <= 0 ? 0 : sampleC(cTunnel, d);
   R.kick = null;
   if (R.park > 0.5) {
     const S = sectionAt(d);
@@ -1330,7 +1336,7 @@ const iceGeo = (() => {
   return g;
 })();
 const icePatches = new THREE.InstancedMesh(iceGeo,
-  new THREE.MeshLambertMaterial({ color: CONFIG.color.ice, transparent: true, opacity: 0.55,
+  new THREE.MeshLambertMaterial({ color: CONFIG.color.ice, transparent: true, opacity: 0.72,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), Q.ice);
 icePatches.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 icePatches.frustumCulled = false;
@@ -1709,6 +1715,96 @@ const startGate = (() => {
   return g;
 })();
 
+/* ==========================================================================
+   EISTUNNEL — Gewoelbe ueber der Piste, aus dem Eiszapfen fallen.
+   Jeder Zapfen wackelt erst und faellt dann; man muss ausweichen.
+   ========================================================================== */
+const TUNNEL_SEG = 14, ICICLE_N = 18;
+const tunnelSegs = [];
+{
+  const archGeo = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true, 0, Math.PI);
+  const archMat = new THREE.MeshLambertMaterial({ color: 0xbcd6ea, flatShading: true,
+    side: THREE.BackSide });
+  for (let i = 0; i < TUNNEL_SEG; i++) {
+    const m = new THREE.Mesh(archGeo, archMat);
+    m.rotation.z = Math.PI / 2;
+    m.visible = false;
+    scene.add(m);
+    tunnelSegs.push(m);
+  }
+}
+const icicleGeo = new THREE.ConeGeometry(0.22, 1.5, 7);
+icicleGeo.translate(0, -0.75, 0);          // Spitze nach unten, Aufhaengung oben
+const icicleMat = new THREE.MeshLambertMaterial({ color: 0xdff0fb, flatShading: true,
+  transparent: true, opacity: 0.92 });
+const icicles = [];
+for (let i = 0; i < ICICLE_N; i++) {
+  const m = new THREE.Mesh(icicleGeo, icicleMat);
+  m.visible = false;
+  m.castShadow = true;
+  scene.add(m);
+  icicles.push({ mesh: m, d: 0, x: 0, top: 0, state: 'idle', t: 0, y: 0, vy: 0 });
+}
+
+function updateTunnel(rz, dt) {
+  const d0 = -rz;
+  let n = 0, ic = 0;
+  for (let d = Math.floor(d0 / 10) * 10; d < d0 + 150 && n < TUNNEL_SEG; d += 10) {
+    const R = rowData(d, _rowA);
+    if (R.tunnel < 0.4) continue;
+    const m = tunnelSegs[n++];
+    m.visible = true;
+    m.position.set(R.cx, terrainH(R.cx, -d) - 0.4, -d);
+    m.scale.set(R.hw * 1.15, 10.5, R.hw * 1.15);
+    // Zapfen an dieses Segment binden
+    for (let k = 0; k < 2 && ic < ICICLE_N; k++) {
+      const I = icicles[ic++];
+      if (I.state === 'idle') {
+        I.d = d + k * 5 + 2;
+        const RR = rowData(I.d, _rowA);
+        I.x = RR.cx + (hash2(Math.round(I.d), k) - 0.5) * RR.hw * 1.4;
+        I.top = terrainH(I.x, -I.d) + RR.hw * 0.9;
+        I.y = I.top; I.vy = 0;
+        I.state = 'hang';
+      }
+    }
+  }
+  for (let i = n; i < TUNNEL_SEG; i++) tunnelSegs[i].visible = false;
+
+  /* Zapfen: haengen, wackeln als Vorwarnung, fallen, verschwinden. */
+  for (const I of icicles) {
+    if (I.state === 'idle') { I.mesh.visible = false; continue; }
+    if (I.d < d0 - 20) { I.state = 'idle'; I.mesh.visible = false; continue; }
+    I.mesh.visible = true;
+    const near = I.d - d0;
+    if (I.state === 'hang') {
+      I.mesh.position.set(I.x, I.top, -I.d);
+      I.mesh.rotation.z = 0;
+      if (near < T.icicleWarn) { I.state = 'shake'; I.t = 0; }
+    } else if (I.state === 'shake') {
+      I.t += dt;
+      I.mesh.position.set(I.x, I.top, -I.d);
+      I.mesh.rotation.z = Math.sin(I.t * 38) * 0.16;      // sichtbares Zittern
+      if (I.t > T.icicleShake) { I.state = 'fall'; I.vy = 0; I.y = I.top; }
+    } else {
+      I.vy -= 22 * dt; I.y += I.vy * dt;
+      I.mesh.position.set(I.x, I.y, -I.d);
+      I.mesh.rotation.z = 0;
+      if (I.y < terrainH(I.x, -I.d) - 1) { I.state = 'idle'; I.mesh.visible = false; }
+    }
+  }
+}
+// Trifft gerade ein fallender Zapfen den Fahrer?
+function hitByIcicle(x, z, y) {
+  for (const I of icicles) {
+    if (I.state !== 'fall') continue;
+    if (Math.abs(-z - I.d) > 0.9) continue;
+    if (Math.abs(x - I.x) > 0.8) continue;
+    if (I.y - 1.5 < y + 1.9 && I.y > y - 0.3) return true;
+  }
+  return false;
+}
+
 const HUT_N = 5;
 const huts = [];
 for (let i = 0; i < HUT_N; i++) { const h = makeHut(); h.visible = false; scene.add(h); huts.push({ obj: h, z: 1e9 }); }
@@ -1783,7 +1879,7 @@ function placeRock(i, rz) {
     }
   }
   if (!ok) { slot.r = 0; hideInstance(rocks, i, z); return; }
-  slot.x = x; slot.r = s * 0.8;
+  slot.x = x; slot.r = s * 0.8; slot.top = heightIn(x, R) - s * 0.30 + s * 0.9;
   _q.setFromAxisAngle(_up, rnd() * Math.PI * 2);
   _mx.compose(_pv.set(x, heightIn(x, R) - s * 0.30, z), _q, _sv.set(s, s * rndR(0.7, 1.1), s * rndR(0.8, 1.2)));
   rocks.setMatrixAt(i, _mx);
@@ -1794,7 +1890,7 @@ function placeIce(i, rz) {
   slot.z = z;
   const R = rowData(d, _rowA);
   if (R.iceField < 0.45) { slot.r = 0; hideInstance(icePatches, i, z); return; }
-  const r = rndR(3.5, 7.5);
+  const r = rndR(5.0, 10.0);
   const x = R.cx + rndR(-R.hw + r*0.4, R.hw - r*0.4);
   slot.x = x; slot.r = r;
   terrainNormal(x, z, _n);
@@ -2418,12 +2514,15 @@ function hitsTree(x, z) {
   }
   return false;
 }
-function hitsRock(x, z) {
+/* Kollision haengt an der HOEHE: kleine Brocken kann man ueberspringen,
+   grosse ragen so weit hoch, dass das nicht reicht. */
+function hitsRock(x, z, y) {
   for (let i = 0; i < Q.rocks; i++) {
     const s = rockSlot[i];
     if (!s || s.r <= 0) continue;
     const dx = x - s.x, dz = z - s.z;
-    if (dx*dx + dz*dz < (s.r + 0.55) * (s.r + 0.55)) return true;
+    if (dx*dx + dz*dz >= (s.r + 0.55) * (s.r + 0.55)) continue;
+    if (y < s.top + 0.25) return true;
   }
   return false;
 }
@@ -2605,9 +2704,17 @@ function step(dt) {
       // Braucht man, um sich beim Bremsen dagegen — also zum Hang — zu lehnen.
       rider.slide = _vd.x * Math.cos(rider.yaw) - _vd.z * Math.sin(rider.yaw);
       // Beim Bremsen loest sich der Grip -> das Board rutscht quer statt zu schneiden
+      /* Auf Eis bricht die Kante weg: der Grip faellt stark, und wer lenkt,
+         bekommt zusaetzlich einen Querschub. Man muss also gerade durch —
+         vorher war Eis praktisch folgenlos. */
       const grip = lerp(P.gripLoose, P.gripEdge, rider.edge)
                  * lerp(1, P.iceGrip, rider.onIce)
                  * lerp(1, P.brakeGrip, rider.braking);
+      if (rider.onIce > 0.05) {
+        const push = rider.onIce * Math.abs(st) * P.iceSlide * dt;
+        rider.vel.x += Math.cos(rider.yaw) * push * Math.sign(st || 1);
+        rider.vel.z += -Math.sin(rider.yaw) * push * Math.sign(st || 1);
+      }
       const keep = Math.exp(-grip * dt);
       _vd.multiplyScalar(keep);
       rider.vel.copy(_tan).multiplyScalar(along).add(_vd);
@@ -2829,7 +2936,8 @@ function step(dt) {
   rider.roll += (clamp(targetRoll, -0.95, 0.95) - rider.roll) * damp(8, dt);
 
   /* --- Hindernisse --- */
-  if (rider.grounded && hitsRock(rider.pos.x, rider.pos.z)) { crash(true); return; }
+  if (hitsRock(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true); return; }
+  if (hitByIcicle(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true); return; }
   if (rider.pos.y < terrainH(rider.pos.x, rider.pos.z) + 4.5 && hitsTree(rider.pos.x, rider.pos.z)) {
     crash(true);
     return;
@@ -3431,6 +3539,7 @@ function updateVisuals(dt) {
   updateRails(rider.pos.z);
   updateGates(rider.pos.z);
   updateFences(rider.pos.z);
+  updateTunnel(rider.pos.z, dt);
   mountains.position.set(rider.pos.x * 0.35, rider.pos.y - 95, rider.pos.z);
   skyDome.position.copy(camera.position);
 
