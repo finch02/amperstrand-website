@@ -343,7 +343,7 @@ const CONFIG = {
   game: { lives: 3, hazardStart: 800, comboMax: 5, airPointsPerSec: 10, grindPerSec: 45,
           flip360: 500, flip720: 1300, gatePenalty: 2.0, countdown: 3.6,
           chaseLag: 2.4, chaseLagNear: 0.85, catchDist: 4.5,
-          safeWindow: 15, introTime: 2.2, coinValue: 1,
+          safeWindow: 15, introTime: 4.4, coinValue: 1,
           trick360: 300, trick540: 600, trick720: 1200 }
 };
 
@@ -2247,7 +2247,7 @@ const ghostRider = riderRoot.clone(true);
 /* Die Spur ist kein flaches Band, sondern ein SCHNITT: drei Punkte je
    Querschnitt — linker Wulst, abgesenkte Rinne, rechter Wulst. Dadurch hat
    sie Tiefe und aufgeworfene Raender statt einer aufgemalten Linie. */
-const TRAIL_PTS = 260, TRAIL_V = 3;
+const TRAIL_PTS = 260, TRAIL_V = 5;
 const trailPos = new Float32Array(TRAIL_PTS * TRAIL_V * 3);
 const trailCol = new Float32Array(TRAIL_PTS * TRAIL_V * 3);
 const trailGeo = new THREE.BufferGeometry();
@@ -2257,9 +2257,10 @@ trailGeo.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(TRA
 {
   const idx = [];
   for (let i = 0; i < TRAIL_PTS - 1; i++) {
-    const a = i*3, b = a+3;                 // zwei aufeinanderfolgende Querschnitte
-    idx.push(a, a+1, b, a+1, b+1, b);       // linke Flanke
-    idx.push(a+1, a+2, b+1, a+2, b+2, b+1); // rechte Flanke
+    const a = i*TRAIL_V, b = a + TRAIL_V;   // zwei aufeinanderfolgende Querschnitte
+    for (let v = 0; v < TRAIL_V - 1; v++) {
+      idx.push(a+v, a+v+1, b+v, a+v+1, b+v+1, b+v);
+    }
   }
   trailGeo.setIndex(idx);
 }
@@ -2284,24 +2285,35 @@ function resetTrail() {
    Die Breite haengt am Kantenwinkel: sauber geschnitten eine schmale Linie,
    gedriftet ein breites Band. */
 const _tcRim = new THREE.Color();
+/* Querschnitt mit fuenf Punkten: aufgeworfener Wall, Innenflanke, Sohle,
+   Innenflanke, Wall. Im Tiefschnee wird alles deutlich groesser — dort
+   pfluegt das Board eine Rinne, statt eine Kante zu ziehen. */
 function pushTrail(x, y, z, rx, rz, edge, dark) {
   const STRIDE = TRAIL_V * 3;
   trailPos.copyWithin(0, STRIDE);
   trailCol.copyWithin(0, STRIDE);
   const e = clamp01(edge);
-  const w = lerp(0.16, 0.62, e);          // halbe Breite
-  const cut = lerp(0.035, 0.13, e);       // Tiefe der Rinne
-  const rim = lerp(0.02, 0.075, e);       // Hoehe der aufgeworfenen Raender
+  const deep = 1 + T.powder * 1.6;                 // Tiefschnee-Verstaerkung
+  const w   = lerp(0.20, 0.70, e) * deep;          // halbe Breite der Sohle
+  const cut = lerp(0.05, 0.20, e) * deep;          // Tiefe
+  const rim = lerp(0.03, 0.11, e) * deep;          // Hoehe der Waelle
   const i = (TRAIL_PTS - 1) * STRIDE;
-  trailPos[i]   = x - rx*w;       trailPos[i+1] = y + rim; trailPos[i+2] = z - rz*w;
-  trailPos[i+3] = x;              trailPos[i+4] = y - cut; trailPos[i+5] = z;
-  trailPos[i+6] = x + rx*w;       trailPos[i+7] = y + rim; trailPos[i+8] = z + rz*w;
-  // Raender heller (aufgeworfener Pulver), Rinne dunkler (verdichtet)
+  const ox = [-1.35, -0.80, 0, 0.80, 1.35];        // Querversatz in Vielfachen von w
+  const oy = [ rim,  -cut*0.55, -cut, -cut*0.55, rim ];
+  for (let v = 0; v < TRAIL_V; v++) {
+    const j = i + v*3;
+    trailPos[j]   = x + rx * w * ox[v];
+    trailPos[j+1] = y + oy[v];
+    trailPos[j+2] = z + rz * w * ox[v];
+  }
+  // Waelle hell (frisch aufgeworfener Pulver), Sohle dunkler (verdichtet)
   _tcRim.copy(_cHi);
   _tc.copy(_cHi).lerp(_cSh, clamp01(dark));
-  trailCol[i]   = _tcRim.r; trailCol[i+1] = _tcRim.g; trailCol[i+2] = _tcRim.b;
-  trailCol[i+3] = _tc.r;    trailCol[i+4] = _tc.g;    trailCol[i+5] = _tc.b;
-  trailCol[i+6] = _tcRim.r; trailCol[i+7] = _tcRim.g; trailCol[i+8] = _tcRim.b;
+  for (let v = 0; v < TRAIL_V; v++) {
+    const j = i + v*3;
+    const c = (v === 0 || v === TRAIL_V-1) ? _tcRim : _tc;
+    trailCol[j] = c.r; trailCol[j+1] = c.g; trailCol[j+2] = c.b;
+  }
   // Die Spur blasst nach hinten aus, statt abrupt zu enden
   for (let k = 0; k < TRAIL_PTS; k++) {
     const f = k / (TRAIL_PTS - 1), j = k * STRIDE, m = 0.2 + 0.8 * f;
@@ -2322,7 +2334,8 @@ function pushTrail(x, y, z, rx, rz, edge, dark) {
 function updateTrail() {
   if (State.now === 'PLAYING' && rider.grounded && !rider.grinding) {
     if (!trailInit) { trailLast.copy(rider.pos); trailInit = true; return; }
-    if (rider.pos.distanceToSquared(trailLast) > 0.42 * 0.42) {
+    const step2 = T.powder ? 0.30 : 0.42;
+    if (rider.pos.distanceToSquared(trailLast) > step2 * step2) {
       trailLast.copy(rider.pos);
       const rx = Math.cos(rider.yaw), rz = -Math.sin(rider.yaw);
       const gy = terrainH(rider.pos.x, rider.pos.z) + 0.03;
@@ -3752,6 +3765,42 @@ function updateVisuals(dt) {
   updateTrail();
   updateParticles(dt);
 
+  /* Intro-Kamerafahrt: erst den Hang hinauf auf den heranstuermenden Yeti,
+     dann nah ans Gesicht, dann herumschwenken und bergab. */
+  if (State.mode === 'ESCAPE' && State.intro > 0) {
+    const cfg = CONFIG.camera;
+    const p = 1 - State.intro / CONFIG.game.introTime;
+    riderRoot.visible = true;
+    for (const m of headParts) m.visible = true;
+    if (p < 0.40) {
+      // bergauf auf den Yeti
+      const k = p / 0.40;
+      camera.position.set(rider.pos.x + 1.5, rider.pos.y + 2.6, rider.pos.z - 5 - k * 2);
+      camLook.set(yeti.position.x, yeti.position.y + 2.6 - k * 0.6, yeti.position.z);
+    } else if (p < 0.72) {
+      // Nahaufnahme des Gesichts
+      const k = (p - 0.40) / 0.32;
+      forwardOf(rider.yaw, _f);
+      camera.position.set(rider.pos.x + 1.05 - k * 0.15, rider.pos.y + 1.95,
+                          rider.pos.z + 0.9 - k * 0.15);
+      camLook.set(rider.pos.x, rider.pos.y + 1.7, rider.pos.z);
+    } else {
+      // herumschwenken und bergab ausrichten
+      const k = smooth((p - 0.72) / 0.28);
+      const a = lerp(Math.PI * 0.62, 0, k);
+      const dist = lerp(2.6, cfg.back, k);
+      camera.position.set(rider.pos.x + Math.sin(a) * dist,
+                          rider.pos.y + lerp(1.9, cfg.up, k),
+                          rider.pos.z + Math.cos(a) * dist);
+      _tmp.copy(rider.pos); _tmp.z -= lerp(1, cfg.lead, k); _tmp.y += 1.1;
+      camLook.copy(_tmp);
+    }
+    camera.lookAt(camLook);
+    if (Math.abs(camera.fov - 62) > 0.5) { camera.fov += (62 - camera.fov) * damp(4, dt); camera.updateProjectionMatrix(); }
+    if ((mapTick++ % 3) === 0) drawMap();
+    return;
+  }
+
   /* Kamera — an der FAHRTRICHTUNG ausgerichtet, nicht am Yaw des Fahrers.
      Dadurch bleibt sie bei Drehungen und Switch-Landungen immer hinten. */
   const camCfg = CONFIG.camera;
@@ -3891,6 +3940,25 @@ function resetChase() {
    Zeitversatz. Dadurch nimmt er automatisch dieselben Kurven und kommt nie
    in unfahrbares Gelaende. */
 function updateChase(dt) {
+  /* Waehrend des Intros steht der Fahrer. Wuerde die Historie dabei
+     mitlaufen, faende die Suche nach `chaseLag` Sekunden einen Punkt aus der
+     Standphase — also genau die Stelle, an der man noch steht — und der Yeti
+     waere sofort da. Deshalb erst ab dem Losfahren aufzeichnen. */
+  if (State.intro > 0) {
+    // Er stuermt im Intro heran: von 58 auf 20 Meter, gestampft
+    const p = 1 - State.intro / CONFIG.game.introTime;
+    const back = lerp(58, 20, smooth(clamp01(p / 0.72)));
+    const zx = rider.pos.x + Math.sin(p * 9) * 1.2;
+    yeti.position.set(zx, terrainH(zx, rider.pos.z + back) - 0.2, rider.pos.z + back);
+    yeti.rotation.y = Math.PI;
+    const gait = p * 26;
+    const A = yeti.userData;
+    A.legs[0].position.z = Math.sin(gait) * 0.6;
+    A.legs[1].position.z = -Math.sin(gait) * 0.6;
+    A.arms[0].rotation.x = -Math.sin(gait) * 1.1;
+    A.arms[1].rotation.x = Math.sin(gait) * 1.1;
+    return;
+  }
   chaseClock += dt;
   histX[histHead] = rider.pos.x; histY[histHead] = rider.pos.y;
   histZ[histHead] = rider.pos.z; histT[histHead] = chaseClock;
@@ -3907,7 +3975,9 @@ function updateChase(dt) {
 
   // Position von vor chaseLag Sekunden suchen
   const target = chaseClock - State.chaseLag;
-  let px = rider.pos.x, py = rider.pos.y, pz = rider.pos.z + 30;
+  // Solange noch keine ausreichend alte Aufzeichnung existiert, haelt er
+  // Sicherheitsabstand bergauf statt auf den Fahrer zu springen
+  let px = rider.pos.x, py = rider.pos.y, pz = rider.pos.z + 34;
   for (let k = 1; k <= histN; k++) {
     const i = (histHead - k + RIDER_HIST) % RIDER_HIST;
     if (histT[i] <= target) { px = histX[i]; py = histY[i]; pz = histZ[i]; break; }
@@ -3929,7 +3999,8 @@ function updateChase(dt) {
   rider.fear += (fearWant - rider.fear) * damp(3, dt);
 
   // Eingeholt?
-  if (State.intro <= 0 && gap < CONFIG.game.catchDist) caught();
+  // Erst greifen, wenn wirklich Fahrt aufgenommen wurde
+  if (State.intro <= 0 && State.maxDist > 45 && gap < CONFIG.game.catchDist) caught();
 }
 
 function caught() {
@@ -3972,13 +4043,14 @@ function frame(now) {
   dt = Math.min(dt, 0.1);
 
   if (State.now === 'PLAYING' && State.mode === 'ESCAPE' && State.intro > 0) {
-    // Kurzer Moment Schreck, bevor es losgeht
+    // Filmisches Intro: Yeti kommt den Hang herunter, Nahaufnahme, dann los
     State.intro -= dt;
     rider.vel.multiplyScalar(0.90);
-    rider.fear += (1 - rider.fear) * damp(6, dt);
+    rider.fear += (1 - rider.fear) * damp(4, dt);
     updateChase(dt);
-    showCount(State.intro > 0.7 ? '!' : 'LOS!');
-    if (State.intro <= 0) { showCount(''); rider.vel.set(0, 0, -8); acc = 0; }
+    const p = 1 - State.intro / CONFIG.game.introTime;   // 0 bis 1
+    showCount(p > 0.86 ? 'LOS!' : '');
+    if (State.intro <= 0) { showCount(''); rider.vel.set(0, 0, -8); acc = 0; camInit = false; }
     updateHUD();
   } else if (State.now === 'PLAYING' && State.countdown > 0) {
     // Startphase: Fahrer steht am Bogen, Uhr laeuft noch nicht
