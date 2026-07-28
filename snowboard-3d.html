@@ -273,7 +273,7 @@ const CONFIG = {
     width0: 30, width1: 17, narrowDist: 1500,        // Piste wird enger
     camber: 0.16,                                    // lineare Querneigung (max ~9 Grad)
     crossRoll: 1.7,                                  // Querwellen ueber die Pistenbreite
-    icicleWarn: 26, icicleShake: 0.55,   // Vorwarnstrecke und Zitterdauer
+    icicleWarn: 55, icicleShake: 0.85,   // Vorwarnstrecke und Zitterdauer
     islandW: 8.5, islandH: 3.2,                      // Mittelinseln teilen die Piste
     cliffDepth: 14, cliffShelf: 5, cliffSlope: 1.15, // Schulter, dann steiler Abhang
     hazardGapZ: 26, hazardGapX: 13,                  // Mindestluecke zwischen Hindernissen
@@ -1745,7 +1745,7 @@ const startGate = (() => {
    EISTUNNEL — Gewoelbe ueber der Piste, aus dem Eiszapfen fallen.
    Jeder Zapfen wackelt erst und faellt dann; man muss ausweichen.
    ========================================================================== */
-const TUNNEL_SEG = 14, ICICLE_N = 18;
+const TUNNEL_SEG = 14, ICICLE_N = 7;
 const tunnelSegs = [];
 {
   const archGeo = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true, 0, Math.PI);
@@ -1759,8 +1759,8 @@ const tunnelSegs = [];
     tunnelSegs.push(m);
   }
 }
-const icicleGeo = new THREE.ConeGeometry(0.22, 1.5, 7);
-icicleGeo.translate(0, -0.75, 0);          // Spitze nach unten, Aufhaengung oben
+const icicleGeo = new THREE.ConeGeometry(0.40, 2.6, 8);
+icicleGeo.translate(0, -1.3, 0);          // Spitze nach unten, Aufhaengung oben
 const icicleMat = new THREE.MeshLambertMaterial({ color: 0xdff0fb, flatShading: true,
   transparent: true, opacity: 0.92 });
 const icicles = [];
@@ -1780,13 +1780,14 @@ function updateTunnel(rz, dt) {
     if (R.tunnel < 0.4) continue;
     const m = tunnelSegs[n++];
     m.visible = true;
-    m.position.set(R.cx, terrainH(R.cx, -d) - 0.4, -d);
-    m.scale.set(R.hw * 1.15, 10.5, R.hw * 1.15);
+    // Der Bogen muss auf dem Schnee aufsitzen, nicht darueber schweben
+    m.position.set(R.cx, terrainH(R.cx, -d) - 1.2, -d);
+    m.scale.set(R.hw * 0.78, 11.5, R.hw * 0.78);
     // Zapfen an dieses Segment binden
-    for (let k = 0; k < 2 && ic < ICICLE_N; k++) {
+    for (let k = 0; k < 1 && ic < ICICLE_N; k++) {
       const I = icicles[ic++];
       if (I.state === 'idle') {
-        I.d = d + k * 5 + 2;
+        I.d = d + 6;
         const RR = rowData(I.d, _rowA);
         I.x = RR.cx + (hash2(Math.round(I.d), k) - 0.5) * RR.hw * 1.4;
         I.top = terrainH(I.x, -I.d) + RR.hw * 0.9;
@@ -1824,8 +1825,8 @@ function updateTunnel(rz, dt) {
 function hitByIcicle(x, z, y) {
   for (const I of icicles) {
     if (I.state !== 'fall') continue;
-    if (Math.abs(-z - I.d) > 0.9) continue;
-    if (Math.abs(x - I.x) > 0.8) continue;
+    if (Math.abs(-z - I.d) > 1.3) continue;
+    if (Math.abs(x - I.x) > 1.1) continue;
     if (I.y - 1.5 < y + 1.9 && I.y > y - 0.3) return true;
   }
   return false;
@@ -1891,29 +1892,47 @@ const yeti = (() => {
 const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 14);
 coinGeo.rotateX(Math.PI/2);
 const coinMat = new THREE.MeshLambertMaterial({ color: 0xffcb2e, emissive: 0x5a4200, flatShading: true });
-const COIN_N = 60;
+const COIN_N = 24;
 const coins = new THREE.InstancedMesh(coinGeo, coinMat, COIN_N);
 coins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 coins.frustumCulled = false;
 scene.add(coins);
 const coinSlot = [];
+/* Muenzen liegen in REIHEN entlang der Linie, nicht zufaellig verstreut —
+   so kann man sie in einem Zug einsammeln. Je Reihe acht Stueck. */
+const COIN_ROW = 8;
+let coinRowZ = 0, coinRowX = 0;
 function placeCoin(i, rz) {
   const slot = coinSlot[i] || (coinSlot[i] = {});
-  const z = rz - rndR(40, AHEAD_MAX);
+  const k = i % COIN_ROW;
+  if (k === 0) {
+    // neue Reihe weit voraus ansetzen
+    coinRowZ = rz - rndR(70, AHEAD_MAX);
+    const R = rowData(-coinRowZ, _rowA);
+    coinRowX = rndR(-R.hw * 0.45, R.hw * 0.45);
+  }
+  const z = coinRowZ - k * 3.2;
   const R = rowData(-z, _rowA);
-  slot.x = R.cx + rndR(-R.hw * 0.7, R.hw * 0.7);
+  slot.x = R.cx + coinRowX;
   slot.z = z;
-  slot.y = terrainH(slot.x, z) + 1.1;
-  slot.got = false;
+  slot.y = terrainH(slot.x, z) + 1.15;
+  slot.got = false; slot.pop = 0;
 }
 function refreshCoins(rz, spin) {
   for (let i = 0; i < COIN_N; i++) {
     const c = coinSlot[i];
-    if (!c || c.z > rz + BEHIND) { placeCoin(i, rz); }
+    if (!c || c.z > rz + BEHIND) placeCoin(i, rz);
     const s = coinSlot[i];
-    if (s.got) { hideInstance(coins, i, s.z); continue; }
-    _q.setFromAxisAngle(_up, spin);
-    _mx.compose(_pv.set(s.x, s.y, s.z), _q, _sv.set(1, 1, 1));
+    if (s.got && s.pop <= 0) { hideInstance(coins, i, s.z); continue; }
+    // Aufsammeln: kurz nach oben schnellen und dabei ausblenden
+    let sc = 1, lift = 0;
+    if (s.got) {
+      s.pop = Math.max(0, s.pop - 0.05);
+      const t = 1 - s.pop;
+      sc = 1 + t * 1.6; lift = t * 1.8;
+    }
+    _q.setFromAxisAngle(_up, spin + (s.got ? 8 : 0));
+    _mx.compose(_pv.set(s.x, s.y + lift, s.z), _q, _sv.set(sc, sc, sc));
     coins.setMatrixAt(i, _mx);
   }
   coins.instanceMatrix.needsUpdate = true;
@@ -1924,7 +1943,7 @@ function collectCoins(x, y, z) {
     const c = coinSlot[i];
     if (!c || c.got) continue;
     if (Math.abs(z - c.z) > 1.6 || Math.abs(x - c.x) > 1.6 || Math.abs(y + 1 - c.y) > 2.2) continue;
-    c.got = true; n++;
+    c.got = true; c.pop = 1; n++;
   }
   return n;
 }
@@ -2293,12 +2312,14 @@ function pushTrail(x, y, z, rx, rz, edge, dark) {
   trailPos.copyWithin(0, STRIDE);
   trailCol.copyWithin(0, STRIDE);
   const e = clamp01(edge);
-  const deep = 1 + T.powder * 1.6;                 // Tiefschnee-Verstaerkung
-  const w   = lerp(0.20, 0.70, e) * deep;          // halbe Breite der Sohle
-  const cut = lerp(0.05, 0.20, e) * deep;          // Tiefe
-  const rim = lerp(0.03, 0.11, e) * deep;          // Hoehe der Waelle
+  const deep = 1 + T.powder * 1.5;                 // im Tiefschnee tiefer, NICHT breiter
+  // Die Rille entsteht dort, wo das Board aufliegt — halbe Boardbreite 0.28.
+  // Vorher war sie ueber zwei Meter breit, was keinen Sinn ergab.
+  const w   = lerp(0.28, 0.40, e);
+  const cut = lerp(0.05, 0.16, e) * deep;
+  const rim = lerp(0.02, 0.07, e) * deep;
   const i = (TRAIL_PTS - 1) * STRIDE;
-  const ox = [-1.35, -0.80, 0, 0.80, 1.35];        // Querversatz in Vielfachen von w
+  const ox = [-1.25, -0.72, 0, 0.72, 1.25];        // Querversatz in Vielfachen von w
   const oy = [ rim,  -cut*0.55, -cut, -cut*0.55, rim ];
   for (let v = 0; v < TRAIL_V; v++) {
     const j = i + v*3;
@@ -3683,7 +3704,7 @@ function updateVisuals(dt) {
   /* Angst-Pose (fuer die Verfolgung): Kopf dreht ueber die Schulter zurueck,
      Schultern hoch, Koerper tief. Ueber rider.fear von 0 bis 1 mischbar. */
   head.rotation.y = bodySway * 0.75 * rider.stance + 0.30 * rider.stance
-                  + rider.fear * 2.1 * rider.stance;
+                  + rider.fear * (State.intro > 0 ? 2.1 : 0.35) * rider.stance;
   head.rotation.z = -rider.roll * 0.25 + rider.fear * 0.18;
   head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
   upper.position.y -= rider.fear * 0.16;
@@ -3934,6 +3955,7 @@ function resetChase() {
   State.intro = CONFIG.game.introTime;
   yeti.visible = State.mode === 'ESCAPE';
   for (let i = 0; i < COIN_N; i++) coinSlot[i] = null;
+  coinRowZ = 0;
 }
 
 /* Der Yeti laeuft nicht selbst, er FOLGT der aufgezeichneten Linie mit
@@ -3995,7 +4017,8 @@ function updateChase(dt) {
 
   // Angst steigt, je naeher er ist
   const gap = Math.hypot(rider.pos.x - px, rider.pos.z - pz);
-  const fearWant = State.intro > 0 ? 1 : clamp01((26 - gap) / 16);
+  // Ausserhalb des Intros nur noch leichte Anspannung, kein Dauerblick zurueck
+  const fearWant = State.intro > 0 ? 1 : clamp01((18 - gap) / 14) * 0.6;
   rider.fear += (fearWant - rider.fear) * damp(3, dt);
 
   // Eingeholt?
