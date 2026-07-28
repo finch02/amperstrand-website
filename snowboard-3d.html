@@ -375,8 +375,8 @@ const SECT = {
   SPLIT:   { id: 8, label: 'Teilung',       len: [150, 190], turn: 0.00, w: 1.45, slope: 1.00, cam: 0.0, island: true },
   ROCKS:   { id: 9, label: 'Felsfeld',      len: [150, 190], turn: 0.00, w: 1.20, slope: 1.00, cam: 0.0, rocks: true },
   ICE:     { id: 10, label: 'Eisfeld',      len: [130, 170], turn: 0.00, w: 1.05, slope: 1.15, cam: 0.0, ice: true },
-  SWI_L:   { id: 13, label: 'Spitzkehre links',  len: [105, 140], turn: -0.95, w: 0.80, slope: 1.30, cam: -1.0 },
-  SWI_R:   { id: 14, label: 'Spitzkehre rechts', len: [105, 140], turn:  0.95, w: 0.80, slope: 1.30, cam:  1.0 },
+  SWI_L:   { id: 13, label: 'Spitzkehre links',  len: [95, 125], turn: -1.95, w: 1.05, slope: 1.45, cam: -1.0 },
+  SWI_R:   { id: 14, label: 'Spitzkehre rechts', len: [95, 125], turn:  1.95, w: 1.05, slope: 1.45, cam:  1.0 },
   JUMP:    { id: 12, label: 'Sprung',       len: [90, 120],  turn: 0.00, w: 1.15, slope: 1.10, cam: 0.0, jump: true },
   PARK:    { id: 11, label: 'Funpark',      len: [280, 340], turn: 0.00, w: 1.55, slope: 0.90, cam: 0.0, park: true }
 };
@@ -466,7 +466,20 @@ function buildGates(rnd2) {
     while (gateBlocked(dd) && tries++ < 14) dd += 10;          // hinter die Landung schieben
     if (gateBlocked(dd)) continue;
     const cx = courseX(dd), hw = halfWidthAt(dd);
-    const off = Math.min(hw * 0.55, 6 + rnd2() * 5);
+    /* In einer Spitzkehre liegt die Aussenseite hangaufwaerts — ein Tor dort
+       ist nicht mehr erreichbar, weil man dafuer gegen die Falllinie muesste.
+       Deshalb: Seite wechselt weiter durch, aber der Versatz nach aussen wird
+       mit zunehmender Kruemmung stark zurueckgenommen. */
+    const curv = (courseX(dd + 9) - courseX(dd - 9)) / 18;
+    const inside = curv >= 0 ? 1 : -1;
+    const base = Math.min(hw * 0.55, 6 + rnd2() * 5);
+    let off = base;
+    if (side !== inside && Math.abs(curv) > 0.35) {
+      // harte Obergrenze fuer den Versatz nach aussen, sonst bleibt bei
+      // mittlerer Kruemmung ein unerreichbares Tor uebrig
+      const sharp = clamp01((Math.abs(curv) - 0.35) / 0.75);
+      off = Math.min(base * lerp(1, 0.10, sharp), lerp(base, 2.5, sharp));
+    }
     raceGates.push({ d: dd, x: cx + side * off, side, judged: false, hit: false });
     side = -side;
   }
