@@ -967,7 +967,7 @@ const skyDome = (() => {
 /* Eine Bergkette aus aneinandergereihten Gipfeln. Jeder Gipfel ist ein Dreieck
    mit eigener Sonnen-/Schattenflanke — dadurch echte Low-Poly-Facetten statt
    vertikaler Streifen. */
-function makeRidge(width, height, peaks, seed, baseCol, snowMix, snowLine) {
+function makeRidge(width, height, peaks, seed, baseCol, snowMix, snowLine, haze) {
   const P = [], C = [];
   const cBase = new THREE.Color(baseCol);
   const cSun  = cBase.clone().lerp(new THREE.Color(0xffffff), 0.20);
@@ -975,19 +975,26 @@ function makeRidge(width, height, peaks, seed, baseCol, snowMix, snowLine) {
   const cSnowShad = cSnowSun.clone().lerp(cBase, 0.40);
   const base = -height * 2.6;
   const tmp = new THREE.Color();
+  const cHaze = new THREE.Color(CONFIG.color.skyHorizon);
   const colAt = (y, sunny, peakH, snowy) => {
     // Fels wird zur Hoehe hin leicht heller; die Kappe ist explizit Schnee
     const s = snowy ? 1 : smoothstep(snowLine * peakH, (snowLine + 0.22) * peakH, y) * 0.55;
-    return tmp.copy(sunny ? cSun : cBase).lerp(sunny ? cSnowSun : cSnowShad, s);
+    tmp.copy(sunny ? cSun : cBase).lerp(sunny ? cSnowSun : cSnowShad, s);
+    /* Vertikaler Verlauf: Fuesse liegen im Dunst, Grate stehen klar. Ohne das
+       wirkt jede Kette wie ein gleichmaessig bemalter Karton. */
+    const depth = 1 - clamp01(y / Math.max(1, peakH));
+    tmp.lerp(cHaze, depth * 0.42 + haze);
+    return tmp;
   };
   // Fels und Schnee getrennt sammeln: Kappen liegen exakt auf den Flanken.
   // Erst alle Flanken, danach alle Kappen -> eindeutige Malreihenfolge.
   const Ps = [], Cs = [];
+  let zOff = 0;   // pro Gipfel leicht versetzt -> die Ketten bekommen Tiefe
   const tri = (ax, ay, bx, by, cx, cy, sunny, peakH, snowy) => {
     const tp = snowy ? Ps : P, tc = snowy ? Cs : C;
     const pts = [[ax,ay],[bx,by],[cx,cy]];
     for (const [x, y] of pts) {
-      tp.push(x, y, 0);
+      tp.push(x, y, zOff + (snowy ? 0.5 : 0));
       const c = colAt(y, sunny, peakH, snowy);
       tc.push(c.r, c.g, c.b);
     }
@@ -1032,12 +1039,14 @@ function makeRidge(width, height, peaks, seed, baseCol, snowMix, snowLine) {
     const nw = vnoise(i*0.87 + seed*1.7, seed*0.93 + 4);
     const na = vnoise(i*1.31 + seed*2.3, seed*0.6);
     const h = height * (0.46 + Math.pow(nh, 1.2) * 0.54);
+    zOff = (na - 0.5) * height * 0.55;
     const halfL = h * (1.45 + nw * 1.05);
     const halfR = h * (1.45 + na * 1.05);
     peak(x, h, halfL, halfR, i + seed);
     // Vorgipfel bricht die Silhouette auf
     if (nw > 0.45) {
       const sh = h * (0.40 + nh * 0.24), sx = x + halfR * 0.70;
+      zOff += height * 0.22;
       peak(sx, sh, sh * 1.7, sh * 1.5, i * 3.7 + seed);
     }
     x += halfR + h * (0.55 + nh * 0.75);
@@ -1064,7 +1073,9 @@ const RIDGE_LAYERS = [
   { z: -2100, w: 7000, h: 800, segs: 0, snow: 0.60, line: 0.40 }
 ];
 RIDGE_LAYERS.forEach((L, i) => {
-  const m = makeRidge(L.w, L.h, L.segs, 13.7 + i*41.3, CONFIG.color.mountains[i], L.snow, L.h * L.line);
+  // Luftperspektive: jede weitere Kette verschwindet staerker im Dunst
+  const m = makeRidge(L.w, L.h, L.segs, 13.7 + i*41.3, CONFIG.color.mountains[i],
+                      L.snow, L.h * L.line, i * 0.17);
   m.position.z = L.z;
   m.renderOrder = -5 + i * -1;
   m.frustumCulled = false;
@@ -2120,23 +2131,27 @@ const ghostRider = riderRoot.clone(true);
 /* ==========================================================================
    FAHRSPUR — das Band im Schnee hinter dem Board
    ========================================================================== */
-const TRAIL_PTS = 260;                       // Stuetzpunkte im Ringpuffer
-const trailPos = new Float32Array(TRAIL_PTS * 2 * 3);
-const trailCol = new Float32Array(TRAIL_PTS * 2 * 3);
+/* Die Spur ist kein flaches Band, sondern ein SCHNITT: drei Punkte je
+   Querschnitt — linker Wulst, abgesenkte Rinne, rechter Wulst. Dadurch hat
+   sie Tiefe und aufgeworfene Raender statt einer aufgemalten Linie. */
+const TRAIL_PTS = 260, TRAIL_V = 3;
+const trailPos = new Float32Array(TRAIL_PTS * TRAIL_V * 3);
+const trailCol = new Float32Array(TRAIL_PTS * TRAIL_V * 3);
 const trailGeo = new THREE.BufferGeometry();
 trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
 trailGeo.setAttribute('color',    new THREE.BufferAttribute(trailCol, 3));
+trailGeo.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(TRAIL_PTS * TRAIL_V * 3), 3));
 {
-  // Dreiecksband ueber die Paare: (i,i+1) mit (i+2,i+3)
   const idx = [];
   for (let i = 0; i < TRAIL_PTS - 1; i++) {
-    const a = i*2, b = a+1, c = a+2, d = a+3;
-    idx.push(a, b, c, b, d, c);
+    const a = i*3, b = a+3;                 // zwei aufeinanderfolgende Querschnitte
+    idx.push(a, a+1, b, a+1, b+1, b);       // linke Flanke
+    idx.push(a+1, a+2, b+1, a+2, b+2, b+1); // rechte Flanke
   }
   trailGeo.setIndex(idx);
 }
-const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshBasicMaterial({
-  vertexColors: true, transparent: true, opacity: 0.85, depthWrite: false,
+const trailMesh = new THREE.Mesh(trailGeo, new THREE.MeshLambertMaterial({
+  vertexColors: true, transparent: true, opacity: 0.95, depthWrite: false,
   polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }));
 trailMesh.frustumCulled = false;
 trailMesh.renderOrder = 1;
@@ -2155,21 +2170,29 @@ function resetTrail() {
    das billig und die Spur bleibt zusammenhaengend.
    Die Breite haengt am Kantenwinkel: sauber geschnitten eine schmale Linie,
    gedriftet ein breites Band. */
+const _tcRim = new THREE.Color();
 function pushTrail(x, y, z, rx, rz, edge, dark) {
-  trailPos.copyWithin(0, 6);
-  trailCol.copyWithin(0, 6);
-  const w = lerp(0.16, 0.62, clamp01(edge));
-  const i = (TRAIL_PTS - 1) * 6;
-  trailPos[i]   = x - rx*w; trailPos[i+1] = y; trailPos[i+2] = z - rz*w;
-  trailPos[i+3] = x + rx*w; trailPos[i+4] = y; trailPos[i+5] = z + rz*w;
+  const STRIDE = TRAIL_V * 3;
+  trailPos.copyWithin(0, STRIDE);
+  trailCol.copyWithin(0, STRIDE);
+  const e = clamp01(edge);
+  const w = lerp(0.16, 0.62, e);          // halbe Breite
+  const cut = lerp(0.035, 0.13, e);       // Tiefe der Rinne
+  const rim = lerp(0.02, 0.075, e);       // Hoehe der aufgeworfenen Raender
+  const i = (TRAIL_PTS - 1) * STRIDE;
+  trailPos[i]   = x - rx*w;       trailPos[i+1] = y + rim; trailPos[i+2] = z - rz*w;
+  trailPos[i+3] = x;              trailPos[i+4] = y - cut; trailPos[i+5] = z;
+  trailPos[i+6] = x + rx*w;       trailPos[i+7] = y + rim; trailPos[i+8] = z + rz*w;
+  // Raender heller (aufgeworfener Pulver), Rinne dunkler (verdichtet)
+  _tcRim.copy(_cHi);
   _tc.copy(_cHi).lerp(_cSh, clamp01(dark));
-  trailCol[i] = _tc.r; trailCol[i+1] = _tc.g; trailCol[i+2] = _tc.b;
-  trailCol[i+3] = _tc.r; trailCol[i+4] = _tc.g; trailCol[i+5] = _tc.b;
+  trailCol[i]   = _tcRim.r; trailCol[i+1] = _tcRim.g; trailCol[i+2] = _tcRim.b;
+  trailCol[i+3] = _tc.r;    trailCol[i+4] = _tc.g;    trailCol[i+5] = _tc.b;
+  trailCol[i+6] = _tcRim.r; trailCol[i+7] = _tcRim.g; trailCol[i+8] = _tcRim.b;
   // Die Spur blasst nach hinten aus, statt abrupt zu enden
   for (let k = 0; k < TRAIL_PTS; k++) {
-    const f = k / (TRAIL_PTS - 1), j = k * 6;
-    const m = 0.25 + 0.75 * f;
-    for (let v = 0; v < 6; v += 3) {
+    const f = k / (TRAIL_PTS - 1), j = k * STRIDE, m = 0.2 + 0.8 * f;
+    for (let v = 0; v < STRIDE; v += 3) {
       trailCol[j+v]   = lerp(_cHi.r, trailCol[j+v],   m);
       trailCol[j+v+1] = lerp(_cHi.g, trailCol[j+v+1], m);
       trailCol[j+v+2] = lerp(_cHi.b, trailCol[j+v+2], m);
@@ -2177,6 +2200,8 @@ function pushTrail(x, y, z, rx, rz, edge, dark) {
   }
   trailGeo.attributes.position.needsUpdate = true;
   trailGeo.attributes.color.needsUpdate = true;
+  // Ohne Normalen bleibt das Band unter Lambert unbeleuchtet
+  trailGeo.computeVertexNormals();
 }
 
 /* Fahrspur fortschreiben — neuer Stuetzpunkt alle paar Zentimeter Fahrt.
