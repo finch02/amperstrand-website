@@ -131,7 +131,7 @@
       <kbd>D</kbd><span>rechts lenken / in der Luft drehen</span>
       <kbd>B</kbd><span>quer bremsen — mit A/D die Bremsseite wählen</span>
       <kbd>S</kbd><span>ducken / in der Luft: Backflip</span>
-      <kbd>W</kbd><span>in der Luft: Frontflip</span>
+      <kbd>W</kbd><span>beschleunigen · in der Luft: Frontflip</span>
       <kbd>C</kbd><span>Perspektive: Verfolger / Egosicht</span>
       <kbd>Esc</kbd><span>Pause</span>
       <kbd>Space</kbd><span>abspringen</span>
@@ -285,6 +285,9 @@ const CONFIG = {
     iceResist: 0.28,
     iceGrip: 0.35,
     airDrag: 0.0062,
+    cruiseSpeed: 17,        // Grundgeschwindigkeit ohne Eingabe
+    boostSpeed: 31,         // mit gehaltener Beschleunigungstaste
+    speedReturn: 1.5,       // wie schnell er auf die Grundgeschwindigkeit zurueckfaellt
     maxSpeed: 33,
     jumpBase: 5.2,
     jumpCharged: 9.6,
@@ -1877,7 +1880,7 @@ const Audio = (() => {
 /* ==========================================================================
    EINGABE
    ========================================================================== */
-const input = { steer: 0, duck: false, brake: false, jump: false, jumpHeld: false, pitchIn: 0 };
+const input = { steer: 0, duck: false, brake: false, boost: false, jump: false, jumpHeld: false, pitchIn: 0 };
 const keys = Object.create(null);
 const STEER_KEYS = { KeyA: -1, ArrowLeft: -1, KeyD: 1, ArrowRight: 1 };
 
@@ -1907,6 +1910,8 @@ function readKeys() {
      der Backflip. Also gehoert die Ruecktaste auf +1, nicht auf -1. */
   input.pitchIn = (keys.KeyS || keys.ArrowDown ? 1 : 0) + (keys.KeyW || keys.ArrowUp ? -1 : 0);
   input.brake = !!(keys.KeyB || keys.ShiftLeft || keys.ShiftRight) || touchBrake;
+  // Am Boden beschleunigt W/Pfeil-hoch (in der Luft ist dieselbe Taste der Frontflip)
+  input.boost = !!(keys.KeyW || keys.ArrowUp);
 }
 
 // --- Touch ---
@@ -2258,7 +2263,13 @@ function step(dt) {
         // geschnittener Schwung kostet kaum Tempo, ein gedrifteter viel.
         const slipDrag = latLen * P.carveDrag * nLoad * (1 - rider.onIce * 0.8);
         speed -= (resist + brake + slipDrag + P.airDrag * speed * speed) * dt;
-        rider.vel.setLength(clamp(speed, 0, P.maxSpeed));
+        /* Geschwindigkeits-Regelung: ohne Eingabe pendelt er sich auf die
+           Grundgeschwindigkeit ein. Vorher beschleunigte ihn die Schwerkraft
+           ungebremst bis zum Maximum — man wurde immer schneller, ohne es
+           steuern zu koennen. Nur mit gehaltener Taste geht es darueber. */
+        const targetSpeed = input.boost ? P.boostSpeed : P.cruiseSpeed;
+        if (speed > targetSpeed) speed -= (speed - targetSpeed) * P.speedReturn * dt;
+        rider.vel.setLength(clamp(speed, 0, P.boostSpeed));
       }
     }
 
