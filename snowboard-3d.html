@@ -2498,8 +2498,16 @@ function step(dt) {
     const spin = rider.spinVel * dt;
     addYaw(spin);
     rider.spinAcc += spin;
+
+    /* Der Ueberschlag wird FAHRTRICHTUNGSBEZOGEN gesteuert, aber im
+       Board-Frame dargestellt. Bei Switch zeigt die Nase nach hinten — ohne
+       den travelDir-Faktor haette dieselbe Taste dort das nachlaufende Ende
+       gehoben, aus dem Backflip waere ein Frontflip geworden.
+       flipAcc bleibt bewusst fahrtrichtungsbezogen, damit die Trickanzeige
+       stimmt; travelDir wird in der Luft nicht veraendert, also kein
+       Vorzeichenwechsel mitten im Ueberschlag. */
     const fl = rider.flipVel * dt;
-    rider.flip += fl;
+    rider.flip += fl * rider.travelDir;
     rider.flipAcc += fl;
 
     /* Landehilfe: kurz vor dem Boden zieht sich die Drehung selbst auf die
