@@ -125,6 +125,7 @@
   .btn.mode small{display:block;font-weight:600;font-size:12px;opacity:.85;margin-top:2px}
   .btn.mode[data-mode="RACE"]{background:linear-gradient(#ffb648,#f2911c);box-shadow:0 10px 24px rgba(242,145,28,.35)}
   .btn.mode[data-mode="FREESTYLE"]{background:linear-gradient(#7b5cff,#5c3ee0);box-shadow:0 10px 24px rgba(123,92,255,.35)}
+  .btn.mode[data-mode="ESCAPE"]{background:linear-gradient(#3fbf7a,#1e8f55);box-shadow:0 10px 24px rgba(63,191,122,.35)}
   .stats{display:flex;gap:10px;margin-bottom:18px}
   .stat{flex:1;background:#f1f7fd;border-radius:16px;padding:12px 8px}
   .stat b{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#7793ad}
@@ -175,6 +176,7 @@
     <div class="modes">
       <button class="btn mode" data-mode="ENDLESS">Endlos<small>Freie Abfahrt, Highscore, ab und zu ein Funpark</small></button>
       <button class="btn mode" data-mode="FREESTYLE">Freestyle<small>Durchgehend Park: Kicker, Rails, Tricks</small></button>
+      <button class="btn mode" data-mode="ESCAPE">Flucht<small>Der Yeti ist hinter dir — abseits der Piste durch den Tiefschnee</small></button>
     </div>
     <div class="secthead">Pistenplan</div>
     <div class="pistemap"><canvas id="pistecv" width="660" height="430"></canvas><div id="pistehits"></div></div>
@@ -340,6 +342,8 @@ const CONFIG = {
   },
   game: { lives: 3, hazardStart: 800, comboMax: 5, airPointsPerSec: 10, grindPerSec: 45,
           flip360: 500, flip720: 1300, gatePenalty: 2.0, countdown: 3.6,
+          chaseLag: 2.4, chaseLagNear: 0.85, catchDist: 4.5,
+          safeWindow: 15, introTime: 2.2, coinValue: 1,
           trick360: 300, trick540: 600, trick720: 1200 }
 };
 
@@ -391,18 +395,20 @@ const TRACKS = [
 ];
 const Progress = {
   stars: 0,
+  coins: 0,
   unlocked: ['tal'],
   load() {
     try {
       const raw = JSON.parse(localStorage.getItem('powderline_progress') || '{}');
       if (typeof raw.stars === 'number') this.stars = raw.stars;
+      if (typeof raw.coins === 'number') this.coins = raw.coins;
       if (Array.isArray(raw.unlocked)) this.unlocked = raw.unlocked;
     } catch (e) { /* privater Modus */ }
     if (!this.unlocked.includes('tal')) this.unlocked.push('tal');
   },
   save() {
     try { localStorage.setItem('powderline_progress',
-      JSON.stringify({ stars: this.stars, unlocked: this.unlocked })); } catch (e) { /* egal */ }
+      JSON.stringify({ stars: this.stars, coins: this.coins, unlocked: this.unlocked })); } catch (e) { /* egal */ }
   },
   has(id) { return this.unlocked.includes(id); },
   unlock(t) {
@@ -677,7 +683,9 @@ const RACE_STYLE = {
   glacier: { left: SECT.SWI_L,   right: SECT.SWI_R,   every: 3,
              fill: [SECT.ICE, SECT.JUMP, SECT.STEEP] },
   powder:  { left: SECT.CURVE_L, right: SECT.CURVE_R, every: 2,
-             fill: [SECT.WIDE, SECT.STEEP, SECT.JUMP] }
+             fill: [SECT.WIDE, SECT.STEEP, SECT.JUMP] },
+  escape:  { left: SECT.CURVE_L, right: SECT.CURVE_R, every: 2,
+             fill: [SECT.STEEP, SECT.JUMP, SECT.GATE, SECT.TUNNEL] }
 };
 let raceStyle = 'flow';
 
@@ -695,6 +703,13 @@ function buildCourse(mode, seedIn, style) {
     let spec;
     if (d < 120) spec = SECT.WIDE;
     else if (mode === 'FREESTYLE' && d < 260) spec = SECT.PARK;
+    else if (mode === 'ESCAPE') {
+      // Flucht: Tiefschnee abseits der Piste, enge Wechselkurven, viele Hindernisse
+      const st = RACE_STYLE.escape;
+      if (k % st.every === st.every - 1) spec = st.fill[Math.floor(rnd2() * st.fill.length)];
+      else { lastTurn = -lastTurn; spec = lastTurn > 0 ? st.right : st.left; }
+      k++;
+    }
     else if (mode === 'RACE') {
       /* Rennen: Wechselkurven mit Zwischenstuecken. Welche Zwischenstuecke und
          wie oft eine Kehre kommt, haengt am Streckenstil — sonst faehrt sich
@@ -1816,6 +1831,104 @@ function hitByIcicle(x, z, y) {
   return false;
 }
 
+/* ==========================================================================
+   YETI — der Verfolger im Fluchtmodus
+   ========================================================================== */
+const yeti = (() => {
+  const g = new THREE.Group();
+  const fur  = new THREE.MeshLambertMaterial({ color: 0xeaf1f8, flatShading: true });
+  const fur2 = new THREE.MeshLambertMaterial({ color: 0xd3dfeb, flatShading: true });
+  const skin = new THREE.MeshLambertMaterial({ color: 0x3c4a5c, flatShading: true });
+  const eye  = new THREE.MeshLambertMaterial({ color: 0xffd25a, emissive: 0x8a6a00 });
+  // Rumpf: schwer, nach unten breiter
+  const body = new THREE.Mesh(shapedBox(2.5, 2.9, 2.0, 0.55,
+    t => ({ x: 1.05 - t*0.22, z: 1.05 - t*0.20 }), 5), fur);
+  body.position.y = 1.9; body.castShadow = true; g.add(body);
+  // Schultern
+  const sh = new THREE.Mesh(shapedBox(3.1, 0.9, 1.9, 0.42, t => ({ x: 1, z: 1 }), 4), fur);
+  sh.position.y = 2.95; sh.castShadow = true; g.add(sh);
+  // Kopf
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.86, 14, 11), fur);
+  head.position.set(0, 3.75, 0.1); head.scale.set(1, 0.92, 1.05); head.castShadow = true; g.add(head);
+  // Gesicht
+  const face = new THREE.Mesh(shapedBox(1.0, 0.72, 0.5, 0.2, t => ({ x: 1, z: 1 }), 3), skin);
+  face.position.set(0, 3.62, 0.72); g.add(face);
+  for (const x of [-0.27, 0.27]) {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), eye);
+    e.position.set(x, 3.8, 0.92); g.add(e);
+  }
+  // Hoerner
+  for (const x of [-0.62, 0.62]) {
+    const h = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.7, 6), fur2);
+    h.position.set(x, 4.25, -0.05); h.rotation.z = x < 0 ? 0.5 : -0.5; g.add(h);
+  }
+  // Arme
+  const yArms = [];
+  for (const x of [-1.55, 1.55]) {
+    const a = new THREE.Group();
+    a.position.set(x, 2.9, 0);
+    const upperA = new THREE.Mesh(shapedBox(0.7, 1.5, 0.7, 0.3, t => ({ x: 1, z: 1 }), 4), fur);
+    upperA.position.y = -0.75; upperA.castShadow = true; a.add(upperA);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.44, 10, 8), fur2);
+    hand.position.y = -1.55; a.add(hand);
+    g.add(a); yArms.push(a);
+  }
+  // Beine
+  const yLegs = [];
+  for (const x of [-0.72, 0.72]) {
+    const l = new THREE.Mesh(shapedBox(0.85, 1.5, 0.95, 0.35, t => ({ x: 1, z: 1 }), 4), fur);
+    l.position.set(x, 0.75, 0); l.castShadow = true; g.add(l); yLegs.push(l);
+  }
+  g.visible = false;
+  scene.add(g);
+  g.userData = { arms: yArms, legs: yLegs };
+  return g;
+})();
+
+/* ==========================================================================
+   MUENZEN — Waehrung fuer den Shop, liegen als Bogen auf der Linie
+   ========================================================================== */
+const coinGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 14);
+coinGeo.rotateX(Math.PI/2);
+const coinMat = new THREE.MeshLambertMaterial({ color: 0xffcb2e, emissive: 0x5a4200, flatShading: true });
+const COIN_N = 60;
+const coins = new THREE.InstancedMesh(coinGeo, coinMat, COIN_N);
+coins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+coins.frustumCulled = false;
+scene.add(coins);
+const coinSlot = [];
+function placeCoin(i, rz) {
+  const slot = coinSlot[i] || (coinSlot[i] = {});
+  const z = rz - rndR(40, AHEAD_MAX);
+  const R = rowData(-z, _rowA);
+  slot.x = R.cx + rndR(-R.hw * 0.7, R.hw * 0.7);
+  slot.z = z;
+  slot.y = terrainH(slot.x, z) + 1.1;
+  slot.got = false;
+}
+function refreshCoins(rz, spin) {
+  for (let i = 0; i < COIN_N; i++) {
+    const c = coinSlot[i];
+    if (!c || c.z > rz + BEHIND) { placeCoin(i, rz); }
+    const s = coinSlot[i];
+    if (s.got) { hideInstance(coins, i, s.z); continue; }
+    _q.setFromAxisAngle(_up, spin);
+    _mx.compose(_pv.set(s.x, s.y, s.z), _q, _sv.set(1, 1, 1));
+    coins.setMatrixAt(i, _mx);
+  }
+  coins.instanceMatrix.needsUpdate = true;
+}
+function collectCoins(x, y, z) {
+  let n = 0;
+  for (let i = 0; i < COIN_N; i++) {
+    const c = coinSlot[i];
+    if (!c || c.got) continue;
+    if (Math.abs(z - c.z) > 1.6 || Math.abs(x - c.x) > 1.6 || Math.abs(y + 1 - c.y) > 2.2) continue;
+    c.got = true; n++;
+  }
+  return n;
+}
+
 const HUT_N = 5;
 const huts = [];
 for (let i = 0; i < HUT_N; i++) { const h = makeHut(); h.visible = false; scene.add(h); huts.push({ obj: h, z: 1e9 }); }
@@ -2466,6 +2579,7 @@ const State = {
   ghost: null, ghostRec: null, ghostIdx: 0,
   gatesHit: 0, gatesMissed: 0, countdown: 0,
   pov: false,
+  chaseLag: 2.2, stumbles: 0, safeT: 0, coins: 0, intro: 0,
   lives: G.lives,
   score: 0, distScore: 0, airScore: 0, trickScore: 0,
   maxDist: 0, combo: 1, crashT: 0, shake: 0,
@@ -2559,6 +2673,8 @@ function hitsRock(x, z, y) {
 
 function crash(hard) {
   if (State.now !== 'PLAYING') return;
+  // In der Flucht kostet ein Fehler kein Leben, sondern Vorsprung
+  if (State.mode === 'ESCAPE') { stumble(); return; }
   State.now = 'CRASHED';
   State.crashT = 0;
   State.combo = 1;
@@ -3058,7 +3174,10 @@ function updateHUD() {
   if (State.mode === 'RACE') {
     elScore.textContent = State.time.toFixed(2);
   } else if (s !== hudCache.s) { elScore.textContent = s.toLocaleString('de-DE'); hudCache.s = s; }
-  if (State.lives !== hudCache.l) {
+  if (State.mode === 'ESCAPE') {
+    elLives.textContent = '🪙 ' + State.coins;
+    hudCache.l = -1;
+  } else if (State.lives !== hudCache.l) {
     elLives.textContent = '●'.repeat(Math.max(0, State.lives)) + '○'.repeat(Math.max(0, G.lives - State.lives));
     hudCache.l = State.lives;
   }
@@ -3077,6 +3196,17 @@ function startGame(mode, trackId) {
     State.track = t; State.trackId = t.id; State.raceLen = t.len;
     applyTune(t.tune); applyLook(t.look);
     buildCourse('RACE', t.seed, t.style);
+  } else if (State.mode === 'ESCAPE') {
+    State.trackId = 'ESCAPE';
+    // Tiefschnee-Werte plus enge Baumgassen
+    applyTune({ terrain: { slope0: 0.36, slope1: 0.50, width0: 26, width1: 20, camber: 0.14,
+                           roll: 6.5, rollerAmp: 2.8, bump: 0.9, powder: 1,
+                           treeNear: 2.0, treeGap: 0.4 },
+                phys:    { cruiseSpeed: 19, boostSpeed: 30, rollResist: 2.4,
+                           gripLoose: 3.0, gripEdge: 7.5 } });
+    applyLook({ sky:[0x7f9ec2,0xe6eef6], fog:0xdde6f0, near:32, far:150,
+                snow:0xffffff, tree:0xe8eef4, mtn:0xeef3f8, sun:0.78, hemi:1.15, sunCol:0xf6f9ff });
+    buildCourse('ESCAPE', 0x5eeb17);
   } else {
     State.trackId = State.mode;
     applyTune(null); applyLook(null);
@@ -3093,6 +3223,7 @@ function startGame(mode, trackId) {
   }
   ghostRider.visible = !!State.ghost;
   $('midLbl').textContent = State.mode === 'RACE' ? 'Zeit' : 'Score';
+  document.querySelector('.row .pill:last-child b').textContent = State.mode === 'ESCAPE' ? 'Münzen' : 'Leben';
   $('ghostGap').classList.toggle('on', !!State.ghost);
   State.now = 'PLAYING';
   State.lives = G.lives;
@@ -3105,6 +3236,7 @@ function startGame(mode, trackId) {
   pisteZ = NaN;
   updateTerrain(0, 0);
   seedWorld(0);
+  resetChase();
   startGate.visible = State.mode === 'RACE';
   if (startGate.visible) {
     startGate.position.set(courseX(0), terrainH(0, 0) - 0.1, RACE_START_Z - 12);
@@ -3739,6 +3871,96 @@ function updateVisuals(dt) {
 }
 
 /* ==========================================================================
+   FLUCHT — Yeti folgt der eigenen Spur mit zeitlichem Abstand
+   ========================================================================== */
+const RIDER_HIST = 400;                       // ~6.6 s bei 60 Hz
+const histX = new Float32Array(RIDER_HIST), histY = new Float32Array(RIDER_HIST);
+const histZ = new Float32Array(RIDER_HIST), histT = new Float32Array(RIDER_HIST);
+let histN = 0, histHead = 0, chaseClock = 0;
+
+function resetChase() {
+  histN = 0; histHead = 0; chaseClock = 0;
+  State.stumbles = 0; State.safeT = 0; State.coins = 0;
+  State.chaseLag = CONFIG.game.chaseLag;
+  State.intro = CONFIG.game.introTime;
+  yeti.visible = State.mode === 'ESCAPE';
+  for (let i = 0; i < COIN_N; i++) coinSlot[i] = null;
+}
+
+/* Der Yeti laeuft nicht selbst, er FOLGT der aufgezeichneten Linie mit
+   Zeitversatz. Dadurch nimmt er automatisch dieselben Kurven und kommt nie
+   in unfahrbares Gelaende. */
+function updateChase(dt) {
+  chaseClock += dt;
+  histX[histHead] = rider.pos.x; histY[histHead] = rider.pos.y;
+  histZ[histHead] = rider.pos.z; histT[histHead] = chaseClock;
+  histHead = (histHead + 1) % RIDER_HIST;
+  histN = Math.min(histN + 1, RIDER_HIST);
+
+  // Abstand erholt sich, solange kein neuer Stolperer passiert
+  if (State.safeT > 0) {
+    State.safeT -= dt;
+    if (State.safeT <= 0) State.stumbles = 0;      // wieder frei
+  }
+  const want = State.safeT > 0 ? CONFIG.game.chaseLagNear : CONFIG.game.chaseLag;
+  State.chaseLag += (want - State.chaseLag) * damp(0.9, dt);
+
+  // Position von vor chaseLag Sekunden suchen
+  const target = chaseClock - State.chaseLag;
+  let px = rider.pos.x, py = rider.pos.y, pz = rider.pos.z + 30;
+  for (let k = 1; k <= histN; k++) {
+    const i = (histHead - k + RIDER_HIST) % RIDER_HIST;
+    if (histT[i] <= target) { px = histX[i]; py = histY[i]; pz = histZ[i]; break; }
+  }
+  yeti.position.set(px, Math.max(py, terrainH(px, pz)) - 0.2, pz);
+  // zum Fahrer ausrichten
+  yeti.rotation.y = Math.atan2(rider.pos.x - px, rider.pos.z - pz) + Math.PI;
+  // stampfende Beine und schwingende Arme
+  const gait = chaseClock * 7.5;
+  const A = yeti.userData;
+  A.legs[0].position.z = Math.sin(gait) * 0.55;
+  A.legs[1].position.z = -Math.sin(gait) * 0.55;
+  A.arms[0].rotation.x = -Math.sin(gait) * 0.8;
+  A.arms[1].rotation.x = Math.sin(gait) * 0.8;
+
+  // Angst steigt, je naeher er ist
+  const gap = Math.hypot(rider.pos.x - px, rider.pos.z - pz);
+  const fearWant = State.intro > 0 ? 1 : clamp01((26 - gap) / 16);
+  rider.fear += (fearWant - rider.fear) * damp(3, dt);
+
+  // Eingeholt?
+  if (State.intro <= 0 && gap < CONFIG.game.catchDist) caught();
+}
+
+function caught() {
+  if (State.now !== 'PLAYING') return;
+  State.now = 'GAMEOVER';
+  elHud.classList.remove('on');
+  Audio.impact(1);
+  flash(0.5);
+  document.querySelector('#over h1').textContent = 'Erwischt!';
+  $('overSub').textContent = 'Der Yeti hat dich. ' + State.coins + ' Münzen gesammelt.';
+  $('oScore').textContent = Math.floor(State.maxDist) + ' m';
+  $('oDist').textContent = State.coins + ' Münzen';
+  $('oBest').textContent = Progress.coins + ' gesamt';
+  Progress.coins += State.coins; Progress.save();
+  scOver.classList.add('on');
+}
+
+/* Ein Stolperer statt eines Sturzes: Tempo weg, Yeti rueckt auf. Der zweite
+   innerhalb des Zeitfensters bedeutet, dass er einen einholt. */
+function stumble() {
+  if (State.stumbles > 0) { caught(); return true; }
+  State.stumbles = 1;
+  State.safeT = CONFIG.game.safeWindow;
+  rider.vel.multiplyScalar(0.45);
+  State.shake = 1;
+  Audio.impact(0.8);
+  showCombo('Gestolpert!');
+  return false;
+}
+
+/* ==========================================================================
    HAUPTSCHLEIFE
    ========================================================================== */
 let acc = 0, last = performance.now();
@@ -3749,7 +3971,16 @@ function frame(now) {
   if (!(dt > 0)) dt = 0.016;
   dt = Math.min(dt, 0.1);
 
-  if (State.now === 'PLAYING' && State.countdown > 0) {
+  if (State.now === 'PLAYING' && State.mode === 'ESCAPE' && State.intro > 0) {
+    // Kurzer Moment Schreck, bevor es losgeht
+    State.intro -= dt;
+    rider.vel.multiplyScalar(0.90);
+    rider.fear += (1 - rider.fear) * damp(6, dt);
+    updateChase(dt);
+    showCount(State.intro > 0.7 ? '!' : 'LOS!');
+    if (State.intro <= 0) { showCount(''); rider.vel.set(0, 0, -8); acc = 0; }
+    updateHUD();
+  } else if (State.now === 'PLAYING' && State.countdown > 0) {
     // Startphase: Fahrer steht am Bogen, Uhr laeuft noch nicht
     State.countdown -= dt;
     rider.vel.set(0, 0, 0);
@@ -3767,6 +3998,12 @@ function frame(now) {
       acc -= FIXED;
       steps++;
       if (State.now !== 'PLAYING') { acc = 0; break; }
+    }
+    if (State.mode === 'ESCAPE') {
+      updateChase(dt);
+      refreshCoins(rider.pos.z, chaseClock * 2.2);
+      const got = collectCoins(rider.pos.x, rider.pos.y, rider.pos.z);
+      if (got) { State.coins += got * G.coinValue; Audio.chime(4); }
     }
     State.distScore = Math.floor(State.maxDist);
 
