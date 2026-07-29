@@ -3511,10 +3511,19 @@ function step(dt) {
         const gasE = rider.gas * rider.gas * (3 - 2 * rider.gas);   // weiche Kurve
         const targetSpeed = lerp(P.cruiseSpeed, P.boostSpeed, gasE) * ramp;
         if (speed > targetSpeed) speed -= (speed - targetSpeed) * P.speedReturn * dt;
-        /* ... und aktiv nachziehen: ohne diesen Zweig setzte nur der Hang das
-           Tempo und die Progression blieb wirkungslos (gemessen 15.9 statt 26
-           bei 2500 m). */
-        else speed += (targetSpeed - speed) * P.speedReturn * 0.55 * dt;
+        /* ... und nachziehen NUR, solange es bergab geht. Ohne diese Kopplung
+           an den Hang schob die Zeile den Fahrer auch bergauf auf Zieltempo —
+           man konnte endlos aufwaerts fahren, was mit Physik nichts zu tun
+           hat. gain ist 1 im Falllinien-Gefaelle und 0, sobald es aufwaerts
+           geht; dann bremst nur noch die Schwerkraft. */
+        else {
+          /* _tan zeigt entlang des Boards auf der Hangflaeche. Ein negatives
+             _tan.y heisst: es geht bergab. slopeGain ist damit 1 im Gefaelle
+             und 0, sobald die Nase aufwaerts zeigt — dort beschleunigt nichts
+             mehr und nur die Schwerkraft wirkt. */
+          const slopeGain = clamp01(-_tan.y * 6);
+          speed += (targetSpeed - speed) * P.speedReturn * 0.55 * slopeGain * dt;
+        }
         rider.vel.setLength(clamp(speed, 0, P.boostSpeed * ramp));
       }
     }
