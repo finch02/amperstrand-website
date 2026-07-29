@@ -107,6 +107,36 @@ Das Abdunkeln aus `6f54fae` war in Ordnung: `tunnelDark` → 1,0, Sonne 2,50 →
   Ein `near > 0` in der Shake-Bedingung stellt es ab — offen gelassen, weil es
   das Spielgefühl betrifft.
 
+## Stand 29.07. (zweite Runde) — gebaut und gemessen
+
+- **Dichte**: ESCAPE-Sektionen auf 58 % gekuerzt (min 92 m) — mittlere Laenge
+  170 → 104 m, 155 statt 93 Sektionen.
+- **Umgefallene Baeume** (`logs`, 13-m-Stamm): niedrig = springen, hoch = ducken
+  mit **Limbo-Slide-Pose** (`rider.limbo`, Koerper legt sich seitlich, Talarm
+  zum Schnee). Kollision RELATIV zum Boden unter dem Fahrer (absolut war der
+  Stamm seitlich der Pistenmitte bis 1 m hoch). Alle 5 Faelle gemessen:
+  Sprung frueh/spaet passiert, Boden trifft, geduckt passiert, aufrecht trifft.
+- **Schluchten** (`chasms`): am Boden hinein = „Abgestürzt!"-Tod, Kantensprung
+  passiert (gemessen); mittelmaessiger Pop (<0.55) = Stolperer bei Landung.
+- **Pistenbaeume**: jeder 11. Baum steht in ESCAPE mitten in der Strecke
+  (gemessen 10 aktiv, 0 in anderen Modi).
+- **Yeti**: Vierbeiner-Galopp (Sprungphase, wogender Rumpf), Maul mit
+  Reisszaehnen und roten Augen in dunklen Hoehlen, Klauen, Brüllen
+  (`Audio.roar`, Takt nach Naehe, Maul reisst dabei auf). Intro-Phase 1 filmt
+  ihn jetzt bildfuellend von seiner Laufbahn aus.
+- **Intro-Nahaufnahme**: Kamera folgt dem tatsaechlichen Kopf-Blick inkl.
+  Neigung; Near-Plane im Intro 0.3 statt 1.2 (schnitt Arme/Schal auf).
+  Der beruechtigte gelbe Klotz im Gesicht waren die **Muenzen-Instanzen an
+  (0,0,0)** — jetzt initial versteckt.
+- **Muenzen** fliegen beim Einsammeln in die Brust und schrumpfen dort weg.
+- **Kopf neu**: Helm hoeher (Gesicht frei), Brille = offener Rahmen +
+  halbtransparentes Glas, Band nur seitlich/hinten, Augen hinter dem Glas;
+  Angst weitet Augen und Mund. Oberkoerper/Kopf oeffnen ueber
+  `stance * travelDir` talwaerts.
+- **Look**: ACES-Tone-Mapping (Exposure 1.15); Fahrer und Yeti smooth statt
+  flatShading — Terrain/Baeume bleiben stilisiert.
+- Regression: 4 Modi je 90 s, keine Exception, Konsole leer.
+
 ## 6. Strecke
 
 - **Zu breit und zu wenig richtungsweisend.** Man kann ohne Aufmerksamkeit

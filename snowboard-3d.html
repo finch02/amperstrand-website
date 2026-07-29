@@ -463,8 +463,8 @@ function applyTune(tune) {
 
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 const Q = IS_MOBILE
-  ? { nx: 88,  nz: 72,  trees: 190, rocks: 26, ice: 16, shadow: 1024, dpr: 1.6, particles: 260 }
-  : { nx: 124, nz: 96,  trees: 330, rocks: 44, ice: 26, shadow: 2048, dpr: 2.0, particles: 460 };
+  ? { nx: 88,  nz: 72,  trees: 190, rocks: 26, ice: 16, logs: 9,  chasms: 3, shadow: 1024, dpr: 1.6, particles: 260 }
+  : { nx: 124, nz: 96,  trees: 330, rocks: 44, ice: 26, logs: 12, chasms: 4, shadow: 2048, dpr: 2.0, particles: 460 };
 
 /* ==========================================================================
    Mathe-Helfer + Value Noise (selbst implementiert)
@@ -734,7 +734,11 @@ function buildCourse(mode, seedIn, style) {
       k++;
     }
     else spec = pickNext(prev, prev2, d, rnd2, mode);
-    const len = spec.len[0] + rnd2() * (spec.len[1] - spec.len[0]);
+    let len = spec.len[0] + rnd2() * (spec.len[1] - spec.len[0]);
+    /* Flucht: kurze Abschnitte, dichter Wechsel — Temple-Run-Takt statt langer
+       Leerlaufstuecke. Untergrenze 92 m haelt die 42-m-Ueberblendung an beiden
+       Enden intakt. */
+    if (mode === 'ESCAPE') len = Math.max(92, len * 0.58);
     sections.push({ d0: d, d1: d + len, spec, islX: (rnd2() - 0.5) * 12 });
     if (spec.park) buildPark(sections[sections.length - 1], rnd2);
     if (spec.jump) {
@@ -937,6 +941,10 @@ function terrainNormal(x, z, out) {
    RENDERER / SZENE / LICHT
    ========================================================================== */
 const renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance' });
+/* Filmisches Tone-Mapping: weichere Lichter, sattere Mitten — der groesste
+   Einzelschritt Richtung fotorealistisch, ohne ein Material anzufassen. */
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.dpr));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.shadowMap.enabled = true;
@@ -1358,6 +1366,69 @@ rocks.castShadow = true;
 rocks.frustumCulled = false;
 scene.add(rocks);
 
+/* UMGEFALLENE BAEUME (Fluchtmodus): fester 13-m-Stamm quer zur Piste.
+   Niedrig (halb eingesunken) = drueberspringen, hoch (auf zwei Stuempfen)
+   = drunter durchducken. Feste Baugroesse statt X-Skalierung, damit Aeste
+   und Stuempfe nicht in die Laenge gezerrt werden; die Stuempfe zeigen nach
+   unten und verschwinden beim niedrigen Stamm einfach im Schnee. */
+const LOG_LEN = 13;
+const logGeo = (() => {
+  const parts = [];
+  const trunk = new THREE.CylinderGeometry(0.42, 0.48, LOG_LEN, 9);
+  trunk.rotateZ(Math.PI / 2);
+  parts.push(part(trunk, 0x6b4a2f));
+  const snowCap = new THREE.BoxGeometry(LOG_LEN * 0.92, 0.13, 0.52);
+  parts.push(part(snowCap, 0xf4f8fb, 0, 0.40, 0));
+  for (let i = 0; i < 4; i++) {
+    const b = new THREE.CylinderGeometry(0.08, 0.13, 0.8, 6);
+    b.translate(0, 0.4, 0);
+    b.rotateX(i % 2 ? 1.1 : -1.1);
+    parts.push(part(b, 0x5a3d26, -LOG_LEN / 2 + 1.8 + i * (LOG_LEN - 3.6) / 3, 0.1, 0));
+  }
+  const root = new THREE.CylinderGeometry(0.9, 0.9, 0.22, 9);
+  root.rotateZ(Math.PI / 2);
+  parts.push(part(root, 0x4c3420, -LOG_LEN / 2 + 0.1, 0, 0));
+  for (const sx of [-LOG_LEN / 2 + 1.1, LOG_LEN / 2 - 1.1]) {
+    const st = new THREE.CylinderGeometry(0.20, 0.30, 1.8, 7);
+    st.translate(0, -0.85, 0);
+    parts.push(part(st, 0x53381f, sx, 0, 0));
+  }
+  return mergeParts(parts);
+})();
+const logs = new THREE.InstancedMesh(logGeo,
+  new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), Q.logs);
+logs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+logs.castShadow = true;
+logs.frustumCulled = false;
+scene.add(logs);
+const logSlot = [];
+
+/* SCHLUCHTEN (Fluchtmodus): dunkler Einschnitt quer ueber die ganze Piste.
+   Am Boden hineingefahren = Absturz; wer springt, wird bei der Landung an
+   seiner Absprungbewertung gemessen. Wenige Exemplare als Gruppen. */
+const chasms = [];
+{
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x101b2a, flatShading: true });
+  const lipMat  = new THREE.MeshLambertMaterial({ color: 0xe9f1f8, flatShading: true });
+  const iceMat  = new THREE.MeshBasicMaterial({ color: 0x2e4a6b, fog: false });
+  for (let i = 0; i < Q.chasms; i++) {
+    const g = new THREE.Group();
+    const pit = new THREE.Mesh(new THREE.BoxGeometry(1, 3.4, 1), wallMat);
+    pit.position.y = -1.75;
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.86), iceMat);
+    glow.position.y = -0.55;
+    const lipA = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
+    const lipB = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
+    lipA.position.y = -0.06; lipA.rotation.x = 0.18;
+    lipB.position.y = -0.06; lipB.rotation.x = -0.18;
+    g.add(pit, glow, lipA, lipB);
+    g.visible = false;
+    scene.add(g);
+    chasms.push({ obj: g, pit, glow, lipA, lipB, z: 1e9, half: 2.6, on: false });
+  }
+}
+let chasmPendingQ = null;
+
 const iceGeo = (() => {
   const g = new THREE.CircleGeometry(1, 16);
   g.rotateX(-Math.PI/2);
@@ -1756,6 +1827,7 @@ const startGate = (() => {
    Jeder Zapfen wackelt erst und faellt dann; man muss ausweichen.
    ========================================================================== */
 const TUNNEL_SEG = 14, ICICLE_N = 7;
+let tunClock = 0;
 /* Masse des Gewoelbes. TUN_W (Breite) und TUN_H (Scheitelhoehe) sind Anteile
    der Pistenhalbbreite: die Hoehle soll fast die ganze — in TUNNEL ohnehin
    schon verengte — Piste ueberspannen, aber nicht ganz, sonst sitzen die
@@ -1771,8 +1843,24 @@ const tunnelSegs = [];
   const archGeo = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true, 0, Math.PI);
   archGeo.rotateZ(Math.PI / 2);    // Schale x>=0  ->  y>=0, Gewoelbe nach oben
   archGeo.rotateY(-Math.PI / 2);   // Achse -X     ->  -Z, entlang der Piste
+  /* Fels statt glatter Roehre: radiales Rauschen einmal in die Schale backen.
+     Betrag bewusst klein — die Segmente ueberlappen sich, zu grobes Rauschen
+     wuerde an den Stoessen sichtbare Spalten reissen. */
+  {
+    const pos = archGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const ang = Math.atan2(y, x);
+      const r = 1 + (vnoise(ang * 2.6 + 7.3, z * 3.1) - 0.5) * 0.24;
+      pos.setXYZ(i, x * r, y * r, z);
+    }
+    archGeo.computeVertexNormals();
+  }
   // Fels statt Eis: innen dunkel, damit es sich wie eine Hoehle anfuehlt
   const archMat = new THREE.MeshLambertMaterial({ color: 0x2b3444, flatShading: true,
+    side: THREE.BackSide });
+  // Eingangsring: etwas heller, damit das Portal als Kante lesbar ist
+  const portalMat = new THREE.MeshLambertMaterial({ color: 0x46566e, flatShading: true,
     side: THREE.BackSide });
   // Lichtloecher im Fels und Fackeln an der Wand
   const holeGeo = new THREE.CircleGeometry(0.85, 10);
@@ -1783,8 +1871,9 @@ const tunnelSegs = [];
     const m = new THREE.Mesh(archGeo, archMat);
     m.visible = false;
     const holes = [];
-    for (let h = 0; h < 2; h++) {
-      const mesh = new THREE.Mesh(h ? torchGeo : holeGeo, h ? torchMat : holeMat);
+    for (let h = 0; h < 4; h++) {
+      const torch = h >= 2;
+      const mesh = new THREE.Mesh(torch ? torchGeo : holeGeo, torch ? torchMat : holeMat);
       scene.add(mesh);
       holes.push(mesh);
     }
@@ -1807,6 +1896,7 @@ for (let i = 0; i < ICICLE_N; i++) {
 }
 
 function updateTunnel(rz, dt) {
+  tunClock += dt;
   const d0 = -rz;
   let n = 0, ic = 0;
   for (let d = Math.floor(d0 / 10) * 10; d < d0 + 150 && n < TUNNEL_SEG; d += 10) {
@@ -1814,6 +1904,7 @@ function updateTunnel(rz, dt) {
     if (R.tunnel < 0.4) continue;
     const m = tunnelSegs[n++];
     m.visible = true;
+    m.material = n === 1 ? portalMat : archMat;
     /* Der Bogen muss auf dem Schnee aufsitzen, nicht darueber schweben. Die
        1.2 m Einsinken decken Camber und Rollen ab, sonst klaffen an den
        Waenden Spalte. */
@@ -1832,10 +1923,12 @@ function updateTunnel(rz, dt) {
     const holes = m.userData.holes;
     for (let hIdx = 0; hIdx < holes.length; hIdx++) {
       const a = (hash2(Math.round(d), hIdx) - 0.5) * 1.9;
-      const h = holes[hIdx], hz = -d + (hIdx - 0.5) * 5;
+      const h = holes[hIdx], hz = -d + (hIdx - 1.5) * 3.2;
       h.position.set(R.cx + Math.sin(a) * wallX * TUN_INSET,
         floorY + Math.cos(a) * wallY * TUN_INSET, hz);
       h.lookAt(R.cx, floorY + wallY * 0.35, hz);
+      // Fackeln flackern, Lichtloecher nicht
+      if (hIdx >= 2) h.scale.setScalar(1 + 0.22 * Math.sin(tunClock * 12 + hIdx * 2.3 + d * 0.7));
     }
     // Zapfen an dieses Segment binden
     for (let k = 0; k < 1 && ic < ICICLE_N; k++) {
@@ -1899,54 +1992,98 @@ function hitByIcicle(x, z, y) {
    ========================================================================== */
 const yeti = (() => {
   const g = new THREE.Group();
-  const fur  = new THREE.MeshLambertMaterial({ color: 0xeaf1f8, flatShading: true });
-  const fur2 = new THREE.MeshLambertMaterial({ color: 0xd3dfeb, flatShading: true });
-  const skin = new THREE.MeshLambertMaterial({ color: 0x3c4a5c, flatShading: true });
-  const eye  = new THREE.MeshLambertMaterial({ color: 0xffd25a, emissive: 0x8a6a00 });
-  // Rumpf: schwer, nach unten breiter
-  const body = new THREE.Mesh(shapedBox(2.5, 2.9, 2.0, 0.55,
-    t => ({ x: 1.05 - t*0.22, z: 1.05 - t*0.20 }), 5), fur);
-  body.position.y = 1.9; body.castShadow = true; g.add(body);
-  // Schultern
-  const sh = new THREE.Mesh(shapedBox(3.1, 0.9, 1.9, 0.42, t => ({ x: 1, z: 1 }), 4), fur);
-  sh.position.y = 2.95; sh.castShadow = true; g.add(sh);
-  // Kopf
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.86, 14, 11), fur);
-  head.position.set(0, 3.75, 0.1); head.scale.set(1, 0.92, 1.05); head.castShadow = true; g.add(head);
-  // Gesicht
-  const face = new THREE.Mesh(shapedBox(1.0, 0.72, 0.5, 0.2, t => ({ x: 1, z: 1 }), 3), skin);
-  face.position.set(0, 3.62, 0.72); g.add(face);
-  for (const x of [-0.27, 0.27]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), eye);
-    e.position.set(x, 3.8, 0.92); g.add(e);
+  /* Auf allen vieren: die Silhouette eines heranstuermenden Baeren, nicht
+     eines stehenden Manns. Schmutzigeres Fell, Brauenwulst ueber gluehenden
+     Augen, aufgerissenes Maul mit Reisszaehnen, Klauen an den Pranken. */
+  const fur   = new THREE.MeshLambertMaterial({ color: 0xcdd8e2, flatShading: true });
+  const fur2  = new THREE.MeshLambertMaterial({ color: 0xaab8c8, flatShading: true });
+  const skin  = new THREE.MeshLambertMaterial({ color: 0x2e3a49, flatShading: true });
+  const eye   = new THREE.MeshBasicMaterial({ color: 0xff2a1a, fog: false });
+  const tooth = new THREE.MeshLambertMaterial({ color: 0xf6f3ea, flatShading: true });
+  const torso = new THREE.Group();
+  g.add(torso);
+  // Rumpf laengs, zum Kopf hin maechtiger (t laeuft von der Kruppe zur Brust)
+  const body = new THREE.Mesh(shapedBox(2.3, 3.6, 2.1, 0.5,
+    t => ({ x: 0.78 + t * 0.45, z: 0.80 + t * 0.35 }), 5), fur);
+  body.rotation.x = Math.PI / 2 - 0.18;
+  body.position.set(0, 1.75, 0.1);
+  body.castShadow = true; torso.add(body);
+  const hump = new THREE.Mesh(new THREE.SphereGeometry(1.05, 12, 9), fur);
+  hump.position.set(0, 2.55, 0.95); hump.scale.set(1.25, 0.8, 1.0);
+  hump.castShadow = true; torso.add(hump);
+  // Kopf tief und weit vorn
+  const headG = new THREE.Group();
+  headG.position.set(0, 2.25, 1.95);
+  torso.add(headG);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.72, 13, 10), fur);
+  skull.scale.set(1, 0.85, 1.1); skull.castShadow = true; headG.add(skull);
+  const brow = new THREE.Mesh(roundedBox(1.15, 0.28, 0.5, 0.09, 2), fur2);
+  brow.position.set(0, 0.30, 0.44); brow.rotation.x = -0.25; headG.add(brow);
+  const muzzle = new THREE.Mesh(roundedBox(0.75, 0.45, 0.6, 0.1, 2), skin);
+  muzzle.position.set(0, -0.06, 0.62); headG.add(muzzle);
+  for (const x of [-0.30, 0.30]) {
+    // dunkle Hoehle hinter dem gluehenden Auge — liest sich auch auf Distanz
+    const socket = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 6),
+      new THREE.MeshLambertMaterial({ color: 0x1a222e }));
+    socket.position.set(x, 0.17, 0.50); headG.add(socket);
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.115, 8, 6), eye);
+    e.position.set(x, 0.17, 0.60); headG.add(e);
   }
-  // Hoerner
-  for (const x of [-0.62, 0.62]) {
-    const h = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.7, 6), fur2);
-    h.position.set(x, 4.25, -0.05); h.rotation.z = x < 0 ? 0.5 : -0.5; g.add(h);
+  const jaw = new THREE.Mesh(roundedBox(0.66, 0.20, 0.66, 0.08, 2), skin);
+  jaw.position.set(0, -0.36, 0.52); jaw.rotation.x = 0.35; headG.add(jaw);
+  // Zaehne: obere Reihe zeigt nach unten, Fangzaehne des Kiefers nach oben
+  for (const [x, y, z, len, rx] of [
+    [-0.24, -0.24, 0.86, 0.22, Math.PI], [-0.08, -0.26, 0.90, 0.30, Math.PI],
+    [ 0.08, -0.26, 0.90, 0.30, Math.PI], [ 0.24, -0.24, 0.86, 0.22, Math.PI],
+    [-0.22, -0.42, 0.82, 0.32, 0],       [ 0.22, -0.42, 0.82, 0.32, 0]]) {
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.075, len * 1.25, 5), tooth);
+    t.position.set(x, y, z); t.rotation.x = rx; headG.add(t);
   }
-  // Arme
+  for (const x of [-0.55, 0.55]) {
+    const h = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.62, 6), fur2);
+    h.position.set(x, 0.52, -0.05); h.rotation.z = x < 0 ? 0.55 : -0.55; headG.add(h);
+  }
+  // Vorderbeine: lang, mit Klauen-Pranken
   const yArms = [];
-  for (const x of [-1.55, 1.55]) {
+  for (const x of [-1.05, 1.05]) {
     const a = new THREE.Group();
-    a.position.set(x, 2.9, 0);
-    const upperA = new THREE.Mesh(shapedBox(0.7, 1.5, 0.7, 0.3, t => ({ x: 1, z: 1 }), 4), fur);
-    upperA.position.y = -0.75; upperA.castShadow = true; a.add(upperA);
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.44, 10, 8), fur2);
-    hand.position.y = -1.55; a.add(hand);
+    a.position.set(x, 2.3, 1.15);
+    const upperA = new THREE.Mesh(shapedBox(0.62, 2.1, 0.62, 0.26,
+      t => ({ x: 1.1 - t * 0.25, z: 1.1 - t * 0.25 }), 4), fur);
+    upperA.position.y = -1.05; upperA.castShadow = true; a.add(upperA);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(0.42, 9, 7), fur2);
+    paw.position.set(0, -2.15, 0.08); a.add(paw);
+    for (const cx of [-0.2, 0, 0.2]) {
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.3, 5), tooth);
+      c.position.set(cx, -2.3, 0.38); c.rotation.x = Math.PI / 2 + 0.35; a.add(c);
+    }
     g.add(a); yArms.push(a);
   }
-  // Beine
+  // Hinterbeine: massige Keulen
   const yLegs = [];
-  for (const x of [-0.72, 0.72]) {
-    const l = new THREE.Mesh(shapedBox(0.85, 1.5, 0.95, 0.35, t => ({ x: 1, z: 1 }), 4), fur);
-    l.position.set(x, 0.75, 0); l.castShadow = true; g.add(l); yLegs.push(l);
+  for (const x of [-0.75, 0.75]) {
+    const l = new THREE.Group();
+    l.position.set(x, 1.55, -1.05);
+    const thigh = new THREE.Mesh(shapedBox(0.95, 1.7, 1.2, 0.3,
+      t => ({ x: 1.15 - t * 0.35, z: 1.15 - t * 0.35 }), 4), fur);
+    thigh.position.y = -0.8; thigh.castShadow = true; l.add(thigh);
+    const foot = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), fur2);
+    foot.position.set(0, -1.6, 0.15); l.add(foot);
+    g.add(l); yLegs.push(l);
   }
+  g.scale.setScalar(1.15);
   g.visible = false;
   scene.add(g);
-  g.userData = { arms: yArms, legs: yLegs };
+  g.traverse(o => {
+    if (o.isMesh && o.material && o.material.flatShading) {
+      o.material.flatShading = false;
+      o.material.needsUpdate = true;
+    }
+  });
+  g.userData = { arms: yArms, legs: yLegs, torso, jaw, headG };
   return g;
 })();
+let yetiRoarT = 1.0, yetiRoarAnim = 0;
 
 /* ==========================================================================
    MUENZEN — Waehrung fuer den Shop, liegen als Bogen auf der Linie
@@ -1960,6 +2097,15 @@ coins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 coins.frustumCulled = false;
 scene.add(coins);
 const coinSlot = [];
+/* Instanzen starten sonst mit Identitaetsmatrix an (0,0,0) — als riesige
+   Zylinder direkt im Fahrer, bis das erste Recycling sie versetzt. Genau das
+   war der gelbe Klotz im Intro. */
+{
+  const cm = new THREE.Matrix4().makeScale(0.0001, 0.0001, 0.0001);
+  cm.setPosition(0, -9999, 0);
+  for (let i = 0; i < COIN_N; i++) coins.setMatrixAt(i, cm);
+  coins.instanceMatrix.needsUpdate = true;
+}
 /* Muenzen liegen in REIHEN entlang der Linie, nicht zufaellig verstreut —
    so kann man sie in einem Zug einsammeln. Je Reihe acht Stueck. */
 const COIN_ROW = 8;
@@ -1986,15 +2132,19 @@ function refreshCoins(rz, spin) {
     if (!c || c.z > rz + BEHIND) placeCoin(i, rz);
     const s = coinSlot[i];
     if (s.got && s.pop <= 0) { hideInstance(coins, i, s.z); continue; }
-    // Aufsammeln: kurz nach oben schnellen und dabei ausblenden
-    let sc = 1, lift = 0;
+    /* Aufsammeln: die Muenze wird zur Brust gezogen und schrumpft dort weg —
+       sie verschwindet IM Koerper, statt hinten wieder herauszufliegen. */
+    let sc = 1, px = s.x, py = s.y, pz = s.z;
     if (s.got) {
-      s.pop = Math.max(0, s.pop - 0.05);
-      const t = 1 - s.pop;
-      sc = 1 + t * 1.6; lift = t * 1.8;
+      s.pop = Math.max(0, s.pop - 0.07);
+      const t = 1 - s.pop, k = t * t;
+      px += (rider.pos.x - px) * k;
+      py += (rider.pos.y + 0.95 - py) * k;
+      pz += (rider.pos.z - pz) * k;
+      sc = Math.max(0.05, 1 - t * 0.95);
     }
     _q.setFromAxisAngle(_up, spin + (s.got ? 8 : 0));
-    _mx.compose(_pv.set(s.x, s.y + lift, s.z), _q, _sv.set(sc, sc, sc));
+    _mx.compose(_pv.set(px, py, pz), _q, _sv.set(sc, sc, sc));
     coins.setMatrixAt(i, _mx);
   }
   coins.instanceMatrix.needsUpdate = true;
@@ -2052,6 +2202,15 @@ function placeTree(i, rz, zForce) {
   // Mittelinseln bewalden: der Baum steht dann mitten in der Piste
   if (R.isl > 0.55 && rnd() < 0.55) {
     setTree(i, R.cx + R.islX + rndR(-2.8, 2.8), z, rndR(0.8, 1.35), rndR(0.95, 1.2));
+    return;
+  }
+  /* Flucht: wilder Berg — einzelne Baeume stehen mitten in der Strecke.
+     Nicht im Tunnel, nicht am Anfang; ueber i getaktet, damit die Dichte
+     kalkulierbar bleibt (hitsTree macht jeden davon zum Stolperer). */
+  if (State.mode === 'ESCAPE' && -z > 140 && R.tunnel < 0.2 && !R.kick &&
+      i % 11 === 0 && rnd() < 0.55) {
+    setTree(i, R.cx + rndR(-0.8, 0.8) * Math.max(1.5, R.hw - 2.5), z,
+      rndR(0.85, 1.35), rndR(0.95, 1.25));
     return;
   }
   // An Abbruchkanten nicht auf die Aussenseite pflanzen — dort ist nichts mehr
@@ -2116,6 +2275,58 @@ function placeHut(h, rz) {
   h.obj.scale.setScalar(s);
 }
 
+function placeLog(i, rz) {
+  const z = rz - rndR(AHEAD_MIN, AHEAD_MAX), d = -z;
+  const slot = logSlot[i] || (logSlot[i] = {});
+  slot.z = z;
+  const R = rowData(d, _rowA);
+  if (State.mode !== 'ESCAPE' || d < 160 || R.tunnel > 0.25 || R.park > 0.5 || R.kick) {
+    slot.on = 0; hideInstance(logs, i, z); return;
+  }
+  // Mindestabstand zu anderen Staemmen und Schluchten, sonst unfaire Doppel
+  for (let j = 0; j < Q.logs; j++) {
+    const o = logSlot[j];
+    if (o && j !== i && o.on && Math.abs(o.z - z) < 42) { slot.on = 0; hideInstance(logs, i, z); return; }
+  }
+  for (const c of chasms) if (c.on && Math.abs(c.z - z) < 46) { slot.on = 0; hideInstance(logs, i, z); return; }
+  const high = rnd() < 0.42;
+  const x = R.cx + rndR(-1, 1) * Math.max(0, R.hw - LOG_LEN / 2) * 0.8;
+  const gy = heightIn(x, R);
+  slot.x = x; slot.on = 1; slot.high = high ? 1 : 0;
+  /* Niedriger Stamm sitzt halb im Schnee: Kante ~0.46 m. Hoeher gefasst war
+     er nur mit perfekt getimtem Sprung zu schaffen — gemessen 0.19 m Rest bei
+     einem 1.5 m zu fruehen Absprung. */
+  slot.y = gy + (high ? 1.55 : -0.02);
+  _q.setFromAxisAngle(_up, rndR(-0.10, 0.10));
+  _mx.compose(_pv.set(x, slot.y, z), _q, _sv.set(1, rndR(0.95, 1.12), rndR(0.95, 1.12)));
+  logs.setMatrixAt(i, _mx);
+}
+function placeChasm(k, rz) {
+  const c = chasms[k];
+  const z = rz - rndR(AHEAD_MIN + 60, AHEAD_MAX + 160), d = -z;
+  c.z = z;
+  const R = rowData(d, _rowA);
+  if (State.mode !== 'ESCAPE' || d < 220 || R.tunnel > 0.2 || R.park > 0.5 ||
+      R.kick || Math.abs(R.curv) > 0.25) { c.on = false; c.obj.visible = false; return; }
+  for (const o of chasms) if (o !== c && o.on && Math.abs(o.z - z) < 150) { c.on = false; c.obj.visible = false; return; }
+  for (let j = 0; j < Q.logs; j++) {
+    const o = logSlot[j];
+    if (o && o.on && Math.abs(o.z - z) < 46) { c.on = false; c.obj.visible = false; return; }
+  }
+  const dep = rndR(4.6, 6.2);
+  c.half = dep / 2;
+  const w = R.hw * 2 + 10;
+  const gy = terrainH(R.cx, z);
+  c.on = true; c.obj.visible = true;
+  c.obj.position.set(R.cx, gy + 0.05, z);
+  // dem Gefaelle folgen, sonst schwebt die Tal-Lippe und die Berg-Lippe versinkt
+  const yB = terrainH(R.cx, z + dep / 2), yF = terrainH(R.cx, z - dep / 2);
+  c.obj.rotation.x = -Math.atan2(yB - yF, dep);
+  c.pit.scale.set(w, 1, dep);
+  c.glow.scale.set(w * 0.985, 1, dep * 0.86);
+  c.lipA.scale.set(w, 1, 1); c.lipA.position.z = -dep / 2;
+  c.lipB.scale.set(w, 1, 1); c.lipB.position.z =  dep / 2;
+}
 function seedWorld(rz) {
   // Startbefuellung ueber die ganze Tiefe verteilen (nicht nur weit vorne)
   for (let i = 0; i < Q.trees; i++) placeTree(i, rz, rz + BEHIND - rnd() * (AHEAD_MAX + BEHIND));
@@ -2124,17 +2335,24 @@ function seedWorld(rz) {
   rocks.instanceMatrix.needsUpdate = true;
   for (let i = 0; i < Q.ice; i++) placeIce(i, rz);
   icePatches.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < Q.logs; i++) placeLog(i, rz);
+  logs.instanceMatrix.needsUpdate = true;
+  for (let k = 0; k < Q.chasms; k++) placeChasm(k, rz);
+  chasmPendingQ = null;
   huts.forEach(h => placeHut(h, rz));
 }
 
 function recycle(rz) {
-  let td = false, rd = false, id = false;
+  let td = false, rd = false, id = false, ld = false;
   for (let i = 0; i < Q.trees; i++) if (treeSlot[i].z > rz + BEHIND) { placeTree(i, rz); td = true; }
   for (let i = 0; i < Q.rocks; i++) if (rockSlot[i].z > rz + BEHIND) { placeRock(i, rz); rd = true; }
   for (let i = 0; i < Q.ice;   i++) if (iceSlot[i].z  > rz + BEHIND) { placeIce(i, rz); id = true; }
+  for (let i = 0; i < Q.logs;  i++) if (logSlot[i].z  > rz + BEHIND) { placeLog(i, rz); ld = true; }
+  for (let k = 0; k < Q.chasms; k++) if (chasms[k].z  > rz + BEHIND) placeChasm(k, rz);
   if (td) trees.instanceMatrix.needsUpdate = true;
   if (rd) rocks.instanceMatrix.needsUpdate = true;
   if (id) icePatches.instanceMatrix.needsUpdate = true;
+  if (ld) logs.instanceMatrix.needsUpdate = true;
   for (const h of huts) if (h.z > rz + BEHIND) placeHut(h, rz);
 }
 
@@ -2291,26 +2509,51 @@ headParts.push(addMesh(head, new THREE.SphereGeometry(0.29, 16, 12), lam(C.rider
 headParts.push(addMesh(head, shapedBox(0.34, 0.26, 0.32, 0.12, t => ({ x: 0.9 + t*0.14, z: 0.9 + t*0.12 })),
   lam(C.riderSkin, false), 0, -0.13, 0.02));
 // Helmschale
-const helm = addMesh(head, new THREE.SphereGeometry(0.335, 18, 12, 0, Math.PI*2, 0, Math.PI*0.62),
-  lam(C.riderHat, false), 0, 0.045, -0.015);
-helm.scale.set(1, 0.95, 1.06);
+const helm = addMesh(head, new THREE.SphereGeometry(0.335, 22, 14, 0, Math.PI*2, 0, Math.PI*0.54),
+  lam(C.riderHat, false), 0, 0.10, -0.02);
+helm.scale.set(1, 0.92, 1.06);
 headParts.push(helm);
-// Helmrand
-const rim = addMesh(head, new THREE.TorusGeometry(0.315, 0.042, 8, 20), lam(0xb8253a, false), 0, 0.045, -0.015);
-rim.rotation.x = Math.PI/2;
-headParts.push(rim);
-// Brille: gekruemmtes Band ueber die Stirn
-const gog = addMesh(head, new THREE.TorusGeometry(0.30, 0.075, 8, 20, Math.PI * 0.85),
-  lam(C.goggles, false), 0, 0.035, 0.0);
-gog.rotation.set(Math.PI/2, 0, Math.PI * 0.075);
-gog.scale.set(1, 1, 0.62);
-headParts.push(gog);
-// Glas als heller Akzent
-const lens = addMesh(head, new THREE.TorusGeometry(0.30, 0.052, 8, 16, Math.PI * 0.62),
-  lam(0x7fd4f0, false), 0, 0.035, 0.035);
-lens.rotation.set(Math.PI/2, 0, Math.PI * 0.19);
-lens.scale.set(1, 1, 0.62);
-headParts.push(lens);
+/* Brille anatomisch: offener Rahmen um halbtransparentes Glas, dahinter
+   echte Augen — der Gesichtsausdruck bleibt sichtbar. Das Gummiband laeuft
+   NUR seitlich und hinten um den Helm; vorne sitzt die Brille, kein Band
+   darueber. */
+const gogLens = addMesh(head, roundedBox(0.40, 0.15, 0.05, 0.05, 3),
+  new THREE.MeshLambertMaterial({ color: 0x5db8e8, emissive: 0x1a4a70,
+    transparent: true, opacity: 0.45 }), 0, 0.045, 0.265);
+headParts.push(gogLens);
+const frameMat = lam(0xf2f5f8, false);
+for (const [fx, fy, fw, fh] of [[0, 0.125, 0.46, 0.045], [0, -0.035, 0.46, 0.045],
+                                [-0.215, 0.045, 0.05, 0.19], [0.215, 0.045, 0.05, 0.19]]) {
+  headParts.push(addMesh(head, roundedBox(fw, fh, 0.07, 0.02, 2), frameMat, fx, fy, 0.263));
+}
+{
+  /* Bandbogen: Torus-Teilstueck, die Oeffnung nach vorn gedreht und flach auf
+     Brillenhoehe gelegt. */
+  const strapGeo = new THREE.TorusGeometry(0.328, 0.028, 8, 22, Math.PI * 1.25);
+  strapGeo.rotateZ(-3.534);          // Luecke des Teilkreises nach +Y drehen
+  strapGeo.rotateX(Math.PI / 2);     // +Y -> +Z: Oeffnung zeigt nach vorn
+  const strap = addMesh(head, strapGeo, lam(0x24303f, false), 0, 0.045, -0.01);
+  strap.scale.set(1, 1, 0.94);
+  headParts.push(strap);
+}
+/* Augen hinter dem Glas und Mund: beide reissen im Angst-Moment auf. */
+const eyeMat = lam(0x2a2118, false);
+const eyeL = addMesh(head, new THREE.SphereGeometry(0.042, 8, 6), eyeMat, -0.10, 0.045, 0.245);
+const eyeR = addMesh(head, new THREE.SphereGeometry(0.042, 8, 6), eyeMat, 0.10, 0.045, 0.245);
+headParts.push(eyeL, eyeR);
+const mouth = addMesh(head, roundedBox(0.11, 0.035, 0.03, 0.012, 2), lam(0x7a4433, false), 0, -0.175, 0.20);
+headParts.push(mouth);
+head.userData.mouth = mouth;
+head.userData.eyes = [eyeL, eyeR];
+
+/* Organisch glatt statt facettiert: der Klotz-Look kam vom flatShading auf
+   jedem Bauteil. Terrain, Baeume und Felsen bleiben bewusst stilisiert. */
+riderRoot.traverse(o => {
+  if (o.isMesh && o.material && o.material.flatShading) {
+    o.material.flatShading = false;
+    o.material.needsUpdate = true;
+  }
+});
 
 /* Ghost: dieselbe Figur, nur durchscheinend blau */
 const ghostRider = riderRoot.clone(true);
@@ -2612,12 +2855,42 @@ const Audio = (() => {
     growlFilter.frequency.setTargetAtTime(120 + n * 190, t, 0.3);
     growlOsc.frequency.setTargetAtTime(46 + n * 22, t, 0.3);
   }
+  /* BRUELLEN — einzelner Ausbruch: tiefer Sawtooth-Kehllaut, der aufreisst
+     und wegbricht, plus Rauschband als Atem. intensity 0..1 nach Naehe. */
+  function roar(intensity) {
+    if (!ready) return;
+    const t = ctx.currentTime, p = clamp01(intensity);
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(58, t);
+    o.frequency.exponentialRampToValueAtTime(96, t + 0.22);
+    o.frequency.exponentialRampToValueAtTime(44, t + 1.05);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass';
+    f.frequency.setValueAtTime(700, t);
+    f.frequency.exponentialRampToValueAtTime(2400, t + 0.2);
+    f.frequency.exponentialRampToValueAtTime(500, t + 1.1);
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.20 + 0.20 * p, t + 0.08);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 1.15);
+    o.connect(f); f.connect(og); og.connect(master);
+    o.start(t); o.stop(t + 1.2);
+    const s2 = ctx.createBufferSource(); s2.buffer = noiseBuf;
+    const bf = ctx.createBiquadFilter(); bf.type = 'bandpass'; bf.Q.value = 0.8;
+    bf.frequency.setValueAtTime(300, t);
+    bf.frequency.exponentialRampToValueAtTime(1400, t + 0.25);
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0.0001, t);
+    sg.gain.exponentialRampToValueAtTime(0.13 + 0.12 * p, t + 0.1);
+    sg.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+    s2.connect(bf); bf.connect(sg); sg.connect(master);
+    s2.start(t); s2.stop(t + 1.05);
+  }
   function toggle() {
     muted = !muted;
     if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05);
     return muted;
   }
-  return { init, glide, whoosh, impact, chime, growl, toggle };
+  return { init, glide, whoosh, impact, chime, growl, roar, toggle };
 })();
 
 /* ==========================================================================
@@ -2805,6 +3078,51 @@ function hitsRock(x, z, y) {
   return false;
 }
 
+/* Stammkollision: niedriger Stamm nur per Sprung, hoher nur geduckt (oder
+   deutlich drueber hinweg). Feste Spannweite LOG_LEN — seitlich vorbei geht,
+   wenn die Piste breiter ist als der Stamm. */
+function hitsLog(x, z, y, crouch) {
+  for (let i = 0; i < Q.logs; i++) {
+    const s = logSlot[i];
+    if (!s || !s.on) continue;
+    const dz = z - s.z;
+    /* +-0.65 m: Stammradius plus Boardmitte. Ein breiteres Fenster fing den
+       Fahrer im Sinkflug noch 1 m HINTER dem Stamm — gemessen 0.19 m Luft
+       ueber der Kante, die alte 0.20-m-Marge machte daraus einen Treffer. */
+    if (dz < -0.65 || dz > 0.65) continue;
+    if (Math.abs(x - s.x) > LOG_LEN / 2) continue;
+    /* Hoehe RELATIV zum Boden unter dem Fahrer, nicht absolut: der Stamm ist
+       an der Pistenmitte verankert, der Fahrer kreuzt aber seitlich davon —
+       durch Woelbung und Kurven lag das Gelaende dort bis zu 0.5 m tiefer und
+       derselbe Stamm war ploetzlich 1 m hoch. Relativ ist der Sprung an jeder
+       Stelle gleich fair. */
+    const relY = y - terrainH(x, z);
+    if (s.high) {
+      if (relY > 2.05) continue;          // klar drueber hinweg (hoher Sprung)
+      if (crouch > 0.55) continue;        // durchgeduckt
+      return true;
+    }
+    if (relY < 0.58) return true;
+  }
+  return false;
+}
+function fellIntoChasm() {
+  if (State.now !== 'PLAYING') return;
+  if (State.mode === 'ESCAPE') {
+    State.now = 'GAMEOVER';
+    Audio.growl(0);
+    elHud.classList.remove('on');
+    Audio.impact(1);
+    flash(0.5);
+    document.querySelector('#over h1').textContent = 'Abgestürzt!';
+    $('overSub').textContent = 'Die Schlucht war schneller. ' + State.coins + ' Münzen gesammelt.';
+    $('oScore').textContent = Math.floor(State.maxDist) + ' m';
+    $('oDist').textContent = State.coins + ' Münzen';
+    $('oBest').textContent = Progress.coins + ' gesamt';
+    Progress.coins += State.coins; Progress.save();
+    scOver.classList.add('on');
+  } else crash(true);
+}
 function crash(hard) {
   if (State.now !== 'PLAYING') return;
   // In der Flucht kostet ein Fehler kein Leben, sondern Vorsprung
@@ -3218,6 +3536,27 @@ function step(dt) {
 
   /* --- Hindernisse --- */
   if (hitsRock(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true); return; }
+  if (hitsLog(rider.pos.x, rider.pos.z, rider.pos.y, rider.crouch)) { crash(false); return; }
+  /* Limbo-Slide: geduckt unter dem hohen Stamm durch — die Visuals legen den
+     Oberkoerper seitlich flach; rider.limbo klingt von selbst wieder ab. */
+  rider.limbo = Math.max(0, (rider.limbo || 0) - dt * 3.2);
+  for (let i = 0; i < Q.logs; i++) {
+    const s = logSlot[i];
+    if (s && s.on && s.high && Math.abs(rider.pos.z - s.z) < 3.4 &&
+        Math.abs(rider.pos.x - s.x) < LOG_LEN / 2 && rider.crouch > 0.4) { rider.limbo = 1; break; }
+  }
+  /* Schlucht: am Boden hinein = Absturz. Wer drueber springt, wird bei der
+     Landung an der Absprungbewertung gemessen — ein schwacher Pop schafft die
+     Distanz meist ohnehin nicht und endet im Einschnitt. */
+  let overChasm = false;
+  for (const c of chasms) if (c.on && Math.abs(rider.pos.z - c.z) < c.half) { overChasm = true; break; }
+  if (overChasm) {
+    if (rider.grounded) { fellIntoChasm(); return; }
+    chasmPendingQ = rider.popQ;
+  } else if (chasmPendingQ !== null && rider.grounded) {
+    const q = chasmPendingQ; chasmPendingQ = null;
+    if (q < 0.55) { crash(false); return; }   // wackliger Absprung: Stolperer
+  }
   if (hitByIcicle(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true); return; }
   if (rider.pos.y < terrainH(rider.pos.x, rider.pos.z) + 4.5 && hitsTree(rider.pos.x, rider.pos.z)) {
     crash(true);
@@ -3739,6 +4078,7 @@ function drawMap() {
    VISUALS pro Frame
    ========================================================================== */
 const camTarget = new THREE.Vector3();
+const _hq = new THREE.Quaternion();
 const camLook = new THREE.Vector3();
 const _camDesired = new THREE.Vector3();
 let camInit = false, camYaw = 0;
@@ -3800,15 +4140,35 @@ function updateVisuals(dt) {
                        + rider.squash * 0.45 + ride) * rider.travelDir;
   // Angulation: Oberkoerper haelt gegen die Boardneigung, statt starr mitzukippen
   upper.rotation.z = -rider.roll * 0.48 - bodySway * 0.22;
-  // Schultern oeffnen deutlich in die Kurve, gegenlaeufig zur Huefte
-  upper.rotation.y = -0.62 * rider.stance - bodySway * 0.62 * rider.stance;
+  /* Limbo-Slide unter dem Stamm: Koerper legt sich seitlich flach, der
+     Talarm faellt Richtung Schnee. */
+  const limbo = rider.limbo || 0;
+  if (limbo > 0.01) {
+    upper.rotation.z += limbo * 1.05 * rider.stance;
+    upper.rotation.x += limbo * 0.20;
+    upper.position.y -= limbo * 0.34;
+    armL.rotation.x += limbo * 0.5;
+    armR.rotation.x -= limbo * 0.9;
+  }
+  /* Schultern oeffnen talwaerts — in Fahrtrichtung, nicht zur Boardnase.
+     Vorher hing der Drehsinn allein an rider.stance: nach einer
+     Switch-Landung (travelDir -1) drehte der Oberkoerper dadurch hangaufwaerts
+     und der Fahrer schaute nach hinten. */
+  const openTo = rider.stance * rider.travelDir;
+  upper.rotation.y = -(0.62 + bodySway * 0.62) * openTo;
   // Kopf schaut in die Kurve und dorthin, wo es hingeht
   /* Angst-Pose (fuer die Verfolgung): Kopf dreht ueber die Schulter zurueck,
      Schultern hoch, Koerper tief. Ueber rider.fear von 0 bis 1 mischbar. */
-  head.rotation.y = bodySway * 0.75 * rider.stance + 0.30 * rider.stance
-                  + rider.fear * (State.intro > 0 ? 2.1 : 0.35) * rider.stance;
+  /* Kopf folgt dem Oberkoerper; nur der Angst-Blick geht bewusst zurueck
+     ueber die Schulter zum Yeti. */
+  head.rotation.y = (bodySway * 0.75 + 0.30) * openTo
+                  + rider.fear * (State.intro > 0 ? 1.35 : 0.35) * openTo;
   head.rotation.z = -rider.roll * 0.25 + rider.fear * 0.18;
   head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
+  // Schreck-Gesicht: Mund und Augen reissen mit der Angst auf
+  const mouth = head.userData.mouth;
+  if (mouth) mouth.scale.set(1 + rider.fear * 0.5, 1 + rider.fear * 4.5, 1);
+  if (head.userData.eyes) for (const e of head.userData.eyes) e.scale.setScalar(1 + rider.fear * 0.8);
   upper.position.y -= rider.fear * 0.16;
   upper.rotation.x -= rider.fear * 0.22 * rider.travelDir;
   armL.position.y = 0.82 + rider.fear * 0.05;
@@ -3904,17 +4264,32 @@ function updateVisuals(dt) {
     riderRoot.visible = true;
     for (const m of headParts) m.visible = true;
     if (p < 0.40) {
-      // bergauf auf den Yeti
-      const k = p / 0.40;
-      camera.position.set(rider.pos.x + 1.5, rider.pos.y + 2.6, rider.pos.z - 5 - k * 2);
-      camLook.set(yeti.position.x, yeti.position.y + 2.6 - k * 0.6, yeti.position.z);
+      /* Die Kamera steht tief im Schnee dicht VOR seiner Laufbahn — der Yeti
+         waechst brueellend auf sie zu und fuellt das Bild, statt als Punkt am
+         Horizont zu tippeln. */
+      _tmp.set(yeti.position.x - rider.pos.x, 0, yeti.position.z - rider.pos.z).normalize();
+      const cx = yeti.position.x - _tmp.x * 7, cz = yeti.position.z - _tmp.z * 7;
+      /* Kamera auf IHREM Boden verankern und flach auf ihn halten — sonst
+         haengt er kontrastlos vor dem Himmel statt vor dem Hang. */
+      camera.position.set(cx, terrainH(cx, cz) + 2.0, cz);
+      camLook.set(yeti.position.x, yeti.position.y + 1.7, yeti.position.z);
     } else if (p < 0.72) {
-      // Nahaufnahme des Gesichts
+      /* Nahaufnahme des Gesichts. Die Kamera haengt am TATSAECHLICHEN Blick
+         des Kopfes: der ist im Intro per Angst-Pose ueber die Schulter
+         gedreht, eine feste Position filmte den Hinterkopf aus naechster
+         Naehe — die beruechtigte "durchsichtige" Einstellung. */
       const k = (p - 0.40) / 0.32;
-      forwardOf(rider.yaw, _f);
-      camera.position.set(rider.pos.x + 1.05 - k * 0.15, rider.pos.y + 1.95,
-                          rider.pos.z + 0.9 - k * 0.15);
-      camLook.set(rider.pos.x, rider.pos.y + 1.7, rider.pos.z);
+      head.updateWorldMatrix(true, false);
+      _tmp.setFromMatrixPosition(head.matrixWorld);
+      _f.set(0, 0, 1).applyQuaternion(head.getWorldQuaternion(_hq));
+      /* Die Kopfneigung gehoert in den Kameravektor: der Kopf schaut in der
+         Angst-Pose nach unten — eine rein horizontale Kamera filmte die
+         Helmkrone statt des Gesichts. */
+      _f.y = clamp(_f.y, -0.30, 0.10); _f.normalize();
+      // 2 m Abstand: naeher rueckt der Schal formatfuellend ins Bild
+      const cd = 2.1 - k * 0.3;
+      camera.position.set(_tmp.x + _f.x * cd, _tmp.y + 0.10 + _f.y * cd, _tmp.z + _f.z * cd);
+      camLook.copy(_tmp);
     } else {
       // herumschwenken und bergab ausrichten
       const k = smooth((p - 0.72) / 0.28);
@@ -3927,6 +4302,9 @@ function updateVisuals(dt) {
       camLook.copy(_tmp);
     }
     camera.lookAt(camLook);
+    /* Nahaufnahme braucht eine kurze Near-Plane: die globale liegt bei 1.2 m
+       und schnitt Arme, Schal und Kopf sichtbar auf. */
+    if (camera.near !== 0.3) { camera.near = 0.3; camera.updateProjectionMatrix(); }
     if (Math.abs(camera.fov - 62) > 0.5) { camera.fov += (62 - camera.fov) * damp(4, dt); camera.updateProjectionMatrix(); }
     if ((mapTick++ % 3) === 0) drawMap();
     return;
@@ -3935,6 +4313,7 @@ function updateVisuals(dt) {
   /* Kamera — an der FAHRTRICHTUNG ausgerichtet, nicht am Yaw des Fahrers.
      Dadurch bleibt sie bei Drehungen und Switch-Landungen immer hinten. */
   const camCfg = CONFIG.camera;
+  if (camera.near !== 1.2) { camera.near = 1.2; camera.updateProjectionMatrix(); }
   /* Egoperspektive: Kamera sitzt auf Kopfhoehe, Fahrer wird ausgeblendet,
      damit er nicht die eigene Sicht verdeckt. */
   if (State.pov) {
@@ -4117,13 +4496,21 @@ function updateChase(dt) {
   yeti.position.set(px, Math.max(py, terrainH(px, pz)) - 0.2, pz);
   // zum Fahrer ausrichten
   yeti.rotation.y = Math.atan2(rider.pos.x - px, rider.pos.z - pz) + Math.PI;
-  // stampfende Beine und schwingende Arme
-  const gait = chaseClock * 7.5;
+  /* Galopp auf allen vieren: Vorderbeine greifen gemeinsam aus, die
+     Hinterbeine stossen gemeinsam ab, der Rumpf wogt, der ganze Koerper hebt
+     in der Flugphase ab — die Gangart eines hetzenden Baeren. */
+  const gait = chaseClock * 8.5;
   const A = yeti.userData;
-  A.legs[0].position.z = Math.sin(gait) * 0.55;
-  A.legs[1].position.z = -Math.sin(gait) * 0.55;
-  A.arms[0].rotation.x = -Math.sin(gait) * 0.8;
-  A.arms[1].rotation.x = Math.sin(gait) * 0.8;
+  A.arms[0].rotation.x = -0.55 + Math.sin(gait) * 0.8;
+  A.arms[1].rotation.x = -0.55 + Math.sin(gait - 0.35) * 0.8;
+  A.legs[0].rotation.x = 0.45 - Math.sin(gait - 0.9) * 0.7;
+  A.legs[1].rotation.x = 0.45 - Math.sin(gait - 1.2) * 0.7;
+  A.torso.rotation.x = Math.sin(gait + 0.6) * 0.10;
+  yeti.position.y += Math.max(0, Math.sin(gait + 1.2)) * 0.55;
+  // Maul: dauerhaft drohend offen, beim Bruellen ganz aufgerissen
+  yetiRoarAnim = Math.max(0, yetiRoarAnim - dt * 1.4);
+  A.jaw.rotation.x = 0.35 + yetiRoarAnim * 0.55;
+  A.headG.rotation.x = -0.10 - yetiRoarAnim * 0.30;
 
   // Angst steigt, je naeher er ist
   const gap = Math.hypot(rider.pos.x - px, rider.pos.z - pz);
@@ -4133,6 +4520,13 @@ function updateChase(dt) {
   /* Knurren: ab 34 m hoerbar, im Nacken voll. Quadratisch in growl(), dadurch
      bleibt es lange leise und wird erst spuerbar, wenn er wirklich aufrueckt. */
   Audio.growl(clamp01((34 - gap) / 30));
+  // Bruellen in unregelmaessigem Takt — naeher heisst oefter und lauter
+  yetiRoarT -= dt;
+  if (yetiRoarT <= 0) {
+    Audio.roar(clamp01((40 - gap) / 34));
+    yetiRoarAnim = 1;
+    yetiRoarT = 3.4 + Math.max(0, gap - 6) * 0.15;
+  }
 
   // Eingeholt?
   // Erst greifen, wenn wirklich Fahrt aufgenommen wurde
