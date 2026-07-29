@@ -3267,7 +3267,7 @@ const rider = {
   spinAcc: 0, edge: 0, onIce: 0, lastNormal: new THREE.Vector3(0, 1, 0),
   stance: 1, stanceAcc: 0, braking: 0, brakeSide: 1, brakeLatched: false, brakeHold: 0, travelDir: 1, slip: 0, slide: 0,
   kickT: 0, kickDir: 1,
-  omega: 0, load: 1, squash: 0, fear: 0, popQ: -1, spinVel: 0, spinL: 0, flipVel: 0, flipL: 0, tuck: 0, povDir: 1, canFlip: false, grinding: false, grindTime: 0, grindLabel: '50-50', flip: 0, flipAcc: 0
+  omega: 0, load: 1, squash: 0, fear: 0, popQ: -1, spinVel: 0, spinL: 0, flipVel: 0, flipL: 0, tuck: 0, flipYaw: 0, povDir: 1, canFlip: false, grinding: false, grindTime: 0, grindLabel: '50-50', flip: 0, flipAcc: 0
 };
 
 /* Jede Yaw-Aenderung laeuft hierdurch. Nach jeder halben Umdrehung wechselt
@@ -3464,16 +3464,28 @@ function land() {
     const flipTurns = Math.floor(Math.abs(rider.flipAcc) / (Math.PI * 2) + 0.2);
     let pts = 0, label = '';
     if (halves >= 2) {
-      const deg = halves * 180;
       // 360 -> 300, 540 -> 600, 720 -> 1200, danach linear weiter
       pts = halves === 2 ? G.trick360 : halves === 3 ? G.trick540 : G.trick720 * (halves - 3);
-      label = String(deg);
     }
-    if (flipTurns >= 1) {
-      pts += flipTurns === 1 ? G.flip360 : G.flip720 * (flipTurns - 1);
+    if (flipTurns >= 1) pts += flipTurns === 1 ? G.flip360 : G.flip720 * (flipTurns - 1);
+    /* BEZEICHNUNGEN nach Snowboard-Sprachgebrauch:
+       - reine Drehung um die Hochachse: die Gradzahl (360, 540, 720 ...)
+       - reiner Ueberschlag: Backflip / Frontflip, mehrfach Double/Triple
+       - BEIDES gleichzeitig heisst CORK (off-axis), nicht "Backflip + 360" —
+         die Gradzahl zaehlt dabei die Gesamtdrehung.
+       Vorher stand ab drei Ueberschlaegen ausserdem "3x Backflip" statt
+       "Triple Backflip". */
+    const mehrfach = n => n === 2 ? 'Double ' : n === 3 ? 'Triple ' : n === 4 ? 'Quad ' : n + 'x ';
+    const deg = halves * 180;
+    if (flipTurns >= 1 && halves >= 2) {
+      label = (flipTurns > 1 ? mehrfach(flipTurns) : '') + 'Cork ' + deg;
+    } else if (flipTurns >= 1) {
       const base = rider.flipAcc > 0 ? 'Backflip' : 'Frontflip';
-      const name = flipTurns === 1 ? base : (flipTurns === 2 ? 'Double ' : flipTurns + 'x ') + base;
-      label = name + (label ? ' + ' + label : '');
+      label = (flipTurns > 1 ? mehrfach(flipTurns) : '') + base;
+    } else if (halves >= 2) {
+      label = String(deg);
+    } else if (halves === 1) {
+      label = '180';                       // zaehlt als Trick, gibt aber keine Punkte
     }
     State.combo = Math.min(G.comboMax, State.combo + 1);
     State.comboT = 9;
@@ -3730,6 +3742,7 @@ function step(dt) {
       rider.spinAcc = 0;
       rider.charge = 0;
       rider.canFlip = true;                    // bewusster Absprung
+      rider.flipYaw = rider.yaw;               // Achse der Schraube festhalten
       rider.spinVel = 0; rider.spinL = 0; rider.flipVel = 0; rider.flipL = 0; rider.tuck = 0;
       Audio.whoosh(clamp01(power / P.jumpCharged));
       burst(rider.pos.x, rider.pos.y, rider.pos.z, 14, 3);
@@ -4476,6 +4489,8 @@ function drawMap() {
 /* ==========================================================================
    VISUALS pro Frame
    ========================================================================== */
+const _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+const _fa = new THREE.Vector3();
 const camTarget = new THREE.Vector3();
 const _hq = new THREE.Quaternion();
 const camLook = new THREE.Vector3();
@@ -4519,7 +4534,21 @@ function updateVisuals(dt) {
   const kickP = rider.kickT > 0 ? 1 - rider.kickT / P.kickTime : 0;
   const kickYaw = rider.kickT > 0
     ? Math.sin(kickP * Math.PI) * P.kickYaw * rider.kickDir : 0;
-  riderRoot.rotation.y = rider.yaw + kickYaw;
+  /* SCHRAUBE (Cork). Der Ueberschlag lag bisher als rotation.x auf riderTilt,
+     also UNTER dem Yaw — die Flipachse drehte sich mit dem Spin mit, dadurch
+     wurde aus dem Ueberschlag mitten in der Drehung ein Seitwaertskippen und
+     die Kombination sah falsch aus. Jetzt wird der Flip um eine im Raum FESTE
+     Achse gelegt (die Querachse im Moment des Absprungs) und dem Spin
+     vorangestellt: erst Flip in der Welt, dann Spin darunter. Genau das ist
+     eine Schraube. */
+  _q1.setFromAxisAngle(_up, rider.yaw + kickYaw);
+  if (Math.abs(rider.flip) > 1e-4) {
+    _fa.set(Math.cos(rider.flipYaw), 0, -Math.sin(rider.flipYaw));
+    _q2.setFromAxisAngle(_fa, rider.flip);
+    riderRoot.quaternion.copy(_q2).multiply(_q1);
+  } else {
+    riderRoot.quaternion.copy(_q1);
+  }
   /* SPRUNGPHASEN. Ollie: beim Laden sinkt der Fahrer, der Absprung hebt
      ZUERST die Nose (Boardnase kommt hoch, Gewicht aufs Tail), in der Luft
      werden die Beine angezogen, vor der Landung streckt er sie wieder aus. */
@@ -4546,7 +4575,8 @@ function updateVisuals(dt) {
   const tuckFront = air * smoothstep(0.02, 0.14, tA) * rise;   // vorn zuerst
   const tuckBack  = air * smoothstep(0.11, 0.24, tA) * rise;   // hinten nach
   const tuck = (tuckFront + tuckBack) * 0.5;
-  riderTilt.rotation.set(rider.pitch + rider.flip - nose, 0, rider.roll);
+  // ohne rider.flip: der Ueberschlag sitzt jetzt als Weltachse auf riderRoot
+  riderTilt.rotation.set(rider.pitch - nose, 0, rider.roll);
   /* Koerperdynamik. Bisher kippte nur der ganze Block — jetzt arbeitet der
      Fahrer IM Block: Beine federn unter Last, der Oberkoerper bleibt
      aufrechter als das Board (Angulation), Schultern oeffnen in die Kurve,
