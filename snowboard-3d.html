@@ -2071,7 +2071,7 @@ const yeti = (() => {
     foot.position.set(0, -1.6, 0.15); l.add(foot);
     g.add(l); yLegs.push(l);
   }
-  g.scale.setScalar(1.15);
+  g.scale.setScalar(1.28);
   g.visible = false;
   scene.add(g);
   g.traverse(o => {
@@ -2509,22 +2509,29 @@ headParts.push(addMesh(head, new THREE.SphereGeometry(0.29, 16, 12), lam(C.rider
 headParts.push(addMesh(head, shapedBox(0.34, 0.26, 0.32, 0.12, t => ({ x: 0.9 + t*0.14, z: 0.9 + t*0.12 })),
   lam(C.riderSkin, false), 0, -0.13, 0.02));
 // Helmschale
-const helm = addMesh(head, new THREE.SphereGeometry(0.335, 22, 14, 0, Math.PI*2, 0, Math.PI*0.54),
+/* Kappe endet OBERHALB der Brille; Seiten und Hinterkopf deckt eine
+   Teilschale, deren Luecke vorn den Ausschnitt fuer die Brille bildet. */
+const helm = addMesh(head, new THREE.SphereGeometry(0.335, 22, 14, 0, Math.PI*2, 0, Math.PI*0.36),
   lam(C.riderHat, false), 0, 0.10, -0.02);
 helm.scale.set(1, 0.92, 1.06);
+const helmBack = addMesh(head, new THREE.SphereGeometry(0.335, 22, 14,
+  0, Math.PI * 2, Math.PI * 0.34, Math.PI * 0.26), lam(C.riderHat, false), 0, 0.10, -0.02);
+helmBack.scale.set(1, 0.92, 1.06);
+helmBack.rotation.y = Math.PI;          // Luecke nach vorn drehen
+headParts.push(helmBack);
 headParts.push(helm);
 /* Brille anatomisch: offener Rahmen um halbtransparentes Glas, dahinter
    echte Augen — der Gesichtsausdruck bleibt sichtbar. Das Gummiband laeuft
    NUR seitlich und hinten um den Helm; vorne sitzt die Brille, kein Band
    darueber. */
-const gogLens = addMesh(head, roundedBox(0.40, 0.15, 0.05, 0.05, 3),
+const gogLens = addMesh(head, roundedBox(0.44, 0.17, 0.05, 0.06, 3),
   new THREE.MeshLambertMaterial({ color: 0x5db8e8, emissive: 0x1a4a70,
-    transparent: true, opacity: 0.45 }), 0, 0.045, 0.265);
+    transparent: true, opacity: 0.5 }), 0, 0.05, 0.262);
 headParts.push(gogLens);
-const frameMat = lam(0xf2f5f8, false);
-for (const [fx, fy, fw, fh] of [[0, 0.125, 0.46, 0.045], [0, -0.035, 0.46, 0.045],
-                                [-0.215, 0.045, 0.05, 0.19], [0.215, 0.045, 0.05, 0.19]]) {
-  headParts.push(addMesh(head, roundedBox(fw, fh, 0.07, 0.02, 2), frameMat, fx, fy, 0.263));
+const frameMat = lam(0x23272e, false);
+for (const [fx, fy, fw, fh] of [[0, 0.135, 0.48, 0.035], [0, -0.035, 0.48, 0.035],
+                                [-0.235, 0.05, 0.04, 0.20], [0.235, 0.05, 0.04, 0.20]]) {
+  headParts.push(addMesh(head, roundedBox(fw, fh, 0.06, 0.015, 2), frameMat, fx, fy, 0.262));
 }
 {
   /* Bandbogen: Torus-Teilstueck, die Oeffnung nach vorn gedreht und flach auf
@@ -3189,6 +3196,7 @@ function land() {
       label = name + (label ? ' + ' + label : '');
     }
     State.combo = Math.min(G.comboMax, State.combo + 1);
+    State.comboT = 9;
     if (pts > 0) {
       State.trickScore += pts * State.combo;
       showCombo(label + '  ×' + State.combo);
@@ -3203,6 +3211,12 @@ function land() {
 }
 
 function step(dt) {
+  /* Trick-Multiplikator klingt ab: ~9 s nach dem letzten Trick faellt er
+     stufenweise auf 1 zurueck. */
+  if (State.combo > 1) {
+    State.comboT = (State.comboT || 0) - dt;
+    if (State.comboT <= 0) { State.combo--; State.comboT = 4; }
+  }
   const st = input.steer;
 
   /* --- Ducken / Vorspannen / Bremsen --- */
@@ -3342,9 +3356,17 @@ function step(dt) {
            Grundgeschwindigkeit ein. Vorher beschleunigte ihn die Schwerkraft
            ungebremst bis zum Maximum — man wurde immer schneller, ohne es
            steuern zu koennen. Nur mit gehaltener Taste geht es darueber. */
-        const targetSpeed = input.boost ? P.boostSpeed : P.cruiseSpeed;
+        /* Progression: gemuetlicher Start (85 %), mit der Strecke zieht das
+           Grundtempo stetig an — nach ~2.2 km liegt es 55 % ueber dem Basiswert.
+           Der Yeti folgt der aufgezeichneten Linie und zieht automatisch mit. */
+        const ramp = 0.85 + clamp01(State.maxDist / 2200) * 0.70;
+        const targetSpeed = (input.boost ? P.boostSpeed : P.cruiseSpeed) * ramp;
         if (speed > targetSpeed) speed -= (speed - targetSpeed) * P.speedReturn * dt;
-        rider.vel.setLength(clamp(speed, 0, P.boostSpeed));
+        /* ... und aktiv nachziehen: ohne diesen Zweig setzte nur der Hang das
+           Tempo und die Progression blieb wirkungslos (gemessen 15.9 statt 26
+           bei 2500 m). */
+        else speed += (targetSpeed - speed) * P.speedReturn * 0.55 * dt;
+        rider.vel.setLength(clamp(speed, 0, P.boostSpeed * ramp));
       }
     }
 
@@ -3485,6 +3507,7 @@ function step(dt) {
     // Grind sauber beendet -> zaehlt als saubere Landung fuer die Combo
     if (rider.grindTime > 0.4) {
       State.combo = Math.min(G.comboMax, State.combo + 1);
+    State.comboT = 9;
       showCombo(rider.grindLabel + '  ×' + State.combo);
       Audio.chime(Math.min(6, State.combo + 1));
     }
@@ -3703,7 +3726,7 @@ function startGame(mode, trackId) {
   State.now = 'PLAYING';
   State.lives = G.lives;
   State.distScore = State.airScore = State.trickScore = State.maxDist = State.pathDist = 0;
-  State.combo = 1; State.shake = 0; State.crashT = 0;
+  State.combo = 1; State.comboT = 0; State.shake = 0; State.crashT = 0;
   hudCache = { d: -1, s: -1, l: -1 };
   _seed = 0x2f6f2b1;
   // Im Rennen oberhalb des Startbogens aufsetzen, damit man durch ihn hindurchfaehrt
@@ -4162,8 +4185,10 @@ function updateVisuals(dt) {
      Schultern hoch, Koerper tief. Ueber rider.fear von 0 bis 1 mischbar. */
   /* Kopf folgt dem Oberkoerper; nur der Angst-Blick geht bewusst zurueck
      ueber die Schulter zum Yeti. */
+  /* Angst dreht den Kopf ZURUECK ueber die Schulter, zum Yeti — deshalb
+     negativ zur normalen Oeffnung. */
   head.rotation.y = (bodySway * 0.75 + 0.30) * openTo
-                  + rider.fear * (State.intro > 0 ? 1.35 : 0.35) * openTo;
+                  - rider.fear * (State.intro > 0 ? 1.35 : 0.35) * openTo;
   head.rotation.z = -rider.roll * 0.25 + rider.fear * 0.18;
   head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
   // Schreck-Gesicht: Mund und Augen reissen mit der Angst auf
@@ -4182,10 +4207,15 @@ function updateVisuals(dt) {
   const bend = -0.72 - crouch * 0.55 - gLoad * 0.35 - rider.fear * 0.9;
   elbowL.rotation.x = bend + armBob * 0.4;
   elbowR.rotation.x = bend - armBob * 0.4;
-  armL.rotation.z = armBaseL + swing - bodySway * 0.55 + armBob * 0.5;
-  armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5;
-  armL.rotation.x = -0.55 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob;
-  armR.rotation.x = -0.42 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob;
+  /* Arme schwingen mit der FAHRT statt zufaellig: Gegenschwung zum
+     Drehimpuls (Balance in der Kurve), bei Tempo legen sie sich an den
+     Koerper an, der Buckel-Takt bleibt als Grundbewegung. */
+  const armSway = -rider.omega * 0.30;
+  const armTrail = clamp01(speed / 40) * 0.18;
+  armL.rotation.z = armBaseL + swing - bodySway * 0.55 + armBob * 0.5 + armSway;
+  armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5 + armSway;
+  armL.rotation.x = -0.55 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob - armTrail;
+  armR.rotation.x = -0.42 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob - armTrail;
   if (State.now === 'CRASHED') {
     riderTilt.rotation.x += State.crashT * 6.0;
     riderTilt.rotation.z += State.crashT * 4.0;
@@ -4504,14 +4534,21 @@ function updateChase(dt) {
   /* Galopp auf allen vieren: Vorderbeine greifen gemeinsam aus, die
      Hinterbeine stossen gemeinsam ab, der Rumpf wogt, der ganze Koerper hebt
      in der Flugphase ab — die Gangart eines hetzenden Baeren. */
-  const gait = chaseClock * 8.5;
+  const gait = chaseClock * 9.5;
   const A = yeti.userData;
-  A.arms[0].rotation.x = -0.55 + Math.sin(gait) * 0.8;
-  A.arms[1].rotation.x = -0.55 + Math.sin(gait - 0.35) * 0.8;
-  A.legs[0].rotation.x = 0.45 - Math.sin(gait - 0.9) * 0.7;
-  A.legs[1].rotation.x = 0.45 - Math.sin(gait - 1.2) * 0.7;
-  A.torso.rotation.x = Math.sin(gait + 0.6) * 0.10;
-  yeti.position.y += Math.max(0, Math.sin(gait + 1.2)) * 0.55;
+  const g1 = Math.sin(gait), g2 = Math.sin(gait - 0.35);
+  A.arms[0].rotation.x = -0.55 + g1 * 0.95;
+  A.arms[1].rotation.x = -0.55 + g2 * 0.95;
+  // im Vorschwung spreizen die Vorderbeine leicht — kein steifes Pendeln
+  A.arms[0].rotation.z =  0.08 + Math.max(0, g1) * 0.14;
+  A.arms[1].rotation.z = -0.08 - Math.max(0, g2) * 0.14;
+  A.legs[0].rotation.x = 0.45 - Math.sin(gait - 0.9) * 0.8;
+  A.legs[1].rotation.x = 0.45 - Math.sin(gait - 1.2) * 0.8;
+  // Rumpf wogt und rollt, der Kopf haelt dagegen — Galopp statt Marionette
+  A.torso.rotation.x = Math.sin(gait + 0.6) * 0.11;
+  A.torso.rotation.z = Math.sin(gait * 0.5 + 0.3) * 0.06;
+  A.headG.rotation.z = -A.torso.rotation.z * 0.7;
+  yeti.position.y += Math.max(0, Math.sin(gait + 1.2)) * 0.7;
   // Beim Aufschlag der Pranken stiebt der Schnee
   if (Math.sin(gait + 1.2) < -0.9 && chaseClock - yetiStompT > 0.25) {
     yetiStompT = chaseClock;
@@ -4618,7 +4655,11 @@ function frame(now) {
       updateChase(dt);
       refreshCoins(rider.pos.z, chaseClock * 2.2);
       const got = collectCoins(rider.pos.x, rider.pos.y, rider.pos.z);
-      if (got) { State.coins += got * G.coinValue; Audio.chime(4); }
+      if (got) {
+        // Der Trick-Multiplikator beschleunigt auch die Muenzausbeute
+        State.coins += got * G.coinValue * Math.round(State.combo);
+        Audio.chime(4);
+      }
     } else {
       // Das Knurren laeuft als Dauerschleife — ausserhalb der Flucht abregeln,
       // sonst bleibt es nach dem Moduswechsel auf dem letzten Pegel stehen.
