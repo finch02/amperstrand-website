@@ -166,7 +166,7 @@
       <kbd>D</kbd><span>rechts lenken / in der Luft drehen</span>
       <kbd>B</kbd><span>quer bremsen — mit A/D die Bremsseite wählen</span>
       <kbd>S</kbd><span>ducken — unter hohen Stämmen durchsliden · in der Luft: Backflip</span>
-      <kbd>W</kbd><span>beschleunigen · in der Luft: Frontflip</span>
+      <kbd>W</kbd><span>beschleunigen (nicht in der Flucht) · in der Luft: Frontflip</span>
       <kbd>C</kbd><span>Perspektive: Verfolger / Egosicht</span>
       <kbd>Esc</kbd><span>Pause</span>
       <kbd>Space</kbd><span>abspringen</span>
@@ -334,8 +334,12 @@ const CONFIG = {
     boostSpeed: 31,         // mit gehaltener Beschleunigungstaste
     speedReturn: 1.5,       // wie schnell er auf die Grundgeschwindigkeit zurueckfaellt
     maxSpeed: 33,
-    jumpBase: 5.2,
-    jumpCharged: 9.6,
+    /* jumpBase ist die GARANTIERTE Sprunghoehe ohne Laden und ohne Tempo —
+       bei 5.2 kam man ungeladen nicht ueber einen flachen Stamm und der
+       Sprung war praktisch nutzlos. Laden gibt jetzt Zusatz, keine
+       Grundvoraussetzung mehr. */
+    jumpBase: 8.4,
+    jumpCharged: 11.2,
     chargeTime: 0.55,
     alignRate: 7.0,         // Daempfung der Ausrichtung an die Normale
     landAngle: 1.00,        // ~57 Grad Toleranz
@@ -2109,12 +2113,14 @@ const yeti = (() => {
   const yLegs = [];
   for (const x of [-0.75, 0.75]) {
     const l = new THREE.Group();
-    l.position.set(x, 1.55, -1.05);
+    /* Hinterlaeufe laenger und tiefer angesetzt: kurz gebaut blieb der Fuss
+       gemessen 1.14 m ueber dem Schnee, egal wie der Schwung lief. */
+    l.position.set(x, 1.95, -1.05);
     const thigh = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 12), fur);
-    thigh.scale.set(0.55, 0.98, 0.68);
-    thigh.position.y = -0.8; thigh.castShadow = true; l.add(thigh);
+    thigh.scale.set(0.58, 1.72, 0.70);
+    thigh.position.y = -1.15; thigh.castShadow = true; l.add(thigh);
     const foot = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 6), fur2);
-    foot.position.set(0, -1.6, 0.15); l.add(foot);
+    foot.position.set(0, -2.90, 0.15);   // gemessen: 0.67 m fehlten noch l.add(foot);
     g.add(l); yLegs.push(l);
   }
   g.scale.setScalar(1.28);
@@ -2146,14 +2152,19 @@ function yetiGallop(cyc) {
   A.arms[1].rotation.x = -1.15 + swing(cyc + 0.07) * 1.95;   // leicht versetzt
   A.arms[0].rotation.z =  0.10 + swing(cyc) * 0.18;
   A.arms[1].rotation.z = -0.10 - swing(cyc + 0.07) * 0.18;
-  A.legs[0].rotation.x = 1.05 - swing(cyc + 0.55) * 1.85;    // Hinterbeine folgen
-  A.legs[1].rotation.x = 1.05 - swing(cyc + 0.62) * 1.85;
+  /* Naeher an der Senkrechten: mit dem alten Bereich (-0.80..1.05) blieb der
+     Hinterfuss gemessen 1.14 m ueber dem Schnee. */
+  A.legs[0].rotation.x = 0.55 - swing(cyc + 0.55) * 1.35;    // Hinterbeine folgen
+  A.legs[1].rotation.x = 0.55 - swing(cyc + 0.62) * 1.35;
   // Rueckenbogen: eingerollt beim Abdruck, gestreckt im Flug
   const bogen = Math.sin(cyc * Math.PI * 2);
   A.torso.rotation.x = bogen * 0.20;
   A.torso.rotation.z = Math.sin(cyc * Math.PI * 2 + 1.1) * 0.07;
   A.headG.rotation.z = -A.torso.rotation.z * 0.8;
-  return Math.max(0, Math.sin(cyc * Math.PI * 2 - 0.5)) * 0.85;
+  /* Hoehenversatz der Flugphase plus fester Sockel. Der Sockel ist gemessen:
+     ohne ihn sanken die Pranken im Auftritt 1.1 m in den Schnee, mit dem
+     alten Wert schwebte er durchgehend darueber. */
+  return Math.max(0, Math.sin(cyc * Math.PI * 2 - 0.5)) * 0.70 + 0.30;
 }
 
 /* ==========================================================================
@@ -2597,14 +2608,25 @@ headParts.push(helm);
    darueber. */
 /* Deckendes, dunkles Glas: halbtransparent ueber Hautton war es faktisch
    unsichtbar. Die Augen dahinter entfallen dadurch. */
-const gogLens = addMesh(head, roundedBox(0.44, 0.17, 0.06, 0.06, 3),
-  new THREE.MeshLambertMaterial({ color: 0x123a5e, emissive: 0x0d2b47 }), 0, 0.05, 0.262);
+/* Brille sitzt TIEFER, klar unter der Helmkante (y 0.05 -> -0.01): auf
+   Helmhoehe stiess sie in die Schale und wurde von ihr verdeckt. */
+const GOG_Y = -0.01;
+const gogLens = addMesh(head, roundedBox(0.44, 0.15, 0.06, 0.05, 3),
+  new THREE.MeshLambertMaterial({ color: 0x123a5e, emissive: 0x0d2b47 }), 0, GOG_Y, 0.262);
 headParts.push(gogLens);
 const frameMat = lam(0x23272e, false);
-for (const [fx, fy, fw, fh] of [[0, 0.135, 0.48, 0.035], [0, -0.035, 0.48, 0.035],
-                                [-0.235, 0.05, 0.04, 0.20], [0.235, 0.05, 0.04, 0.20]]) {
+for (const [fx, fy, fw, fh] of [[0, GOG_Y + 0.085, 0.48, 0.03], [0, GOG_Y - 0.085, 0.48, 0.03],
+                                [-0.235, GOG_Y, 0.04, 0.17], [0.235, GOG_Y, 0.04, 0.17]]) {
   headParts.push(addMesh(head, roundedBox(fw, fh, 0.06, 0.015, 2), frameMat, fx, fy, 0.262));
 }
+/* Augenbrauen UEBER der Brille auf der freien Stirn — sie tragen den
+   Ausdruck, weil die Augen hinter dem dunklen Glas nicht lesbar sind. */
+const browMat = lam(0x3a2b20, false);
+const browL = addMesh(head, roundedBox(0.15, 0.035, 0.04, 0.012, 2), browMat, -0.105, 0.135, 0.255);
+const browR = addMesh(head, roundedBox(0.15, 0.035, 0.04, 0.012, 2), browMat,  0.105, 0.135, 0.255);
+browL.rotation.z = -0.18; browR.rotation.z = 0.18;
+headParts.push(browL, browR);
+head.userData.brows = [browL, browR];
 {
   /* Bandbogen: Torus-Teilstueck, die Oeffnung nach vorn gedreht und flach auf
      Brillenhoehe gelegt. */
@@ -3432,7 +3454,16 @@ function step(dt) {
            Grundtempo stetig an — nach ~2.2 km liegt es 55 % ueber dem Basiswert.
            Der Yeti folgt der aufgezeichneten Linie und zieht automatisch mit. */
         const ramp = 0.85 + clamp01(State.maxDist / 2200) * 0.70;
-        const targetSpeed = (input.boost ? P.boostSpeed : P.cruiseSpeed) * ramp;
+        /* Gas baut sich AUF und wieder AB, statt zwischen zwei Zielwerten zu
+           springen: gehalten fuellt sich rider.gas in ~1.6 s, losgelassen
+           leert es sich in ~2.2 s. Dadurch zieht er an wie ein echter Fahrer
+           und rollt danach langsam aus. */
+        /* Im Fluchtmodus gibt es kein Gas: dort steigt das Tempo allein mit
+           dem Fortschritt (ramp), sonst haette man zwei Tempoquellen. */
+        const gasAn = input.boost && State.mode !== 'ESCAPE';
+        rider.gas = clamp01((rider.gas || 0) + (gasAn ? dt / 1.6 : -dt / 2.2));
+        const gasE = rider.gas * rider.gas * (3 - 2 * rider.gas);   // weiche Kurve
+        const targetSpeed = lerp(P.cruiseSpeed, P.boostSpeed, gasE) * ramp;
         if (speed > targetSpeed) speed -= (speed - targetSpeed) * P.speedReturn * dt;
         /* ... und aktiv nachziehen: ohne diesen Zweig setzte nur der Hang das
            Tempo und die Progression blieb wirkungslos (gemessen 15.9 statt 26
@@ -3454,6 +3485,9 @@ function step(dt) {
       }
       rider.popQ = q;
       const boost = q < 0 ? 1 : lerp(P.popWorst, P.popBest, q);
+      /* Die Sprunghoehe darf NICHT am Tempo haengen: ungeladen und langsam kam
+         man nicht ueber einen flachen Stamm, der Sprung war damit nutzlos.
+         jumpBase ist jetzt die garantierte Grundhoehe, Laden gibt obendrauf. */
       const power = (P.jumpBase + (P.jumpCharged - P.jumpBase) * rider.charge) * boost;
       if (q >= 0) showPop(q);
       rider.vel.addScaledVector(_nrm, power);
@@ -3701,6 +3735,40 @@ function showPop(q) {
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
   clearTimeout(showPop._t);
   showPop._t = setTimeout(() => el.classList.remove('on'), 800);
+}
+
+/* AKTIONS-HINWEIS: sagt direkt im Spiel, welche Taste das naechste Hindernis
+   verlangt. Ohne das musste man die Steuerungshilfe im Menue gelesen haben —
+   und niemand liest die mitten in der Flucht. */
+let hintUntil = 0, hintText = '';
+function showHint(text) {
+  if (text === hintText && performance.now() < hintUntil) return;
+  hintText = text; hintUntil = performance.now() + 1400;
+  const el = $('gateInfo');
+  el.textContent = text;
+  el.style.color = '#15304d';
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  clearTimeout(showHint._t);
+  showHint._t = setTimeout(() => el.classList.remove('on'), 1400);
+}
+/* Vorausschauen: was kommt in den naechsten ~28 m? */
+function updateHints() {
+  if (State.mode !== 'ESCAPE' || State.now !== 'PLAYING' || State.intro > 0) return;
+  const rz = rider.pos.z;
+  for (let i = 0; i < Q.logs; i++) {
+    const s = logSlot[i];
+    if (!s || !s.on) continue;
+    const dist = -(s.z - rz);
+    if (dist > 4 && dist < 28 && Math.abs(rider.pos.x - s.x) < LOG_LEN / 2 + 3) {
+      showHint(s.high ? 'S halten — durchsliden' : 'Leertaste — drüberspringen');
+      return;
+    }
+  }
+  for (const c of chasms) {
+    if (!c.on) continue;
+    const dist = -(c.z - rz);
+    if (dist > 6 && dist < 32) { showHint('Leertaste — über den Bach'); return; }
+  }
 }
 
 function showGateInfo(hit) {
@@ -4206,7 +4274,7 @@ function updateVisuals(dt) {
      Landung wieder ausstrecken. An die HOEHE gekoppelt, nicht an die
      Fallgeschwindigkeit — die kippte das Anziehen schon nach 0.2 s auf null. */
   const clearAir = rider.pos.y - terrainH(rider.pos.x, rider.pos.z);
-  const tuckLeg = air * clamp01(rider.airTime / 0.10) * clamp01((clearAir - 0.35) / 0.9);
+  const tuck = air * clamp01(rider.airTime / 0.10) * clamp01((clearAir - 0.35) / 0.9);
   riderTilt.rotation.set(rider.pitch + rider.flip - nose, 0, rider.roll);
   /* Koerperdynamik. Bisher kippte nur der ganze Block — jetzt arbeitet der
      Fahrer IM Block: Beine federn unter Last, der Oberkoerper bleibt
@@ -4246,12 +4314,16 @@ function updateVisuals(dt) {
      rueckwaerts auf dem Board — gemessen 180 Grad Abweichung an der Wurzel,
      142 Grad an der Brust. Das Board bleibt unveraendert (symmetrisch). */
   legs.rotation.y = BODY_FLIP + hipBase + bodySway * 0.30 * rider.stance;
+  // Knie zur Brust: die ganze Beingruppe klappt an der Huefte nach vorn
+  legs.rotation.x = tuck * 0.55;
   legs.rotation.z = -rider.roll * 0.12;
 
-  upper.position.y = 0.88 - crouch * 0.36 - gLoad * 0.18 - rider.squash * 0.32 - ride + bobUp
-                   - tuckLeg * 0.34;                    // in der Luft rollt er sich ein
-  legs.position.y = (legs.userData.baseY !== undefined ? legs.userData.baseY
-                     : (legs.userData.baseY = legs.position.y)) + tuckLeg * 0.42;
+  /* Beine ANZIEHEN heisst Knie beugen, nicht die Beingruppe nach oben
+     schieben — verschoben steckten die Oberschenkel im Rumpf. Die Beine
+     klappen an den Huefte nach vorn, das Board kommt mit hoch, und der
+     Oberkoerper krummt sich darueber zusammen. */
+  upper.position.y = 0.88 - crouch * 0.36 - gLoad * 0.18 - rider.squash * 0.32 - ride + bobUp;
+  upper.rotation.x -= tuck * 0.34;                       // Oberkoerper kruemmt sich vor
   /* NEGATIV: rotation.x > 0 kippt den Oberkoerper nach HINTEN. Alle Terme
      hatten positives Vorzeichen — er fuhr also dauerhaft in Rücklage. */
   upper.rotation.x = -(crouch * 0.50 + clamp01(speed / 40) * 0.22 + gLoad * 0.20
@@ -4300,6 +4372,14 @@ function updateVisuals(dt) {
   const mouth = head.userData.mouth;
   if (mouth) mouth.scale.set(1 + rider.fear * 0.5, 1 + rider.fear * 4.5, 1);
   if (head.userData.eyes) for (const e of head.userData.eyes) e.scale.setScalar(1 + rider.fear * 0.8);
+  /* Schreck-Ausdruck: die Brauen ziehen hoch und stellen sich schraeg. */
+  const brows = head.userData.brows;
+  if (brows) {
+    brows[0].position.y = 0.135 + rider.fear * 0.045;
+    brows[1].position.y = 0.135 + rider.fear * 0.045;
+    brows[0].rotation.z = -0.18 + rider.fear * 0.42;
+    brows[1].rotation.z =  0.18 - rider.fear * 0.42;
+  }
   upper.position.y -= rider.fear * 0.16;
   upper.rotation.x -= rider.fear * 0.22 * rider.travelDir;
   armL.position.y = 0.82 + rider.fear * 0.05;
@@ -4759,6 +4839,7 @@ function frame(now) {
         State.coins += got * G.coinValue * Math.round(State.combo);
         Audio.chime(4);
       }
+      updateHints();
     } else {
       // Das Knurren laeuft als Dauerschleife — ausserhalb der Flucht abregeln,
       // sonst bleibt es nach dem Moduswechsel auf dem letzten Pegel stehen.
