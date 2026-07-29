@@ -2147,27 +2147,49 @@ let yetiRoarT = 1.0, yetiRoarAnim = 0, yetiStompT = 0;
    Galopp. Rueckgabe: Hoehenversatz der Flugphase. */
 function yetiGallop(cyc) {
   const A = yeti.userData;
-  const ease = t => t * t * (3 - 2 * t);
-  // Beinschwung: 30 % schneller Abdruck nach hinten, 70 % Ausgreifen nach vorn
-  const swing = (ph) => { const t = ((ph % 1) + 1) % 1;
-    return t < 0.30 ? 1 - ease(t / 0.30) : ease((t - 0.30) / 0.70); };
-  A.arms[0].rotation.x = -1.15 + swing(cyc) * 1.95;
-  A.arms[1].rotation.x = -1.15 + swing(cyc + 0.07) * 1.95;   // leicht versetzt
-  A.arms[0].rotation.z =  0.10 + swing(cyc) * 0.18;
-  A.arms[1].rotation.z = -0.10 - swing(cyc + 0.07) * 0.18;
-  /* Naeher an der Senkrechten: mit dem alten Bereich (-0.80..1.05) blieb der
-     Hinterfuss gemessen 1.14 m ueber dem Schnee. */
-  A.legs[0].rotation.x = 0.55 - swing(cyc + 0.55) * 1.35;    // Hinterbeine folgen
-  A.legs[1].rotation.x = 0.55 - swing(cyc + 0.62) * 1.35;
-  // Rueckenbogen: eingerollt beim Abdruck, gestreckt im Flug
-  const bogen = Math.sin(cyc * Math.PI * 2);
-  A.torso.rotation.x = bogen * 0.20;
-  A.torso.rotation.z = Math.sin(cyc * Math.PI * 2 + 1.1) * 0.07;
+  /* TRANSVERSALER GALOPP nach Hildebrand (1977). Baeren (Ursus) laufen genau
+     diese Sequenz — nicht den rotatorischen Gepardengalopp. Zyklusstart ist
+     das Aufsetzen des nachlaufenden Hinterbeins; die Offsets sind Anteile des
+     Zyklus, die Kontaktdauern H 40 % / F 38 %:
+
+       Trail-Hinterbein  0.000     Trail-Vorderbein  0.276
+       Lead-Hinterbein   0.160     Lead-Vorderbein   0.504
+       Gathered Suspension 0.884 - 1.000 (einzige Flugphase)
+
+     Vorher lagen Vorder- und Hinterbeinpaar je 0.07 auseinander und die Paare
+     0.55 — das ergab ein Hoppeln, keinen Galopp. */
+  const leg = (offset, contact, vorn, hinten) => {
+    const t = ((cyc - offset) % 1 + 1) % 1;
+    if (t < contact) {
+      // Standphase: Fuss steht, der Koerper schiebt sich darueber hinweg
+      return vorn + (hinten - vorn) * (t / contact);
+    }
+    // Schwungphase: Bein schnellt nach vorn, mit weicher Ein-/Ausblendung
+    const u = (t - contact) / (1 - contact);
+    return hinten + (vorn - hinten) * (u * u * (3 - 2 * u));
+  };
+  // Vorderlaeufe: greifen weit aus (negativ = vor dem Koerper)
+  A.arms[0].rotation.x = leg(0.276, 0.38, -1.05, 0.75);
+  A.arms[1].rotation.x = leg(0.504, 0.38, -1.05, 0.75);
+  A.arms[0].rotation.z =  0.10;
+  A.arms[1].rotation.z = -0.10;
+  // Hinterlaeufe: stossen ab (positiv = hinter dem Koerper)
+  A.legs[0].rotation.x = leg(0.000, 0.40, 0.55, -0.80);
+  A.legs[1].rotation.x = leg(0.160, 0.40, 0.55, -0.80);
+  /* Wirbelsaeule: in der gathered Suspension eingerollt, in der Standphase
+     gestreckt. Baeren haben einen langen, steifen Rumpf — Amplitude bewusst
+     klein (+-10 Grad), nicht die +-25 Grad einer Katze. */
+  const bogen = Math.sin(cyc * Math.PI * 2 + 0.9) * 0.18;
+  A.torso.rotation.x = bogen;
+  A.torso.rotation.z = Math.sin(cyc * Math.PI * 2 + 1.1) * 0.05;
   A.headG.rotation.z = -A.torso.rotation.z * 0.8;
-  /* Hoehenversatz der Flugphase plus fester Sockel. Der Sockel ist gemessen:
-     ohne ihn sanken die Pranken im Auftritt 1.1 m in den Schnee, mit dem
-     alten Wert schwebte er durchgehend darueber. */
-  return Math.max(0, Math.sin(cyc * Math.PI * 2 - 0.5)) * 0.70 + 0.30;
+  /* Flughoehe: nur die eine gathered Suspension (0.884 - 1.0) hebt ihn ab.
+     Der Sockel ist gemessen, damit die Pranken im Auftritt den Schnee
+     wirklich beruehren. */
+  const t = cyc;
+  const fly = (t > 0.884 || t < 0.02)
+    ? Math.sin(((t > 0.884 ? t - 0.884 : t + 0.116) / 0.136) * Math.PI) : 0;
+  return fly * 0.75 + 0.30;
 }
 
 /* ==========================================================================
@@ -4293,7 +4315,14 @@ function updateVisuals(dt) {
      dadurch zappelte die Beinlaenge mit dem Bodenprofil. Anziehen beim
      Steigen, Strecken sobald es abwaerts geht. */
   const rise = clamp01((rider.vel.y + 2.5) / 5);
-  const tuck = air * smoothstep(0, 0.14, rider.airTime) * rise;
+  /* OLLIE-TIMING (belegt: Frederick 2006 zur Pop-Mechanik, Sports Engineering
+     2024 zur Board-Rueckfederung). Der Impuls laeuft Hinterbein -> Board ->
+     Koerper, und die Knie ziehen VERSETZT an: das vordere zuerst, das hintere
+     80-100 ms spaeter. Genau dieser Versatz laesst das Board nachkommen. */
+  const tA = rider.airTime;
+  const tuckFront = air * smoothstep(0.02, 0.14, tA) * rise;   // vorn zuerst
+  const tuckBack  = air * smoothstep(0.11, 0.24, tA) * rise;   // hinten nach
+  const tuck = (tuckFront + tuckBack) * 0.5;
   riderTilt.rotation.set(rider.pitch + rider.flip - nose, 0, rider.roll);
   /* Koerperdynamik. Bisher kippte nur der ganze Block — jetzt arbeitet der
      Fahrer IM Block: Beine federn unter Last, der Oberkoerper bleibt
@@ -4330,15 +4359,27 @@ function updateVisuals(dt) {
   const knee = (rider.squash * 0.42 + ride * 1.6 + bobLeg * 3) * rider.travelDir;
   legF.rotation.z = bodySway * 0.22;
   legB.rotation.z = bodySway * 0.22;
-  legF.rotation.x = -0.14 * rider.stance + knee;
-  legB.rotation.x =  0.14 * rider.stance + knee;
+  /* Kniebeugung im Flug: vorderes Bein zieht frueher an als das hintere —
+     der gemessene Versatz aus der Ollie-Sequenz. Werte in Anlehnung an die
+     Halfpipe-Messungen (Knie 29-64 Grad am Boden, 80-100 Grad im Tuck). */
+  legF.rotation.x = -0.14 * rider.stance + knee - tuckFront * 1.05;
+  legB.rotation.x =  0.14 * rider.stance + knee - tuckBack * 1.25;
   /* Die Huefte bekommt KEINE Vierteldrehung: die Fuesse sitzen in den
      Bindungen bei z = +-0.38, also LAENGS des Boards. Mit stance*PI/2 wanderten
      sie auf x = +-0.35 — gemessen neben das Deck (Halbbreite 0.28), die
      Bindungen blieben leer. Quer steht nur der OBERKOERPER; die Huefte folgt
      dem Board und dreht in der Kurve nur leicht mit. */
   legs.rotation.x = 0;
-  legs.rotation.y = hipBase * rider.stance + bodySway * 0.30 * rider.stance;
+  /* travelDir dreht die Haltung bei Switch-Fahrt mit: dann ist die andere
+     Schulter vorn. PLUS CHEST_OPEN, nicht minus: bei rotation.y = PI/2 steht
+     die Brust exakt quer, groessere Werte drehen sie talwaerts. */
+  const openTo = rider.stance * rider.travelDir;
+  const upperYaw = openTo * (STANCE_YAW + CHEST_OPEN) + bodySway * 0.45 * openTo;
+  /* Huefte folgt dem Oberkoerper. Counter-Rotation — Schultern gegen die
+     Huefte verdreht — gilt im Snowboarden als Fehler, nicht als Stil; die
+     Trennung bleibt daher klein. */
+  legs.rotation.y = hipBase * rider.stance + bodySway * 0.30 * rider.stance
+                  + (upperYaw - hipBase * rider.stance) * 0.18;
   legs.rotation.z = -rider.roll * 0.12;
 
   /* Beine ANZIEHEN heisst Knie beugen, nicht die Beingruppe nach oben
@@ -4359,13 +4400,7 @@ function updateVisuals(dt) {
      Vorher hing der Drehsinn allein an rider.stance: nach einer
      Switch-Landung (travelDir -1) drehte der Oberkoerper dadurch hangaufwaerts
      und der Fahrer schaute nach hinten. */
-  /* travelDir dreht die Haltung bei Switch-Fahrt mit: dann ist die andere
-     Schulter vorn. */
-  const openTo = rider.stance * rider.travelDir;
-  /* PLUS, nicht minus: bei rotation.y = PI/2 steht die Brust exakt quer;
-     groessere Werte drehen sie talwaerts. Mit Minus zeigte sie gemessen 112
-     Grad von talwaerts, also leicht den Hang HINAUF. */
-  upper.rotation.y = openTo * (STANCE_YAW + CHEST_OPEN) + bodySway * 0.45 * openTo;
+  upper.rotation.y = upperYaw;
   // Kopf schaut in die Kurve und dorthin, wo es hingeht
   /* Angst-Pose (fuer die Verfolgung): Kopf dreht ueber die Schulter zurueck,
      Schultern hoch, Koerper tief. Ueber rider.fear von 0 bis 1 mischbar. */
@@ -4409,10 +4444,14 @@ function updateVisuals(dt) {
      Koerper an, der Buckel-Takt bleibt als Grundbewegung. */
   const armSway = -rider.omega * 0.30;
   const armTrail = clamp01(speed / 40) * 0.18;
+  /* Die Arme fuehren den Ollie an: sie gehen rund 80 ms VOR der Beinstreckung
+     hoch (belegt als Reihenfolge, Werte abgeleitet). Beim Laden schwingen sie
+     zurueck, im Absprung nach oben. */
+  const armPop = rider.charge * -0.35 + air * clamp01(1 - tA / 0.30) * 0.55;
   armL.rotation.z = armBaseL + swing - bodySway * 0.55 + armBob * 0.5 + armSway;
   armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5 + armSway;
-  armL.rotation.x = -0.55 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob - armTrail;
-  armR.rotation.x = -0.42 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob - armTrail;
+  armL.rotation.x = -0.55 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob - armTrail - armPop;
+  armR.rotation.x = -0.42 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob - armTrail - armPop;
 
   /* SLIDE (Limbo). Dieser Block muss NACH den Arm-, Ellbogen- und
      Kopfzuweisungen stehen: davor platziert wurde er jeden Frame still
