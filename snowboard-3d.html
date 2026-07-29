@@ -170,7 +170,7 @@
       <kbd>C</kbd><span>Perspektive: Verfolger / Egosicht</span>
       <kbd>Esc</kbd><span>Pause</span>
       <kbd>Space</kbd><span>abspringen</span>
-      <kbd>Touch</kbd><span>Bildschirmhälfte lenkt, unten bremst, Tipp springt</span>
+      <kbd>Touch</kbd><span>seitlich ziehen lenkt · hoch wischen springt · runter wischen slidet</span>
     </div>
     <div class="stars">★ <span id="starCount">0</span> Sterne</div>
     <div class="modes">
@@ -3300,7 +3300,7 @@ function readKeys() {
   let s = 0;
   for (const k in STEER_KEYS) if (keys[k]) s += STEER_KEYS[k];
   input.steer = clamp(s + touchSteer, -1, 1);
-  input.duck  = !!(keys.KeyS || keys.ArrowDown);
+  input.duck  = !!(keys.KeyS || keys.ArrowDown) || touchDuck;
   /* In der Luft: zurueckziehen = Backflip, nach vorne = Frontflip.
      rotation.x > 0 hebt die Nase und legt den Oberkoerper nach hinten — das IST
      der Backflip. Also gehoert die Ruecktaste auf +1, nicht auf -1. */
@@ -3310,26 +3310,45 @@ function readKeys() {
   input.boost = !!(keys.KeyW || keys.ArrowUp);
 }
 
-// --- Touch ---
-let touchSteer = 0, touchBrake = false;
+// --- Touch: Wischgesten ---
+/* Steuerung wie in Temple Run oder Subway Surfers, aber fuer ein Spiel, das
+   dauerhaftes Lenken braucht:
+     seitlich ziehen und HALTEN  -> lenken, proportional zum Ausschlag
+     kurz nach oben wischen      -> springen
+     nach unten wischen/halten   -> ducken und durchsliden
+   Das Lenken laeuft bewusst als gehaltener Zug statt als einzelner Wisch:
+   ein Snowboard faehrt Kurven, es wechselt nicht die Spur. */
+let touchSteer = 0, touchBrake = false, touchDuck = false;
 const touches = new Map();
 const cv = renderer.domElement;
+const SWIPE_LENK = 90;    // Pixel fuer vollen Lenkausschlag
+const SWIPE_MIN  = 26;    // Totzone, damit ein Tippen nicht lenkt
+const SWIPE_HOCH = 46;    // Pixel nach oben fuer den Sprung
+const SWIPE_RUNTER = 46;  // Pixel nach unten fuers Ducken
+
 function touchUpdate() {
-  let s = 0, brake = false;
+  let s = 0, duck = false;
   for (const t of touches.values()) {
-    s += t.x < innerWidth/2 ? -1 : 1;
-    if (t.y > innerHeight * 0.72) brake = true;   // unteres Band = Querbremse
+    const dx = t.x - t.x0, dy = t.y - t.y0;
+    // waagerechter Zug bestimmt die Lenkung
+    if (Math.abs(dx) > SWIPE_MIN) {
+      const roh = (Math.abs(dx) - SWIPE_MIN) / SWIPE_LENK;
+      s += Math.sign(dx) * clamp01(roh);
+    }
+    // nach unten gezogen und gehalten = ducken
+    if (dy > SWIPE_RUNTER && Math.abs(dy) > Math.abs(dx)) duck = true;
   }
   touchSteer = clamp(s, -1, 1);
-  touchBrake = brake;
+  touchDuck = duck;
+  touchBrake = false;          // Bremse liegt nicht mehr auf dem Touch
 }
 cv.addEventListener('touchstart', e => {
   e.preventDefault();
   Audio.init();
   if (State.now === 'MENU' || State.now === 'GAMEOVER') { startGame(State.mode); return; }
   for (const t of e.changedTouches) {
-    if (touches.size >= 1) { input.jump = true; }
-    touches.set(t.identifier, { x: t.clientX, y: t.clientY, t0: performance.now(), moved: 0 });
+    touches.set(t.identifier, { x: t.clientX, y: t.clientY,
+      x0: t.clientX, y0: t.clientY, t0: performance.now(), sprang: false });
   }
   touchUpdate();
 }, { passive: false });
@@ -3338,8 +3357,16 @@ cv.addEventListener('touchmove', e => {
   for (const t of e.changedTouches) {
     const rec = touches.get(t.identifier);
     if (!rec) continue;
-    rec.moved += Math.abs(t.clientX - rec.x) + Math.abs(t.clientY - rec.y);
     rec.x = t.clientX; rec.y = t.clientY;
+    /* Sprung: einmal je Beruehrung, sobald genug nach oben gewischt wurde.
+       Danach wandert der Startpunkt mit, damit man aus derselben Beruehrung
+       heraus weiterlenken kann. */
+    const dy = rec.y - rec.y0, dx = rec.x - rec.x0;
+    if (!rec.sprang && dy < -SWIPE_HOCH && Math.abs(dy) > Math.abs(dx)) {
+      rec.sprang = true;
+      input.jump = true; input.jumpHeld = true;
+      rec.y0 = rec.y;
+    }
   }
   touchUpdate();
 }, { passive: false });
@@ -3347,9 +3374,15 @@ function endTouch(e) {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const rec = touches.get(t.identifier);
-    if (rec && performance.now() - rec.t0 < 230 && rec.moved < 24) input.jump = true;
+    // kurzes Tippen ohne Zug springt ebenfalls — als Notnagel
+    if (rec && performance.now() - rec.t0 < 230
+        && Math.abs(rec.x - rec.x0) < 18 && Math.abs(rec.y - rec.y0) < 18) {
+      input.jump = true; input.jumpHeld = true;
+    }
+    if (rec && rec.sprang) input.jumpHeld = false;
     touches.delete(t.identifier);
   }
+  if (touches.size === 0) input.jumpHeld = false;
   touchUpdate();
 }
 cv.addEventListener('touchend', endTouch, { passive: false });
