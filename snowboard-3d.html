@@ -3470,13 +3470,35 @@ function step(dt) {
     State.comboT = (State.comboT || 0) - dt;
     if (State.comboT <= 0) { State.combo--; State.comboT = 4; }
   }
-  const st = input.steer;
+  /* Am Start faellt der Fahrer erst einmal in den Hang. Bis er das erste Mal
+     aufsetzt, greift die Lenkung nicht — vorher steuerte man in der Luft und
+     landete schon schief. */
+  /* Der Fahrer startet AM BODEN und hebt erst ueber die erste Kuppe ab —
+     einfach auf grounded zu pruefen loeste die Sperre sofort. Sie haelt bis
+     zur Landung NACH dem ersten Abheben; nach 4 s faellt sie ohnehin, falls
+     der Start einmal ohne Sprung verlaeuft. */
+  State.sinceStart = (State.sinceStart || 0) + dt;
+  if (!rider.grounded) State.hasFlown = true;
+  if ((rider.grounded && State.hasFlown) || State.sinceStart > 4) State.steerLocked = false;
+  const st = State.steerLocked ? 0 : input.steer;
 
   /* --- Ducken / Vorspannen / Bremsen --- */
   /* Bremse ist dosiert, nicht binär: kurz antippen = einmal kurz ausbrechen und
      ein bisschen Tempo lassen, gedrueckt halten = voller Querstopp. Die
      Haltedauer steuert Einschlagwinkel UND Bremskraft. */
   const brakeOn = input.brake && rider.grounded;
+  /* Beim ANTIPPEN schlaegt das Heck aus und kickt eine Ladung Schnee weg.
+     Der Kick feuert einmal bei der steigenden Flanke, nicht dauernd. */
+  if (brakeOn && rider.brakeHold === 0 && rider.grounded) {
+    const sp = Math.hypot(rider.vel.x, rider.vel.z);
+    if (sp > 3) {
+      // hinter dem Fahrer, quer zur Fahrtrichtung ausgeworfen
+      forwardOf(rider.yaw, _f);
+      burst(rider.pos.x - _f.x * 0.9, rider.pos.y + 0.15, rider.pos.z - _f.z * 0.9,
+            22, 2.2 + clamp01(sp / 25) * 2.6);
+      Audio.whoosh(clamp01(sp / 30) * 0.7);
+    }
+  }
   rider.brakeHold = brakeOn ? Math.min(rider.brakeHold + dt, 2) : 0;
   const engage = brakeOn ? Math.max(P.brakeMin, clamp01(rider.brakeHold / P.brakeRamp)) : 0;
   // Loslassen faellt schneller ab als Aufbauen -> der Tap wirkt wie ein Kick
@@ -3636,6 +3658,13 @@ function step(dt) {
              mehr und nur die Schwerkraft wirkt. */
           const slopeGain = clamp01(-_tan.y * 6);
           speed += (targetSpeed - speed) * P.speedReturn * 0.55 * slopeGain * dt;
+        }
+        /* Wer langsam faehrt und die Bremse haelt, kommt wirklich zum STEHEN
+           und bleibt quer zum Hang stehen. Ohne diesen Zweig zog ihn das
+           Grundtempo immer wieder an und ein Anhalten war unmoeglich. */
+        if (rider.braking > 0.55 && speed < 9) {
+          speed = Math.max(0, speed - P.brakeForce * 1.6 * dt);
+          if (speed < 0.35) speed = 0;
         }
         rider.vel.setLength(clamp(speed, 0, P.boostSpeed * ramp));
       }
@@ -4018,6 +4047,7 @@ function startGame(mode, trackId) {
     applyTune(null); applyLook(null);
     buildCourse(State.mode, 0x9e3779b9 ^ (State.mode === 'FREESTYLE' ? 0x77 : 0));
   }
+  State.steerLocked = true; State.hasFlown = false; State.sinceStart = 0;
   State.time = 0; State.finished = false;
   State.gatesHit = 0; State.gatesMissed = 0;
   State.countdown = State.mode === 'RACE' ? CONFIG.game.countdown : 0;
