@@ -1895,6 +1895,34 @@ const portalMat = new THREE.MeshLambertMaterial({ color: 0x46566e, flatShading: 
    Gefaelle 11.4 m schraeg. TUN_INSET haelt Loecher knapp innerhalb der Wand. */
 const TUN_W = 0.95, TUN_H = 0.80, TUN_LEN = 13, TUN_INSET = 0.96;
 const tunnelSegs = [];
+/* BERGMASSIV mit dem Tunnel als einzigem Durchgang. Statt eines frei auf der
+   Piste stehenden Gewoelbes steht am Tunnelanfang und -ende eine Felswand
+   ueber die ganze Breite; ausgespart ist nur der Bogen. Die Aussparung
+   entsteht aus drei Bloecken (links, rechts, oben) — das braucht kein CSG und
+   bleibt robust. Dahinter sitzt eine grobe Felsmasse, damit es von aussen wie
+   ein Berg aussieht und nicht wie eine Kulisse. */
+const PORTAL_N = TUNNEL_SEG + 2;   // eine Scheibe je Bogensegment plus Portale
+const portals = [];
+{
+  const rockMat = new THREE.MeshLambertMaterial({ color: 0x55606e, flatShading: true });
+  const snowMat = new THREE.MeshLambertMaterial({ color: 0xeef4fa, flatShading: true });
+  for (let i = 0; i < PORTAL_N; i++) {
+    const g = new THREE.Group();
+    const mk = m => { const b = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), m);
+      b.castShadow = true; g.add(b); return b; };
+    const left = mk(rockMat), right = mk(rockMat), top = mk(rockMat);
+    // Bergruecken dahinter: unregelmaessige Bloecke statt glatter Wand
+    const bulk = [];
+    for (let k = 0; k < 5; k++) {
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), rockMat);
+      b.castShadow = true; g.add(b); bulk.push(b);
+    }
+    const cap = mk(snowMat);           // Schneehaube auf dem Grat
+    g.visible = false;
+    scene.add(g);
+    portals.push({ obj: g, left, right, top, bulk, cap, d: -1 });
+  }
+}
 {
   /* Halbzylinder, Achse ENTLANG der Fahrtrichtung. Die Rohgeometrie hat die
      Achse auf Y und die Schale auf x>=0; beides wird einmalig in die Geometrie
@@ -1918,17 +1946,31 @@ const tunnelSegs = [];
   // Fels statt Eis: innen dunkel, damit es sich wie eine Hoehle anfuehlt
   // (Materialien liegen auf Modulebene — updateTunnel braucht sie)
   // Lichtloecher im Fels und Fackeln an der Wand
-  const holeGeo = new THREE.CircleGeometry(0.85, 10);
-  const holeMat = new THREE.MeshBasicMaterial({ color: 0xfff4d8, side: THREE.DoubleSide, fog: false });
-  const torchGeo = new THREE.ConeGeometry(0.28, 0.7, 7);
-  const torchMat = new THREE.MeshBasicMaterial({ color: 0xff9a3c, fog: false });
+  /* NUR Fackeln — die Lichtloecher sind raus: in einem Berg, durch den man
+     hindurchfaehrt, gibt es keine Loecher in der Wand. Dafuer sind die Fackeln
+     groesser, haben einen Halter und einen weichen Lichtschein, der die Wand
+     tatsaechlich ausleuchtet. */
+  const torchGeo = (() => {
+    const parts = [];
+    parts.push(part(new THREE.CylinderGeometry(0.07, 0.09, 0.8, 6), 0x4a3524, 0, -0.35, 0));
+    const flame = new THREE.ConeGeometry(0.30, 1.05, 8);
+    parts.push(part(flame, 0xffb03a, 0, 0.42, 0));
+    const core = new THREE.ConeGeometry(0.17, 0.62, 7);
+    parts.push(part(core, 0xfff0b0, 0, 0.30, 0));
+    return mergeParts(parts);
+  })();
+  const torchMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
+  const glowGeo = new THREE.SphereGeometry(1.5, 10, 8);
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff8a24, transparent: true,
+    opacity: 0.16, depthWrite: false, fog: false });
   for (let i = 0; i < TUNNEL_SEG; i++) {
     const m = new THREE.Mesh(archGeo, archMat);
     m.visible = false;
     const holes = [];
     for (let h = 0; h < 4; h++) {
-      const torch = h >= 2;
-      const mesh = new THREE.Mesh(torch ? torchGeo : holeGeo, torch ? torchMat : holeMat);
+      const mesh = new THREE.Mesh(torchGeo, torchMat);
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      mesh.add(glow);
       scene.add(mesh);
       holes.push(mesh);
     }
@@ -1950,8 +1992,70 @@ for (let i = 0; i < ICICLE_N; i++) {
   icicles.push({ mesh: m, d: 0, x: 0, top: 0, state: 'idle', t: 0, y: 0, vy: 0 });
 }
 
+/* Stellt eine Bergwand an die Stelle d, mit dem Bogen als einziger Oeffnung.
+   wallX/wallY sind die Bogenmasse an dieser Stelle. */
+function placePortal(P0, d, R) {
+  const wallX = R.hw * TUN_W, wallY = R.hw * TUN_H;
+  const floorY = terrainH(R.cx, -d) - 1.2;
+  const SPAN = R.hw * 2 + 80;          // weit ueber die Piste hinaus
+  const H = wallY + 26;                // hoch genug, dass kein Himmel durchscheint
+  const TH = 11.5;                     // etwas mehr als das 10-m-Raster: die
+                                       // Scheiben ueberlappen, keine Fugen
+  /* Die Wand muss WEIT unter die Fahrbahn reichen: ihre Unterkante ist gerade,
+     das Gelaende faellt seitlich aber ab — mit knapper Einsenkung schwebte sie
+     an den Flanken sichtbar ueber dem Schnee. */
+  const SINK = 60;
+  P0.d = d; P0.obj.visible = true;
+  P0.obj.position.set(R.cx, floorY, -d);
+  P0.obj.rotation.y = 0;
+  // links und rechts neben dem Bogen
+  const side = (SPAN - wallX * 2) / 2;
+  P0.left.scale.set(side, H + SINK, TH);
+  P0.left.position.set(-(wallX + side / 2), (H - SINK) / 2 - 2, 0);
+  P0.right.scale.set(side, H + SINK, TH);
+  P0.right.position.set(wallX + side / 2, (H - SINK) / 2 - 2, 0);
+  // ueber dem Bogenscheitel
+  P0.top.scale.set(wallX * 2, H - wallY, TH);
+  P0.top.position.set(0, wallY + (H - wallY) / 2 - 2, 0);
+  /* Aufgesetzte Felsbrocken brechen die glatte Oberkante auf, damit der Grat
+     wie ein Berg aussieht und nicht wie eine Mauer. */
+  for (let k = 0; k < P0.bulk.length; k++) {
+    const b = P0.bulk[k];
+    const f = hash2(Math.round(d), k);
+    const sx = 8 + f * 16, sy = 5 + f * 11, sz = 6 + f * 9;
+    b.scale.set(sx, sy, sz);
+    b.position.set((f - 0.5) * SPAN * 0.8, H - 4 + sy * 0.3, (f - 0.5) * TH);
+    b.rotation.set(f * 2, f * 3, f * 1.5);
+  }
+  // Schneehaube auf dem Grat
+  P0.cap.scale.set(SPAN * 0.8, 2.5, TH + 2);
+  P0.cap.position.set(0, H - 2.6, 0);
+}
+
 function updateTunnel(rz, dt) {
   tunClock += dt;
+  /* Portale an Anfang und Ende jeder sichtbaren Tunnelsektion. */
+  {
+    let pi = 0;
+    const d0p = -rz;
+    for (const S of sections) {
+      if (!S.spec.tunnel) continue;
+      if (S.d1 < d0p - 40 || S.d0 > d0p + 420) continue;
+      /* Eine Felsscheibe je 10-m-Raster ueber die GANZE Sektion: aneinander-
+         gereiht ergeben sie einen durchgehenden Berg, durch den der Bogen der
+         einzige Durchgang ist. Nur zwei Wandstuecke an den Enden reichten
+         nicht — dazwischen fehlte der Berg komplett. */
+      const von = Math.max(S.d0 + 12, Math.floor((d0p - 30) / 10) * 10);
+      const bis = Math.min(S.d1 - 12, d0p + 400);
+      for (let dd = von; dd <= bis && pi < PORTAL_N; dd += 10) {
+        const RR = rowData(dd, _rowB);
+        if (RR.tunnel < 0.30) continue;
+        placePortal(portals[pi++], dd, RR);
+      }
+      if (pi >= PORTAL_N) break;
+    }
+    for (let k = pi; k < PORTAL_N; k++) portals[k].obj.visible = false;
+  }
   // Baecher fliessen: die Streifentextur wandert stromabwaerts
   for (const c of chasms) {
     if (!c.on) continue;
@@ -1983,13 +2087,18 @@ function updateTunnel(rz, dt) {
        sie in der Wand liegen und nicht im Raum schweben. */
     const holes = m.userData.holes;
     for (let hIdx = 0; hIdx < holes.length; hIdx++) {
-      const a = (hash2(Math.round(d), hIdx) - 0.5) * 1.9;
+      /* Fackeln haengen abwechselnd links und rechts an der Wand, auf
+         Kopfhoehe statt oben im Gewoelbe — von dort leuchten sie die Fahrbahn
+         aus. Jede flackert mit eigenem Takt. */
+      const seite = (hIdx % 2) ? 1 : -1;
+      const a = seite * (0.72 + hash2(Math.round(d), hIdx) * 0.35);
       const h = holes[hIdx], hz = -d + (hIdx - 1.5) * 3.2;
       h.position.set(R.cx + Math.sin(a) * wallX * TUN_INSET,
-        floorY + Math.cos(a) * wallY * TUN_INSET, hz);
+        floorY + Math.cos(a) * wallY * TUN_INSET * 0.62, hz);
       h.lookAt(R.cx, floorY + wallY * 0.35, hz);
-      // Fackeln flackern, Lichtloecher nicht
-      if (hIdx >= 2) h.scale.setScalar(1 + 0.22 * Math.sin(tunClock * 12 + hIdx * 2.3 + d * 0.7));
+      const fl = 1 + 0.16 * Math.sin(tunClock * 13 + hIdx * 2.3 + d * 0.7)
+                   + 0.08 * Math.sin(tunClock * 29 + hIdx);
+      h.scale.set(fl, fl * (1 + 0.10 * Math.sin(tunClock * 21 + hIdx * 1.7)), fl);
     }
     // Zapfen an dieses Segment binden
     for (let k = 0; k < 1 && ic < ICICLE_N; k++) {
@@ -4429,7 +4538,12 @@ function updateVisuals(dt) {
      liefen, waehrend die Beine stehen blieben: eine anatomisch unmoegliche
      Verwindung. Welche Seite vorn ist, sagt allein die Stance — und die
      wechselt nur bei einem echten 180er in der Luft. */
-  const upperYaw = stanceVis * (STANCE_YAW + CHEST_OPEN + heelOpen)
+  /* NUR das Delta spiegelt, nicht die Basis. Der Fahrer steht immer quer zum
+     Board — welches Bein vorn ist, aendert daran nichts, es aendert nur, zu
+     welcher Seite er sich leicht aufdreht. Vorher lief die volle Basis mit
+     (stance * (90 + 24) Grad), der Wechsel schwenkte den Koerper also um
+     228 Grad statt um die 48 Grad, die es tatsaechlich sind. */
+  const upperYaw = STANCE_YAW + stanceVis * (CHEST_OPEN + heelOpen)
                  + bodySway * 0.35;
   /* Huefte folgt dem Oberkoerper. Counter-Rotation — Schultern gegen die
      Huefte verdreht — gilt im Snowboarden als Fehler, nicht als Stil; die
@@ -4470,8 +4584,9 @@ function updateVisuals(dt) {
   /* Der Kopf schaut die Linie hinunter — bei Angst dreht er zurueck ueber die
      Schulter zum Yeti. Relativ zum Oberkoerper, weil head an upper haengt. */
   /* Relativ zum Oberkoerper: der Kopf dreht weiter talwaerts als die Brust. */
-  head.rotation.y = openTo * (HEAD_OPEN - CHEST_OPEN) + bodySway * 0.55 * openTo
-                  - rider.fear * (State.intro > 0 ? 1.9 : 0.6) * openTo;
+  /* Auch beim Kopf spiegelt nur das Delta zum Oberkoerper. */
+  head.rotation.y = stanceVis * (HEAD_OPEN - CHEST_OPEN) + bodySway * 0.55 * stanceVis
+                  - rider.fear * (State.intro > 0 ? 1.9 : 0.6) * stanceVis;
   head.rotation.z = -rider.roll * 0.25 + rider.fear * 0.18;
   head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
   // Schreck-Gesicht: Mund und Augen reissen mit der Angst auf
