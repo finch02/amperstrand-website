@@ -414,6 +414,23 @@ const TRACKS = [
             phys:    { cruiseSpeed: 21, boostSpeed: 32, iceResist: 0.30,
                        gripLoose: 1.9, gripEdge: 10.5, rollResist: 0.75 } } }
 ];
+/* REKORD-ZURUECKSETZUNG. Mit dem neuen Tempomodell (Gefaelle statt geregelter
+   Grundgeschwindigkeit) sind alte Bestwerte und Geisterzeiten nicht mehr
+   vergleichbar — sie wurden unter anderer Physik gefahren. Diese Marke loescht
+   sie EINMALIG bei jedem Spieler; zum erneuten Zuruecksetzen die Zahl erhoehen.
+   Sterne, Muenzen und freigeschaltete Strecken bleiben bewusst erhalten. */
+const RECORDS_VERSION = 2;
+try {
+  if (parseInt(localStorage.getItem('powderline_recver') || '0', 10) !== RECORDS_VERSION) {
+    localStorage.removeItem('powderline_best');
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('powderline_ghost')) localStorage.removeItem(k);
+    }
+    localStorage.setItem('powderline_recver', String(RECORDS_VERSION));
+  }
+} catch (e) { /* privater Modus */ }
+
 const Progress = {
   stars: 0,
   coins: 0,
