@@ -1435,7 +1435,10 @@ const chasms = [];
      leuchtend blaues Wasser als Kontrast zum Schnee, helle Schneekanten.
      Das Wasser bekommt eine gestreifte Textur, die stromabwaerts wandert —
      dadurch ist die Fliessrichtung sichtbar. */
-  const wallMat = new THREE.MeshLambertMaterial({ color: 0x24384f, flatShading: true });
+  /* Die Uferwand ist selbst blau: aus der Anfahrt sieht man die gegenueber-
+     liegende WAND, nicht die Wasserflaeche — dunkelgrau gehalten las sich der
+     Bach als schwarzer Strich im Schnee. */
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x1d6fae, flatShading: true });
   const lipMat  = new THREE.MeshLambertMaterial({ color: 0xf2f8ff, flatShading: true });
   const waterTex = (() => {
     const N = 64, cv = document.createElement('canvas');
@@ -1455,12 +1458,14 @@ const chasms = [];
   for (let i = 0; i < Q.chasms; i++) {
     const g = new THREE.Group();
     const pit = new THREE.Mesh(new THREE.BoxGeometry(1, 3.4, 1), wallMat);
-    pit.position.y = -1.75;
+    pit.position.y = -1.10;   // flachere Rinne, das Wasser bleibt sichtbar
     /* Wasserflaeche dicht unter die Kante: tiefer gelegt sah man aus der
        Anfahrt nur die dunklen Uferwaende und der Bach las sich als
        schwarzer Strich. */
+    /* Wasserflaeche fast auf Kantenhoehe, damit sie ueber die nahe Lippe
+       hinweg sichtbar ist. */
     const glow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 0.94), iceMat);
-    glow.position.y = -0.30;
+    glow.position.y = -0.14;
     const lipA = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
     const lipB = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
     lipA.position.y = -0.06; lipA.rotation.x = 0.18;
