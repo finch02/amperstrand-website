@@ -165,7 +165,7 @@
       <kbd>A</kbd><span>links lenken / in der Luft drehen</span>
       <kbd>D</kbd><span>rechts lenken / in der Luft drehen</span>
       <kbd>B</kbd><span>quer bremsen — mit A/D die Bremsseite wählen</span>
-      <kbd>S</kbd><span>ducken / in der Luft: Backflip</span>
+      <kbd>S</kbd><span>ducken — unter hohen Stämmen durchsliden · in der Luft: Backflip</span>
       <kbd>W</kbd><span>beschleunigen · in der Luft: Frontflip</span>
       <kbd>C</kbd><span>Perspektive: Verfolger / Egosicht</span>
       <kbd>Esc</kbd><span>Pause</span>
@@ -695,7 +695,7 @@ const RACE_STYLE = {
      Ueberspringen, grosse zum Ausweichen. Vorher kamen sie dort nie vor, weil
      ROCKS-Abschnitte nur in anderen Streckenstilen auftauchten. */
   escape:  { left: SECT.CURVE_L, right: SECT.CURVE_R, every: 2,
-             fill: [SECT.STEEP, SECT.JUMP, SECT.GATE, SECT.TUNNEL, SECT.ROCKS, SECT.ROCKS] }
+             fill: [SECT.STEEP, SECT.JUMP, SECT.GATE, SECT.GATE, SECT.TUNNEL, SECT.ROCKS, SECT.ROCKS] }
 };
 let raceStyle = 'flow';
 
@@ -2083,7 +2083,7 @@ const yeti = (() => {
   g.userData = { arms: yArms, legs: yLegs, torso, jaw, headG };
   return g;
 })();
-let yetiRoarT = 1.0, yetiRoarAnim = 0;
+let yetiRoarT = 1.0, yetiRoarAnim = 0, yetiStompT = 0;
 
 /* ==========================================================================
    MUENZEN — Waehrung fuer den Shop, liegen als Bogen auf der Linie
@@ -2208,7 +2208,7 @@ function placeTree(i, rz, zForce) {
      Nicht im Tunnel, nicht am Anfang; ueber i getaktet, damit die Dichte
      kalkulierbar bleibt (hitsTree macht jeden davon zum Stolperer). */
   if (State.mode === 'ESCAPE' && -z > 140 && R.tunnel < 0.2 && !R.kick &&
-      i % 11 === 0 && rnd() < 0.55) {
+      i % 8 === 0 && rnd() < 0.65) {
     setTree(i, R.cx + rndR(-0.8, 0.8) * Math.max(1.5, R.hw - 2.5), z,
       rndR(0.85, 1.35), rndR(0.95, 1.25));
     return;
@@ -2280,15 +2280,15 @@ function placeLog(i, rz) {
   const slot = logSlot[i] || (logSlot[i] = {});
   slot.z = z;
   const R = rowData(d, _rowA);
-  if (State.mode !== 'ESCAPE' || d < 160 || R.tunnel > 0.25 || R.park > 0.5 || R.kick) {
+  if (State.mode !== 'ESCAPE' || d < 130 || R.tunnel > 0.25 || R.park > 0.5 || R.kick) {
     slot.on = 0; hideInstance(logs, i, z); return;
   }
   // Mindestabstand zu anderen Staemmen und Schluchten, sonst unfaire Doppel
   for (let j = 0; j < Q.logs; j++) {
     const o = logSlot[j];
-    if (o && j !== i && o.on && Math.abs(o.z - z) < 42) { slot.on = 0; hideInstance(logs, i, z); return; }
+    if (o && j !== i && o.on && Math.abs(o.z - z) < 30) { slot.on = 0; hideInstance(logs, i, z); return; }
   }
-  for (const c of chasms) if (c.on && Math.abs(c.z - z) < 46) { slot.on = 0; hideInstance(logs, i, z); return; }
+  for (const c of chasms) if (c.on && Math.abs(c.z - z) < 38) { slot.on = 0; hideInstance(logs, i, z); return; }
   const high = rnd() < 0.42;
   const x = R.cx + rndR(-1, 1) * Math.max(0, R.hw - LOG_LEN / 2) * 0.8;
   const gy = heightIn(x, R);
@@ -2303,12 +2303,12 @@ function placeLog(i, rz) {
 }
 function placeChasm(k, rz) {
   const c = chasms[k];
-  const z = rz - rndR(AHEAD_MIN + 60, AHEAD_MAX + 160), d = -z;
+  const z = rz - rndR(AHEAD_MIN + 30, AHEAD_MAX + 120), d = -z;
   c.z = z;
   const R = rowData(d, _rowA);
-  if (State.mode !== 'ESCAPE' || d < 220 || R.tunnel > 0.2 || R.park > 0.5 ||
+  if (State.mode !== 'ESCAPE' || d < 180 || R.tunnel > 0.2 || R.park > 0.5 ||
       R.kick || Math.abs(R.curv) > 0.25) { c.on = false; c.obj.visible = false; return; }
-  for (const o of chasms) if (o !== c && o.on && Math.abs(o.z - z) < 150) { c.on = false; c.obj.visible = false; return; }
+  for (const o of chasms) if (o !== c && o.on && Math.abs(o.z - z) < 110) { c.on = false; c.obj.visible = false; return; }
   for (let j = 0; j < Q.logs; j++) {
     const o = logSlot[j];
     if (o && o.on && Math.abs(o.z - z) < 46) { c.on = false; c.obj.visible = false; return; }
@@ -3681,6 +3681,7 @@ function startGame(mode, trackId) {
     applyLook({ sky:[0x7f9ec2,0xe6eef6], fog:0xdde6f0, near:32, far:150,
                 snow:0xffffff, tree:0xe8eef4, mtn:0xeef3f8, sun:0.78, hemi:1.15, sunCol:0xf6f9ff });
     buildCourse('ESCAPE', 0x5eeb17);
+    yetiRoarT = 0.2;   // erster Bruell-Schub direkt im Intro
   } else {
     State.trackId = State.mode;
     applyTune(null); applyLook(null);
@@ -4273,6 +4274,10 @@ function updateVisuals(dt) {
          haengt er kontrastlos vor dem Himmel statt vor dem Hang. */
       camera.position.set(cx, terrainH(cx, cz) + 2.0, cz);
       camLook.set(yeti.position.x, yeti.position.y + 1.7, yeti.position.z);
+      // sein Galopp erschuettert die Kamera, das Bruellen reisst sie an
+      const sh = 0.12 + yetiRoarAnim * 0.22;
+      camera.position.x += Math.sin(chaseClock * 43) * sh;
+      camera.position.y += Math.sin(chaseClock * 57 + 1.3) * sh * 0.6;
     } else if (p < 0.72) {
       /* Nahaufnahme des Gesichts. Die Kamera haengt am TATSAECHLICHEN Blick
          des Kopfes: der ist im Intro per Angst-Pose ueber die Schulter
@@ -4507,6 +4512,11 @@ function updateChase(dt) {
   A.legs[1].rotation.x = 0.45 - Math.sin(gait - 1.2) * 0.7;
   A.torso.rotation.x = Math.sin(gait + 0.6) * 0.10;
   yeti.position.y += Math.max(0, Math.sin(gait + 1.2)) * 0.55;
+  // Beim Aufschlag der Pranken stiebt der Schnee
+  if (Math.sin(gait + 1.2) < -0.9 && chaseClock - yetiStompT > 0.25) {
+    yetiStompT = chaseClock;
+    burst(yeti.position.x, yeti.position.y + 0.4, yeti.position.z + 1.2, 10, 2.5);
+  }
   // Maul: dauerhaft drohend offen, beim Bruellen ganz aufgerissen
   yetiRoarAnim = Math.max(0, yetiRoarAnim - dt * 1.4);
   A.jaw.rotation.x = 0.35 + yetiRoarAnim * 0.55;
@@ -4523,9 +4533,11 @@ function updateChase(dt) {
   // Bruellen in unregelmaessigem Takt — naeher heisst oefter und lauter
   yetiRoarT -= dt;
   if (yetiRoarT <= 0) {
-    Audio.roar(clamp01((40 - gap) / 34));
+    /* Im Intro steht die Kamera direkt an seiner Laufbahn — dort immer volle
+       Wucht und dichter Takt, sonst nach Naehe. */
+    Audio.roar(State.intro > 0 ? 0.95 : clamp01((40 - gap) / 34));
     yetiRoarAnim = 1;
-    yetiRoarT = 3.4 + Math.max(0, gap - 6) * 0.15;
+    yetiRoarT = State.intro > 0 ? 1.6 : 3.4 + Math.max(0, gap - 6) * 0.15;
   }
 
   // Eingeholt?
