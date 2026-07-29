@@ -4319,7 +4319,7 @@ let bodySway = 0, bodyLoad = 0, bobPhase = 0, tunnelDark = 0, airMix = 0;
    riss den Oberkoerper jedes Mal um 280 Grad herum (gemessen +2.44 <-> -2.44).
    stanceVis laeuft weich hinueber — der Koerper dreht sich sichtbar durch,
    wie ein echter Fahrer beim Wechsel auf Switch. */
-let stanceVis = 1, travelYaw = 0;
+let stanceVis = 1;
 // konstante Blicksenkung, damit Board und Haende im Bild liegen
 const _povTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), CONFIG.camera.povPitch);
 const _povSwitch = new THREE.Quaternion();
@@ -4416,25 +4416,21 @@ function updateVisuals(dt) {
   /* travelDir dreht die Haltung bei Switch-Fahrt mit: dann ist die andere
      Schulter vorn. PLUS CHEST_OPEN, nicht minus: bei rotation.y = PI/2 steht
      die Brust exakt quer, groessere Werte drehen sie talwaerts. */
-  const openTo = stanceVis * rider.travelDir;
+  const openTo = stanceVis;   // travelDir raus: er wuerde die Haltung spiegeln
   /* HEELSIDE braucht deutlich mehr Oberkoerperdrehung Richtung Nose als
      TOESIDE (belegt: +45..+90 Grad heelside gegen 0..+15 Grad toeside) und
      eine tiefere Kniebeugung. heel = +1 auf der Fersenkante. */
   const heel = clamp(-bodySway * stanceVis, -1, 1);
   const heelOpen = Math.max(0, heel) * 0.55 - Math.max(0, -heel) * 0.12;
-  /* Die Haltung haengt an der TATSAECHLICHEN Fahrtrichtung, nicht an der
-     Buchfuehrung ueber yaw und travelDir. Vorher zeigte die Brust nach einem
-     Stance-Wechsel den Hang hinauf, weil die Vorzeichen von stance und
-     travelDir auseinanderliefen. So kann das konstruktionsbedingt nicht mehr
-     passieren: Zielrichtung = Fahrtrichtung plus Stance-Versatz, und
-     upper.rotation.y ist nur noch die Differenz zum Board-Yaw. */
-  const vLen = Math.hypot(rider.vel.x, rider.vel.z);
-  if (vLen > 0.5) travelYaw = Math.atan2(-rider.vel.x, -rider.vel.z);
-  /* Der Schwungterm bekommt KEIN openTo mehr: sein Vorzeichen sprang mit
-     travelDir und schwenkte die Brust zusaetzlich um gemessene 51 Grad. */
-  const bodyGoal = travelYaw + openTo * (STANCE_YAW + CHEST_OPEN + heelOpen)
+  /* BOARDBEZOGEN, nicht geschwindigkeitsbezogen. Die Fuesse stecken in den
+     Bindungen — der Oberkoerper kann sich gegen sie nur um wenige Grad
+     verwinden, niemals um 180. An den Geschwindigkeitsvektor gekoppelt
+     schwenkte der Rumpf herum, sobald Board- und Fahrtrichtung auseinander-
+     liefen, waehrend die Beine stehen blieben: eine anatomisch unmoegliche
+     Verwindung. Welche Seite vorn ist, sagt allein die Stance — und die
+     wechselt nur bei einem echten 180er in der Luft. */
+  const upperYaw = stanceVis * (STANCE_YAW + CHEST_OPEN + heelOpen)
                  + bodySway * 0.35;
-  const upperYaw = wrapPi(bodyGoal - rider.yaw);
   /* Huefte folgt dem Oberkoerper. Counter-Rotation — Schultern gegen die
      Huefte verdreht — gilt im Snowboarden als Fehler, nicht als Stil; die
      Trennung bleibt daher klein. */
