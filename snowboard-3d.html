@@ -306,15 +306,18 @@ const CONFIG = {
     gripLoose: 2.0,         // Querdaempfung flach (driften)
     gripEdge: 11.0,         // Querdaempfung auf der Kante (carven, schneidet sauber)
     brakeGrip: 0.22,        // beim Bremsen loest der Grip -> das Board rutscht quer
-    brakeAngleMin: 0.42,    // Anstellwinkel beim kurzen Antippen (~24 Grad)
-    brakeRamp: 0.55,        // nach so vielen Sekunden Halten ist die Bremse voll
-    brakeMin: 0.11,         // Tap: Board schlaegt kurz aus, Tempo bleibt fast ganz
+    brakeAngleMin: 0.68,    // Antippen: Heck bricht spuerbar aus (~39 Grad)
+    brakeRamp: 0.85,        // erst nach laengerem Halten ist die Bremse voll
+    brakeMin: 0.07,         // Tap: Board schlaegt aus, Tempo bleibt fast ganz
     brakeAngle: 1.15,       // Zielwinkel zur Falllinie (~66 Grad) — bei ~90 Grad
                             // waeren die beiden Bremsseiten als Board-Linie fast
                             // identisch und die Seitenwahl wirkte zufaellig
     brakeTurnRate: 6.0,     // wie schnell sich das Board quer stellt
-    brakeForce: 12.0,       // Verzoegerung bei voll quer stehendem Board (m/s^2)
-    brakeBase: 2.0,         // Grundbremsung auch ohne Querstellung
+    brakeForce: 15.0,       // Verzoegerung bei voll quer stehendem Board (m/s^2)
+    /* Grundbremsung stark gesenkt: mit 2.0 bremste schon das kurze Antippen
+       spuerbar, obwohl es nur das Heck ausschlagen lassen soll. Die Bremskraft
+       kommt jetzt fast nur noch aus der Querstellung, also aus der Haltedauer. */
+    brakeBase: 0.6,         // Grundbremsung auch ohne Querstellung
     brakeLean: 0.62,        // Neigung zum Hang beim Querbremsen
     loadMax: 3.2,           // Obergrenze fuers Lastvielfaches in der Kurve
     flipLand: 1.05,         // Toleranz zur vollen Umdrehung beim Landen
@@ -3139,7 +3142,20 @@ const rider = {
    das fuehrende Bein — am Boden (Pivot) genauso wie in der Luft (180er). */
 function addYaw(delta) {
   rider.yaw += delta;
-  rider.stanceAcc += delta;
+  /* Der Stance wechselt nur bei einer ECHTEN Drehung: in der Luft, beim Pivot
+     mit rutschendem Board oder beim Querbremsen. Ein sauber geschnittener
+     Carve dreht den Fahrer ebenfalls um 180 Grad und mehr — dabei bleibt aber
+     selbstverstaendlich dasselbe Bein vorn. Vorher kippte der Stance mitten in
+     jeder gehaltenen Kurve mehrmals pro Sekunde und riss den Oberkoerper
+     jedes Mal herum (gemessen: Brustwinkel schwankte ueber 140 Grad).
+     Nur die LUFT zaehlt: ein 180er, 540er usw. wechselt das Fuehrungsbein,
+     alles am Boden nicht. */
+  /* Mindestflugzeit: ueber Bodenwellen hebt der Fahrer im Carve staendig kurz
+     ab. Ohne diese Schwelle sammelte auch dieser Sekundenbruchteil Yaw an und
+     der Stance kippte weiterhin mitten in der Kurve. */
+  const spinning = !rider.grounded && rider.airTime > 0.22;
+  if (spinning) rider.stanceAcc += delta;
+  else rider.stanceAcc = 0;   // am Boden nichts ansammeln
   const before = rider.stance;
   while (rider.stanceAcc >=  Math.PI) { rider.stanceAcc -= Math.PI; rider.stance = -rider.stance; }
   while (rider.stanceAcc <= -Math.PI) { rider.stanceAcc += Math.PI; rider.stance = -rider.stance; }
@@ -4289,6 +4305,12 @@ const CHEST_OPEN = 0.42;      // Brust ein Stueck aus der Querstellung talwaerts
                               // gedreht — nicht starr 90 Grad zum Hang
 const HEAD_OPEN  = 0.95;      // der Kopf schaut deutlich die Linie hinunter
 let bodySway = 0, bodyLoad = 0, bobPhase = 0, tunnelDark = 0, airMix = 0;
+/* Weich nachgezogene Stance fuer die DARSTELLUNG. rider.stance springt hart
+   zwischen +-1; in einer gehaltenen Kurve kippt sie mehrmals pro Sekunde und
+   riss den Oberkoerper jedes Mal um 280 Grad herum (gemessen +2.44 <-> -2.44).
+   stanceVis laeuft weich hinueber — der Koerper dreht sich sichtbar durch,
+   wie ein echter Fahrer beim Wechsel auf Switch. */
+let stanceVis = 1, travelYaw = 0;
 // konstante Blicksenkung, damit Board und Haende im Bild liegen
 const _povTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), CONFIG.camera.povPitch);
 const _povSwitch = new THREE.Quaternion();
@@ -4335,6 +4357,9 @@ function updateVisuals(dt) {
      Arme balancieren gegen. */
   const crouch = rider.crouch;
   // sanft nachgezogene Lenkgroesse, damit nichts zuckt
+  /* Sehr weich: bei gehaltener Kurve kippt rider.stance mehrmals pro Sekunde.
+     Mit 5.5 folgte die Darstellung jedem Kippen und der Oberkoerper zuckte. */
+  stanceVis += (rider.stance - stanceVis) * damp(1.6, dt);
   bodySway += (input.steer * rider.travelDir - bodySway) * damp(6, dt);
   bodyLoad += ((rider.load - 1) - bodyLoad) * damp(7, dt);
   const gLoad = clamp01(bodyLoad / 1.4);
@@ -4355,8 +4380,12 @@ function updateVisuals(dt) {
      Federung war damit tot und der Rumpf sank in die starren Oberschenkel.
      Clamp gegen negative Skalierung (Beine wuerden invertiert nach oben
      klappen), Minimum 0.45. */
+  /* Heelside beugt tiefer als Toeside — gemessene Kniebereiche 37-64 Grad
+     gegen 29-54 Grad. */
+  const heelKnee = Math.max(0, clamp(-bodySway * stanceVis, -1, 1)) * 0.10;
   legs.scale.y = Math.max(0.45, 1 - crouch * 0.40 - gLoad * 0.24
-                          - rider.squash * 0.38 - ride + bobLeg - tuck * 0.30);
+                          - rider.squash * 0.38 - ride + bobLeg - tuck * 0.30
+                          - heelKnee);
   /* Beide Beine beugen in DIESELBE Richtung — vorher hatten Vorder- und
      Hinterbein entgegengesetzte Vorzeichen, er ging also gleichzeitig nach
      vorn und nach hinten in die Knie. Die Beugerichtung haengt an der
@@ -4367,8 +4396,8 @@ function updateVisuals(dt) {
   /* Kniebeugung im Flug: vorderes Bein zieht frueher an als das hintere —
      der gemessene Versatz aus der Ollie-Sequenz. Werte in Anlehnung an die
      Halfpipe-Messungen (Knie 29-64 Grad am Boden, 80-100 Grad im Tuck). */
-  legF.rotation.x = -0.14 * rider.stance + knee - tuckFront * 1.05;
-  legB.rotation.x =  0.14 * rider.stance + knee - tuckBack * 1.25;
+  legF.rotation.x = -0.14 * stanceVis + knee - tuckFront * 1.05;
+  legB.rotation.x =  0.14 * stanceVis + knee - tuckBack * 1.25;
   /* Die Huefte bekommt KEINE Vierteldrehung: die Fuesse sitzen in den
      Bindungen bei z = +-0.38, also LAENGS des Boards. Mit stance*PI/2 wanderten
      sie auf x = +-0.35 — gemessen neben das Deck (Halbbreite 0.28), die
@@ -4378,13 +4407,30 @@ function updateVisuals(dt) {
   /* travelDir dreht die Haltung bei Switch-Fahrt mit: dann ist die andere
      Schulter vorn. PLUS CHEST_OPEN, nicht minus: bei rotation.y = PI/2 steht
      die Brust exakt quer, groessere Werte drehen sie talwaerts. */
-  const openTo = rider.stance * rider.travelDir;
-  const upperYaw = openTo * (STANCE_YAW + CHEST_OPEN) + bodySway * 0.45 * openTo;
+  const openTo = stanceVis * rider.travelDir;
+  /* HEELSIDE braucht deutlich mehr Oberkoerperdrehung Richtung Nose als
+     TOESIDE (belegt: +45..+90 Grad heelside gegen 0..+15 Grad toeside) und
+     eine tiefere Kniebeugung. heel = +1 auf der Fersenkante. */
+  const heel = clamp(-bodySway * stanceVis, -1, 1);
+  const heelOpen = Math.max(0, heel) * 0.55 - Math.max(0, -heel) * 0.12;
+  /* Die Haltung haengt an der TATSAECHLICHEN Fahrtrichtung, nicht an der
+     Buchfuehrung ueber yaw und travelDir. Vorher zeigte die Brust nach einem
+     Stance-Wechsel den Hang hinauf, weil die Vorzeichen von stance und
+     travelDir auseinanderliefen. So kann das konstruktionsbedingt nicht mehr
+     passieren: Zielrichtung = Fahrtrichtung plus Stance-Versatz, und
+     upper.rotation.y ist nur noch die Differenz zum Board-Yaw. */
+  const vLen = Math.hypot(rider.vel.x, rider.vel.z);
+  if (vLen > 0.5) travelYaw = Math.atan2(-rider.vel.x, -rider.vel.z);
+  /* Der Schwungterm bekommt KEIN openTo mehr: sein Vorzeichen sprang mit
+     travelDir und schwenkte die Brust zusaetzlich um gemessene 51 Grad. */
+  const bodyGoal = travelYaw + openTo * (STANCE_YAW + CHEST_OPEN + heelOpen)
+                 + bodySway * 0.35;
+  const upperYaw = wrapPi(bodyGoal - rider.yaw);
   /* Huefte folgt dem Oberkoerper. Counter-Rotation — Schultern gegen die
      Huefte verdreht — gilt im Snowboarden als Fehler, nicht als Stil; die
      Trennung bleibt daher klein. */
-  legs.rotation.y = hipBase * rider.stance + bodySway * 0.30 * rider.stance
-                  + (upperYaw - hipBase * rider.stance) * 0.18;
+  legs.rotation.y = hipBase * stanceVis + bodySway * 0.30 * stanceVis
+                  + (upperYaw - hipBase * stanceVis) * 0.18;
   legs.rotation.z = -rider.roll * 0.12;
 
   /* Beine ANZIEHEN heisst Knie beugen, nicht die Beingruppe nach oben
@@ -4398,7 +4444,10 @@ function updateVisuals(dt) {
   upper.rotation.x = -(crouch * 0.50 + clamp01(speed / 40) * 0.22 + gLoad * 0.20
                        + rider.squash * 0.45 + ride) * rider.travelDir;
   // Angulation: Oberkoerper haelt gegen die Boardneigung, statt starr mitzukippen
-  upper.rotation.z = -rider.roll * 0.48 - bodySway * 0.22;
+  /* Angulation: der Oberkoerper haelt gegen die Boardneigung und lehnt
+     zusaetzlich in die Kurve. Mit 0.22 war die Neigung gemessen bei -0.04,
+     also praktisch unsichtbar. */
+  upper.rotation.z = -rider.roll * 0.48 - bodySway * 0.55;
   /* Limbo-Slide unter dem Stamm: Koerper legt sich seitlich flach, der
      Talarm faellt Richtung Schnee. */
   /* Schultern oeffnen talwaerts — in Fahrtrichtung, nicht zur Boardnase.
@@ -4438,7 +4487,7 @@ function updateVisuals(dt) {
   armR.position.y = 0.82 + rider.fear * 0.05;
 
   // Arme: der kurveninnere Arm geht runter/raus, der aeussere hoch — Balance
-  const swing = (crouch * 0.28 + rider.edge * 0.25) * rider.stance;
+  const swing = (crouch * 0.28 + rider.edge * 0.25) * stanceVis;
   const armBob = Math.sin(bobPhase * 0.85) * 0.11 * bobA;
   // Ellbogen beugen mit Hocke und Last — sonst wirken die Arme wie Bretter
   const bend = -0.72 - crouch * 0.55 - gLoad * 0.35 - rider.fear * 0.9;
@@ -4453,10 +4502,14 @@ function updateVisuals(dt) {
      hoch (belegt als Reihenfolge, Werte abgeleitet). Beim Laden schwingen sie
      zurueck, im Absprung nach oben. */
   const armPop = rider.charge * -0.35 + air * clamp01(1 - tA / 0.30) * 0.55;
-  armL.rotation.z = armBaseL + swing - bodySway * 0.55 + armBob * 0.5 + armSway;
-  armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5 + armSway;
-  armL.rotation.x = -0.55 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob - armTrail - armPop;
-  armR.rotation.x = -0.42 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob - armTrail - armPop;
+  /* Arme balancieren die Kurve sichtbar aus: der kurveninnere Arm geht runter
+     und nach aussen, der aeussere hoch. Vorher war der Ausschlag so klein,
+     dass die Haende der Koerperneigung kaum folgten. */
+  const armTurn = bodySway * stanceVis;
+  armL.rotation.z = armBaseL + swing - bodySway * 1.15 + armBob * 0.5 + armSway;
+  armR.rotation.z = armBaseR - swing - bodySway * 1.15 - armBob * 0.5 + armSway;
+  armL.rotation.x = -0.55 - armTurn * 0.55 - gLoad * 0.20 - rider.squash * 0.5 + armBob - armTrail - armPop;
+  armR.rotation.x = -0.42 + armTurn * 0.55 + gLoad * 0.20 - rider.squash * 0.5 - armBob - armTrail - armPop;
 
   /* SLIDE (Limbo). Dieser Block muss NACH den Arm-, Ellbogen- und
      Kopfzuweisungen stehen: davor platziert wurde er jeden Frame still
