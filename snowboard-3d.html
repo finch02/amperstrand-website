@@ -2692,26 +2692,22 @@ for (const [arm, elbow] of [[armL, elbowL], [armR, elbowR]]) {
    dadurch wechselt sichtbar das fuehrende Bein. */
 let armBaseL = 0.85, armBaseR = -0.70, hipBase = 0.30;
 const STANCE_F = 0.38, STANCE_B = 0.22;   // Bindungswinkel vorne/hinten
+/* s ist hier BEWUSST gleitend (stanceVis), nicht +-1. Vorher sprangen Fuesse,
+   Bindungen und Arme in einem Frame auf die andere Seite, waehrend Oberkoerper
+   und Kopf ueber eine halbe Sekunde hinueberglitten. Diese Ungleichzeitigkeit
+   war es, die den Wechsel so seltsam aussehen liess — jetzt folgt der ganze
+   Koerper derselben Kurve und dreht sich sichtbar zusammen um. */
 function applyStance(s) {
-  // Oberkoerper, Huefte, Fuesse und Bindungen zeigen alle auf DIESELBE Boardseite
-  upper.rotation.y = -0.62 * s;
   hipBase = 0.30 * s;
   legF.position.set(-0.05 * s, 0.44, -0.38 * s);
   legB.position.set( 0.05 * s, 0.44,  0.38 * s);
   legF.rotation.y = STANCE_F * s;
   legB.rotation.y = STANCE_B * s;
-  legF.rotation.x = -0.10 * s;
-  legB.rotation.x =  0.10 * s;
   if (bindings.length) {
     bindings[0].rotation.y = STANCE_F * s;
     bindings[1].rotation.y = STANCE_B * s;
   }
   armL.position.x = -0.44 * s; armR.position.x = 0.44 * s;
-  // Ruhehaltung: Arme leicht nach vorn und aussen, nicht senkrecht baumelnd
-  armL.rotation.x = -0.55;     armR.rotation.x = -0.42;
-  /* Rz(+t) schiebt einen nach unten zeigenden Arm nach +X. Der linke Arm sitzt
-     bei -x, braucht zum Abspreizen also einen NEGATIVEN Winkel. Vorher waren
-     beide invertiert — die Haende wanderten in den Rumpf. */
   armBaseL = -0.60 * s;        armBaseR = 0.52 * s;
 }
 applyStance(1);
@@ -4478,6 +4474,9 @@ function updateVisuals(dt) {
   /* Sehr weich: bei gehaltener Kurve kippt rider.stance mehrmals pro Sekunde.
      Mit 5.5 folgte die Darstellung jedem Kippen und der Oberkoerper zuckte. */
   stanceVis += (rider.stance - stanceVis) * damp(1.6, dt);
+  /* Fuesse, Bindungen und Armansaetze wandern mit derselben weichen Kurve
+     hinueber wie Oberkoerper und Kopf. */
+  applyStance(stanceVis);
   bodySway += (input.steer * rider.travelDir - bodySway) * damp(6, dt);
   bodyLoad += ((rider.load - 1) - bodyLoad) * damp(7, dt);
   const gLoad = clamp01(bodyLoad / 1.4);
@@ -4548,8 +4547,13 @@ function updateVisuals(dt) {
   /* Huefte folgt dem Oberkoerper. Counter-Rotation — Schultern gegen die
      Huefte verdreht — gilt im Snowboarden als Fehler, nicht als Stil; die
      Trennung bleibt daher klein. */
-  legs.rotation.y = hipBase * stanceVis + bodySway * 0.30 * stanceVis
-                  + (upperYaw - hipBase * stanceVis) * 0.18;
+  /* hipBase traegt das Stance-Vorzeichen BEREITS (applyStance setzt
+     0.30 * stanceVis). Es hier nochmal mit stanceVis zu multiplizieren ergab
+     stance^2, also immer positiv — die Huefte spiegelte nie mit, waehrend der
+     Oberkoerper es tat. Genau daher passte die Drehung beim Wechsel des
+     Fuehrungsbeins nicht. */
+  legs.rotation.y = hipBase + bodySway * 0.30 * stanceVis
+                  + (upperYaw - hipBase) * 0.18;
   legs.rotation.z = -rider.roll * 0.12;
 
   /* Beine ANZIEHEN heisst Knie beugen, nicht die Beingruppe nach oben
