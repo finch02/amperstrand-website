@@ -339,6 +339,9 @@ const CONFIG = {
     iceGrip: 0.10,          // auf Eis greift die Kante kaum noch
     iceSlide: 5.5,          // seitliches Wegdriften, wenn man auf Eis lenkt
     airDrag: 0.0062,
+    gasAero: 0.62,          // so viel Luftwiderstand faellt bei vollem Gas weg
+    gasPush: 5.2,           // Gewichtsverlagerung talwaerts (m/s^2), nur bergab
+    speedMax: 46,           // harte Obergrenze, damit nichts davonlaeuft
     cruiseSpeed: 17,        // Grundgeschwindigkeit ohne Eingabe
     boostSpeed: 31,         // mit gehaltener Beschleunigungstaste
     speedReturn: 1.5,       // wie schnell er auf die Grundgeschwindigkeit zurueckfaellt
@@ -3505,9 +3508,13 @@ function step(dt) {
       rider.kickT = P.kickTime;
       // Rechtskurve (st > 0) -> Heck nach links, also Gegenrichtung
       rider.kickDir = st !== 0 ? -Math.sign(st) : -rider.brakeSide;
+      /* Der Schnee fliegt QUER vom Board weg, zu der Seite, zu der das Heck
+         ausschlaegt — nicht nach hinten. */
       forwardOf(rider.yaw, _f);
-      burst(rider.pos.x - _f.x * 1.1, rider.pos.y + 0.15, rider.pos.z - _f.z * 1.1,
-            34, 3.4 + clamp01(sp / 25) * 3.4);
+      _r.set(-_f.z, 0, _f.x);                       // Querachse des Boards
+      const kx = rider.pos.x - _f.x * 0.9 + _r.x * 0.9 * rider.kickDir;
+      const kz = rider.pos.z - _f.z * 0.9 + _r.z * 0.9 * rider.kickDir;
+      burst(kx, rider.pos.y + 0.12, kz, 34, 3.4 + clamp01(sp / 25) * 3.4);
       Audio.whoosh(clamp01(sp / 26) * 0.9);
     }
   }
@@ -3644,38 +3651,33 @@ function step(dt) {
         // Reibungsverlust haengt am VERBLEIBENDEN Rutschen: ein sauber
         // geschnittener Schwung kostet kaum Tempo, ein gedrifteter viel.
         const slipDrag = latLen * P.carveDrag * nLoad * (1 - rider.onIce * 0.8);
-        speed -= (resist + brake + slipDrag + P.airDrag * speed * speed) * dt;
-        /* Geschwindigkeits-Regelung: ohne Eingabe pendelt er sich auf die
-           Grundgeschwindigkeit ein. Vorher beschleunigte ihn die Schwerkraft
-           ungebremst bis zum Maximum — man wurde immer schneller, ohne es
-           steuern zu koennen. Nur mit gehaltener Taste geht es darueber. */
-        /* Progression: gemuetlicher Start (85 %), mit der Strecke zieht das
-           Grundtempo stetig an — nach ~2.2 km liegt es 55 % ueber dem Basiswert.
-           Der Yeti folgt der aufgezeichneten Linie und zieht automatisch mit. */
-        const ramp = 0.85 + clamp01(State.maxDist / 2200) * 0.70;
-        /* Gas baut sich AUF und wieder AB, statt zwischen zwei Zielwerten zu
-           springen: gehalten fuellt sich rider.gas in ~1.6 s, losgelassen
-           leert es sich in ~2.2 s. Dadurch zieht er an wie ein echter Fahrer
-           und rollt danach langsam aus. */
-        /* Im Fluchtmodus gibt es kein Gas: dort steigt das Tempo allein mit
-           dem Fortschritt (ramp), sonst haette man zwei Tempoquellen. */
-        const gasAn = input.boost && State.mode !== 'ESCAPE';
-        rider.gas = clamp01((rider.gas || 0) + (gasAn ? dt / 1.6 : -dt / 2.2));
-        const gasE = rider.gas * rider.gas * (3 - 2 * rider.gas);   // weiche Kurve
-        const targetSpeed = lerp(P.cruiseSpeed, P.boostSpeed, gasE) * ramp;
-        if (speed > targetSpeed) speed -= (speed - targetSpeed) * P.speedReturn * dt;
-        /* ... und nachziehen NUR, solange es bergab geht. Ohne diese Kopplung
-           an den Hang schob die Zeile den Fahrer auch bergauf auf Zieltempo —
-           man konnte endlos aufwaerts fahren, was mit Physik nichts zu tun
-           hat. gain ist 1 im Falllinien-Gefaelle und 0, sobald es aufwaerts
-           geht; dann bremst nur noch die Schwerkraft. */
-        else {
-          /* _tan zeigt entlang des Boards auf der Hangflaeche. Ein negatives
-             _tan.y heisst: es geht bergab. slopeGain ist damit 1 im Gefaelle
-             und 0, sobald die Nase aufwaerts zeigt — dort beschleunigt nichts
-             mehr und nur die Schwerkraft wirkt. */
-          const slopeGain = clamp01(-_tan.y * 6);
-          speed += (targetSpeed - speed) * P.speedReturn * 0.55 * slopeGain * dt;
+        /* GAS ist ein Aero- und Gewichtseffekt, kein Motor: gehalten macht
+           sich der Fahrer schmal und verlagert das Gewicht talwaerts — der
+           Luftwiderstand faellt und die Hangabtriebskraft wirkt staerker.
+           Dadurch wird er nur dort schnell, wo es auch bergab geht, und das
+           Tempo haengt an der Physik statt an einem Zielwert.
+           Aufbau in 1.6 s, Abbau in 1.1 s: er faellt also etwas schneller
+           wieder ab, als er sich aufgebaut hat. Im Fluchtmodus kein Gas. */
+        const escape = State.mode === 'ESCAPE';
+        const gasAn = input.boost && !escape;
+        rider.gas = clamp01((rider.gas || 0) + (gasAn ? dt / 1.6 : -dt / 1.1));
+        const gasE = rider.gas * rider.gas * (3 - 2 * rider.gas);
+        speed -= (resist + brake + slipDrag
+                  + P.airDrag * speed * speed * (1 - gasE * P.gasAero)) * dt;
+        const slopeGain = clamp01(-_tan.y * 6);   // 1 im Gefaelle, 0 bergauf
+        if (gasE > 0.001) speed += P.gasPush * gasE * slopeGain * dt;
+
+        /* NUR die Flucht wird geregelt: dort startet es gemuetlich und zieht
+           mit der Strecke an (nach ~2.2 km 55 % ueber dem Basiswert), damit der
+           Druck waechst. In Endlos, Freestyle und Rennen gibt es keine
+           Zielgeschwindigkeit mehr — dort bestimmt allein das Gefaelle das
+           Tempo, so wie es sich physikalisch gehoert. */
+        if (escape) {
+          const ramp = 0.85 + clamp01(State.maxDist / 2200) * 0.70;
+          const targetSpeed = P.cruiseSpeed * ramp;
+          if (speed > targetSpeed) speed -= (speed - targetSpeed) * P.speedReturn * dt;
+          // nachziehen nur bergab, sonst koennte man endlos aufwaerts fahren
+          else speed += (targetSpeed - speed) * P.speedReturn * 0.55 * slopeGain * dt;
         }
         /* Wer langsam faehrt und die Bremse haelt, kommt wirklich zum STEHEN
            und bleibt quer zum Hang stehen. Ohne diesen Zweig zog ihn das
@@ -3684,7 +3686,7 @@ function step(dt) {
           speed = Math.max(0, speed - P.brakeForce * 1.6 * dt);
           if (speed < 0.35) speed = 0;
         }
-        rider.vel.setLength(clamp(speed, 0, P.boostSpeed * ramp));
+        rider.vel.setLength(clamp(speed, 0, P.speedMax));
       }
     }
 
