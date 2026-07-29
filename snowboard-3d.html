@@ -164,7 +164,7 @@
     <div class="keys">
       <kbd>A</kbd><span>links lenken / in der Luft drehen</span>
       <kbd>D</kbd><span>rechts lenken / in der Luft drehen</span>
-      <kbd>B</kbd><span>quer bremsen — mit A/D die Bremsseite wählen</span>
+      <kbd>B</kbd><span>antippen: Heck kicken · halten: bremsen (nicht in der Flucht)</span>
       <kbd>S</kbd><span>ducken — unter hohen Stämmen durchsliden · in der Luft: Backflip</span>
       <kbd>W</kbd><span>beschleunigen (nicht in der Flucht) · in der Luft: Frontflip</span>
       <kbd>C</kbd><span>Perspektive: Verfolger / Egosicht</span>
@@ -3648,7 +3648,11 @@ function step(dt) {
   /* Bremse ist dosiert, nicht binär: kurz antippen = einmal kurz ausbrechen und
      ein bisschen Tempo lassen, gedrueckt halten = voller Querstopp. Die
      Haltedauer steuert Einschlagwinkel UND Bremskraft. */
-  const brakeOn = input.brake && rider.grounded;
+  /* In der Flucht gibt es weder Gas noch Bremse: dort geht es allein ums
+     Ausweichen und Springen, das Tempo kommt aus dem Streckenfortschritt.
+     Eine Bremse waere dort ohnehin selbstmoerderisch, der Yeti sitzt im
+     Nacken. */
+  const brakeOn = input.brake && rider.grounded && State.mode !== 'ESCAPE';
   /* KICK — der kurze Antipper. Das Heck schlaegt einmal HEFTIG zur
      Gegenseite der Kurve aus, drueckt eine Ladung Schnee weg und schnappt
      sofort in die Ausgangslage zurueck. Kein Anbremsen, sondern ein Schlag:
