@@ -1872,6 +1872,13 @@ const startGate = (() => {
    ========================================================================== */
 const TUNNEL_SEG = 14, ICICLE_N = 7;
 let tunClock = 0;
+/* MODULEBENE, nicht im Aufbau-Block: updateTunnel weist das Portalmaterial
+   pro Frame zu. Im Block deklariert warf jeder Tunnel eine ReferenceError,
+   und das Spiel blieb beim ersten Tunnel haengen. */
+const archMat = new THREE.MeshLambertMaterial({ color: 0x2b3444, flatShading: true,
+  side: THREE.BackSide });
+const portalMat = new THREE.MeshLambertMaterial({ color: 0x46566e, flatShading: true,
+  side: THREE.BackSide });
 /* Masse des Gewoelbes. TUN_W (Breite) und TUN_H (Scheitelhoehe) sind Anteile
    der Pistenhalbbreite: die Hoehle soll fast die ganze — in TUNNEL ohnehin
    schon verengte — Piste ueberspannen, aber nicht ganz, sonst sitzen die
@@ -1901,11 +1908,7 @@ const tunnelSegs = [];
     archGeo.computeVertexNormals();
   }
   // Fels statt Eis: innen dunkel, damit es sich wie eine Hoehle anfuehlt
-  const archMat = new THREE.MeshLambertMaterial({ color: 0x2b3444, flatShading: true,
-    side: THREE.BackSide });
-  // Eingangsring: etwas heller, damit das Portal als Kante lesbar ist
-  const portalMat = new THREE.MeshLambertMaterial({ color: 0x46566e, flatShading: true,
-    side: THREE.BackSide });
+  // (Materialien liegen auf Modulebene — updateTunnel braucht sie)
   // Lichtloecher im Fels und Fackeln an der Wand
   const holeGeo = new THREE.CircleGeometry(0.85, 10);
   const holeMat = new THREE.MeshBasicMaterial({ color: 0xfff4d8, side: THREE.DoubleSide, fog: false });
@@ -4246,11 +4249,19 @@ const _hq = new THREE.Quaternion();
 const camLook = new THREE.Vector3();
 const _camDesired = new THREE.Vector3();
 let camInit = false, camYaw = 0;
-/* Das Fahrermodell ist mit der Brust auf lokal +Z gebaut, die Piste laeuft
-   nach -Z: ohne diese halbe Drehung steht der Koerper rueckwaerts auf dem
-   Board. Gemessen waren es 180 Grad an der Wurzel, 142 an der Brust. */
-const BODY_FLIP = Math.PI;
-let bodySway = 0, bodyLoad = 0, bobPhase = 0, tunnelDark = 0;
+/* STANCE. Ein Snowboarder steht QUER auf dem Board: die Schulterlinie liegt
+   auf dem Brett, die vordere Schulter zeigt talwaerts, die Brust nach der
+   Seite. Visuell bestimmt (Kamera talwaerts vor dem Fahrer, Viertel-Drehungen
+   durchprobiert): stance * PI/2 trifft genau diese Haltung. Vorher stand hier
+   PI - 0.62 = 144 Grad, also 54 Grad zu weit gedreht — daher der Eindruck,
+   der Fahrer schaue den Hang hinauf.
+   Von dieser Basis aus oeffnen sich Brust und Kopf ein Stueck talwaerts, und
+   in der Kurve dreht der Oberkoerper zusaetzlich hinein. */
+const STANCE_YAW = Math.PI / 2;
+const CHEST_OPEN = 0.42;      // Brust ein Stueck aus der Querstellung talwaerts
+                              // gedreht — nicht starr 90 Grad zum Hang
+const HEAD_OPEN  = 0.95;      // der Kopf schaut deutlich die Linie hinunter
+let bodySway = 0, bodyLoad = 0, bobPhase = 0, tunnelDark = 0, airMix = 0;
 // konstante Blicksenkung, damit Board und Haende im Bild liegen
 const _povTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), CONFIG.camera.povPitch);
 const _povSwitch = new THREE.Quaternion();
@@ -4267,14 +4278,22 @@ function updateVisuals(dt) {
   /* SPRUNGPHASEN. Ollie: beim Laden sinkt der Fahrer, der Absprung hebt
      ZUERST die Nose (Boardnase kommt hoch, Gewicht aufs Tail), in der Luft
      werden die Beine angezogen, vor der Landung streckt er sie wieder aus. */
-  const air = rider.grounded ? 0 : 1;
+  /* air wird gedaempft statt binaer geschaltet: hart umgelegt sprang der
+     Nose-Lift im Absprungframe um 0.32 rad (18 Grad) und beim Aufsetzen
+     wieder zurueck — der auffaelligste Sprung-Glitch. */
+  airMix += ((rider.grounded ? 0 : 1) - airMix) * damp(14, dt);
+  const air = airMix;
   const nose = air * clamp01(1 - rider.airTime / 0.42) * 0.42     // Nose-Lift kurz nach dem Pop
              + rider.charge * 0.10;                                // beim Laden schon andeuten
   /* Beine anziehen, solange Luft unter dem Board ist, und rechtzeitig vor der
      Landung wieder ausstrecken. An die HOEHE gekoppelt, nicht an die
      Fallgeschwindigkeit — die kippte das Anziehen schon nach 0.2 s auf null. */
-  const clearAir = rider.pos.y - terrainH(rider.pos.x, rider.pos.z);
-  const tuck = air * clamp01(rider.airTime / 0.10) * clamp01((clearAir - 0.35) / 0.9);
+  /* An die FLUGKURVE gekoppelt, nicht an die Hoehe ueber dem gerade
+     ueberflogenen Gelaende: hinter einer Kicker-Lippe faellt der Boden weg,
+     dadurch zappelte die Beinlaenge mit dem Bodenprofil. Anziehen beim
+     Steigen, Strecken sobald es abwaerts geht. */
+  const rise = clamp01((rider.vel.y + 2.5) / 5);
+  const tuck = air * smoothstep(0, 0.14, rider.airTime) * rise;
   riderTilt.rotation.set(rider.pitch + rider.flip - nose, 0, rider.roll);
   /* Koerperdynamik. Bisher kippte nur der ganze Block — jetzt arbeitet der
      Fahrer IM Block: Beine federn unter Last, der Oberkoerper bleibt
@@ -4297,8 +4316,13 @@ function updateVisuals(dt) {
   const bobUp  = Math.sin(bobPhase * 2 + 1.1) * 0.022 * bobA;
   const ride = clamp01(speed / 28) * 0.07;          // schneller = tiefere Grundhaltung
 
-  // Knie: Grundbeuge, Kurvenlast, Landestoss — mit deutlich groesserem Hub
-  legs.scale.y = 1 - crouch * 0.40 - gLoad * 0.24 - rider.squash * 0.38 - ride + bobLeg;
+  /* Knie: Grundbeuge, Kurvenlast, Landestoss UND Anziehen im Flug in EINEM
+     Ausdruck. Vorher ueberschrieb der Flug-Term diese Zeile komplett — die
+     Federung war damit tot und der Rumpf sank in die starren Oberschenkel.
+     Clamp gegen negative Skalierung (Beine wuerden invertiert nach oben
+     klappen), Minimum 0.45. */
+  legs.scale.y = Math.max(0.45, 1 - crouch * 0.40 - gLoad * 0.24
+                          - rider.squash * 0.38 - ride + bobLeg - tuck * 0.30);
   /* Beide Beine beugen in DIESELBE Richtung — vorher hatten Vorder- und
      Hinterbein entgegengesetzte Vorzeichen, er ging also gleichzeitig nach
      vorn und nach hinten in die Knie. Die Beugerichtung haengt an der
@@ -4308,22 +4332,21 @@ function updateVisuals(dt) {
   legB.rotation.z = bodySway * 0.22;
   legF.rotation.x = -0.14 * rider.stance + knee;
   legB.rotation.x =  0.14 * rider.stance + knee;
-  // Huefte arbeitet gegen den Oberkoerper — das erzeugt die Verwindung
-  /* +PI: Das Fahrermodell ist mit der Brust auf lokal +Z gebaut, die Piste
-     laeuft aber nach -Z. Ohne diese halbe Drehung stand der komplette Koerper
-     rueckwaerts auf dem Board — gemessen 180 Grad Abweichung an der Wurzel,
-     142 Grad an der Brust. Das Board bleibt unveraendert (symmetrisch). */
-  legs.rotation.y = BODY_FLIP + hipBase + bodySway * 0.30 * rider.stance;
-  // Knie zur Brust: die ganze Beingruppe klappt an der Huefte nach vorn
-  legs.rotation.x = tuck * 0.55;
+  /* Die Huefte bekommt KEINE Vierteldrehung: die Fuesse sitzen in den
+     Bindungen bei z = +-0.38, also LAENGS des Boards. Mit stance*PI/2 wanderten
+     sie auf x = +-0.35 — gemessen neben das Deck (Halbbreite 0.28), die
+     Bindungen blieben leer. Quer steht nur der OBERKOERPER; die Huefte folgt
+     dem Board und dreht in der Kurve nur leicht mit. */
+  legs.rotation.x = 0;
+  legs.rotation.y = hipBase * rider.stance + bodySway * 0.30 * rider.stance;
   legs.rotation.z = -rider.roll * 0.12;
 
   /* Beine ANZIEHEN heisst Knie beugen, nicht die Beingruppe nach oben
      schieben — verschoben steckten die Oberschenkel im Rumpf. Die Beine
      klappen an den Huefte nach vorn, das Board kommt mit hoch, und der
      Oberkoerper krummt sich darueber zusammen. */
-  upper.position.y = 0.88 - crouch * 0.36 - gLoad * 0.18 - rider.squash * 0.32 - ride + bobUp;
-  upper.rotation.x -= tuck * 0.34;                       // Oberkoerper kruemmt sich vor
+  upper.position.y = 0.88 - crouch * 0.36 - gLoad * 0.18 - rider.squash * 0.32 - ride + bobUp
+                   - tuck * 0.22;                        // Oberkoerper kommt den Knien entgegen
   /* NEGATIV: rotation.x > 0 kippt den Oberkoerper nach HINTEN. Alle Terme
      hatten positives Vorzeichen — er fuhr also dauerhaft in Rücklage. */
   upper.rotation.x = -(crouch * 0.50 + clamp01(speed / 40) * 0.22 + gLoad * 0.20
@@ -4332,31 +4355,17 @@ function updateVisuals(dt) {
   upper.rotation.z = -rider.roll * 0.48 - bodySway * 0.22;
   /* Limbo-Slide unter dem Stamm: Koerper legt sich seitlich flach, der
      Talarm faellt Richtung Schnee. */
-  const limbo = rider.limbo || 0;
-  if (limbo > 0.01) {
-    /* Durchsliden wie im echten Fahren: das Board dreht quer zum Hang, der
-       Koerper legt sich flach darueber, und die bergseitige Hand stuetzt sich
-       hinten im Schnee ab. */
-    riderTilt.rotation.z += limbo * 0.85 * rider.stance;   // Board kippt quer
-    legs.rotation.y += limbo * 0.75 * rider.stance;        // Board dreht seitlich
-    upper.rotation.z += limbo * 1.15 * rider.stance;
-    upper.rotation.x += limbo * 0.35;
-    upper.position.y -= limbo * 0.46;
-    // Stuetzarm nach hinten unten in den Schnee
-    armR.rotation.x += limbo * 1.45;
-    armR.rotation.z -= limbo * 0.85 * rider.stance;
-    elbowR.rotation.x += limbo * 0.55;
-    // fuehrender Arm hoch als Gegengewicht
-    armL.rotation.x -= limbo * 0.75;
-    armL.rotation.z += limbo * 0.50 * rider.stance;
-    head.rotation.z += limbo * 0.30 * rider.stance;
-  }
   /* Schultern oeffnen talwaerts — in Fahrtrichtung, nicht zur Boardnase.
      Vorher hing der Drehsinn allein an rider.stance: nach einer
      Switch-Landung (travelDir -1) drehte der Oberkoerper dadurch hangaufwaerts
      und der Fahrer schaute nach hinten. */
+  /* travelDir dreht die Haltung bei Switch-Fahrt mit: dann ist die andere
+     Schulter vorn. */
   const openTo = rider.stance * rider.travelDir;
-  upper.rotation.y = BODY_FLIP - (0.62 + bodySway * 0.62) * openTo;
+  /* PLUS, nicht minus: bei rotation.y = PI/2 steht die Brust exakt quer;
+     groessere Werte drehen sie talwaerts. Mit Minus zeigte sie gemessen 112
+     Grad von talwaerts, also leicht den Hang HINAUF. */
+  upper.rotation.y = openTo * (STANCE_YAW + CHEST_OPEN) + bodySway * 0.45 * openTo;
   // Kopf schaut in die Kurve und dorthin, wo es hingeht
   /* Angst-Pose (fuer die Verfolgung): Kopf dreht ueber die Schulter zurueck,
      Schultern hoch, Koerper tief. Ueber rider.fear von 0 bis 1 mischbar. */
@@ -4364,8 +4373,11 @@ function updateVisuals(dt) {
      ueber die Schulter zum Yeti. */
   /* Angst dreht den Kopf ZURUECK ueber die Schulter, zum Yeti — deshalb
      negativ zur normalen Oeffnung. */
-  head.rotation.y = (bodySway * 0.75 + 0.30) * openTo
-                  - rider.fear * (State.intro > 0 ? 1.35 : 0.35) * openTo;
+  /* Der Kopf schaut die Linie hinunter — bei Angst dreht er zurueck ueber die
+     Schulter zum Yeti. Relativ zum Oberkoerper, weil head an upper haengt. */
+  /* Relativ zum Oberkoerper: der Kopf dreht weiter talwaerts als die Brust. */
+  head.rotation.y = openTo * (HEAD_OPEN - CHEST_OPEN) + bodySway * 0.55 * openTo
+                  - rider.fear * (State.intro > 0 ? 1.9 : 0.6) * openTo;
   head.rotation.z = -rider.roll * 0.25 + rider.fear * 0.18;
   head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
   // Schreck-Gesicht: Mund und Augen reissen mit der Angst auf
@@ -4401,6 +4413,36 @@ function updateVisuals(dt) {
   armR.rotation.z = armBaseR - swing - bodySway * 0.55 - armBob * 0.5 + armSway;
   armL.rotation.x = -0.55 - bodySway * 0.30 - gLoad * 0.20 - rider.squash * 0.5 + armBob - armTrail;
   armR.rotation.x = -0.42 - bodySway * 0.30 + gLoad * 0.20 - rider.squash * 0.5 - armBob - armTrail;
+
+  /* SLIDE (Limbo). Dieser Block muss NACH den Arm-, Ellbogen- und
+     Kopfzuweisungen stehen: davor platziert wurde er jeden Frame still
+     ueberschrieben — sieben von elf Kanaelen kamen nie an, deshalb legte sich
+     der Fahrer zwar seitlich, behielt aber die normale Fahrhaltung. */
+  const limbo = rider.limbo || 0;
+  if (limbo > 0.01) {
+    /* Durchsliden: das Board kippt auf die Bergkante und bleibt unter den
+       Fuessen — es DREHT nicht weg (das loeste die Bindung sichtbar auf).
+       Der Fahrer legt sich nach hinten ueber die Kante, die hintere Hand
+       stuetzt im Schnee, der Kopf bleibt talwaerts. */
+    /* Massvoll: mit 0.95 rad lag der Fahrer fast waagerecht auf der Seite und
+       das Board stand senkrecht ab. Ein Limbo-Slide ist vor allem eine sehr
+       TIEFE Hocke mit leichter Rueck- und Seitenlage, nicht ein Umfallen. */
+    riderTilt.rotation.z += limbo * 0.30 * rider.stance;   // Board leicht auf die Kante
+    upper.rotation.z += limbo * 0.22 * rider.stance;
+    upper.rotation.x += limbo * 0.42;                      // Rumpf nach hinten/unten
+    upper.position.y -= limbo * 0.30;
+    legs.scale.y = Math.min(legs.scale.y, 1 - limbo * 0.55);   // sehr tief gehockt
+    // Stuetzarm nach hinten unten in den Schnee
+    armR.rotation.x += limbo * 1.25;                       // Hand nach hinten in den Schnee
+    armR.rotation.z -= limbo * 0.70 * rider.stance;
+    elbowR.rotation.x += limbo * 0.35;
+    armL.rotation.x -= limbo * 0.55;                       // fuehrender Arm als Gegengewicht
+    armL.rotation.z += limbo * 0.40 * rider.stance;
+    // Kopf duckt sich, bleibt aber in Fahrtrichtung
+    head.rotation.x -= limbo * 0.30;
+    head.rotation.z += limbo * 0.12 * rider.stance;
+  }
+
   if (State.now === 'CRASHED') {
     riderTilt.rotation.x += State.crashT * 6.0;
     riderTilt.rotation.z += State.crashT * 4.0;
