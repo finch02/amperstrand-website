@@ -295,9 +295,10 @@ const CONFIG = {
     steerFalloff: 22,       // ab dieser Geschwindigkeit gilt carveScale
     popSweet: 0.92, popTol: 0.45,   // Idealpunkt auf der Rampe und Toleranz
     popWorst: 0.72, popBest: 1.32,  // Impulsfaktor je nach Timing
-    popWindow: 0.26,        // nur so lange nach dem Absprung entsteht Drehimpuls
-    spinTorque: 17.0,  spinLMax: 4.6,    // Drehimpuls um die Hochachse
-    flipTorque: 21.0,  flipLMax: 5.6,    // Drehimpuls fuer den Ueberschlag
+    popWindow: 0.26,        // so lange nach dem Absprung entsteht voller Drehimpuls
+    airControl: 0.80,       // danach: abgeschwaecht weiter nachdrehen
+    spinTorque: 26.0,  spinLMax: 5.6,    // Drehimpuls um die Hochachse
+    flipTorque: 26.0,  flipLMax: 6.0,    // Drehimpuls fuer den Ueberschlag
     tuckInertia: 0.42,      // Traegheitsmoment eingerollt (1 = gestreckt)
     tuckRate: 7.0,          // wie schnell er sich ein- und ausrollt
     landAssist: 0.42,       // ab so vielen Sekunden vor dem Boden zieht es gerade
@@ -342,7 +343,11 @@ const CONFIG = {
   },
   game: { lives: 3, hazardStart: 800, comboMax: 5, airPointsPerSec: 10, grindPerSec: 45,
           flip360: 500, flip720: 1300, gatePenalty: 2.0, countdown: 3.6,
-          chaseLag: 2.4, chaseLagNear: 0.85, catchDist: 4.5,
+          /* Vorsprung in Sekunden. Von 2.4 auf 1.7 gezogen: bei 2.4 war der
+             Yeti so weit hinten, dass man ihn kaum sah und ohne Druck fahren
+             konnte. catchDist bleibt bei 4.5 — enger wuerde nur zufaellig
+             toeten, statt den Druck spuerbar zu machen. */
+          chaseLag: 1.7, chaseLagNear: 0.75, catchDist: 4.5,
           safeWindow: 15, introTime: 4.4, coinValue: 1,
           trick360: 300, trick540: 600, trick720: 1200 }
 };
@@ -686,8 +691,11 @@ const RACE_STYLE = {
              fill: [SECT.ICE, SECT.JUMP, SECT.STEEP] },
   powder:  { left: SECT.CURVE_L, right: SECT.CURVE_R, every: 2,
              fill: [SECT.WIDE, SECT.STEEP, SECT.JUMP] },
+  /* ROCKS bringt die vorhandenen Steine in den Fluchtmodus — kleine zum
+     Ueberspringen, grosse zum Ausweichen. Vorher kamen sie dort nie vor, weil
+     ROCKS-Abschnitte nur in anderen Streckenstilen auftauchten. */
   escape:  { left: SECT.CURVE_L, right: SECT.CURVE_R, every: 2,
-             fill: [SECT.STEEP, SECT.JUMP, SECT.GATE, SECT.TUNNEL] }
+             fill: [SECT.STEEP, SECT.JUMP, SECT.GATE, SECT.TUNNEL, SECT.ROCKS, SECT.ROCKS] }
 };
 let raceStyle = 'flow';
 
@@ -1748,9 +1756,21 @@ const startGate = (() => {
    Jeder Zapfen wackelt erst und faellt dann; man muss ausweichen.
    ========================================================================== */
 const TUNNEL_SEG = 14, ICICLE_N = 7;
+/* Masse des Gewoelbes. TUN_W (Breite) und TUN_H (Scheitelhoehe) sind Anteile
+   der Pistenhalbbreite: die Hoehle soll fast die ganze — in TUNNEL ohnehin
+   schon verengte — Piste ueberspannen, aber nicht ganz, sonst sitzen die
+   Waende ausserhalb des befahrbaren Bandes. TUN_LEN muss groesser sein als der
+   Segmentabstand ENTLANG des Hangs: 10 m Raster waagerecht sind bei 55 %
+   Gefaelle 11.4 m schraeg. TUN_INSET haelt Loecher knapp innerhalb der Wand. */
+const TUN_W = 0.95, TUN_H = 0.80, TUN_LEN = 13, TUN_INSET = 0.96;
 const tunnelSegs = [];
 {
+  /* Halbzylinder, Achse ENTLANG der Fahrtrichtung. Die Rohgeometrie hat die
+     Achse auf Y und die Schale auf x>=0; beides wird einmalig in die Geometrie
+     gedreht, damit die Skalierung danach direkt (Breite, Hoehe, Laenge) ist. */
   const archGeo = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true, 0, Math.PI);
+  archGeo.rotateZ(Math.PI / 2);    // Schale x>=0  ->  y>=0, Gewoelbe nach oben
+  archGeo.rotateY(-Math.PI / 2);   // Achse -X     ->  -Z, entlang der Piste
   // Fels statt Eis: innen dunkel, damit es sich wie eine Hoehle anfuehlt
   const archMat = new THREE.MeshLambertMaterial({ color: 0x2b3444, flatShading: true,
     side: THREE.BackSide });
@@ -1761,7 +1781,6 @@ const tunnelSegs = [];
   const torchMat = new THREE.MeshBasicMaterial({ color: 0xff9a3c, fog: false });
   for (let i = 0; i < TUNNEL_SEG; i++) {
     const m = new THREE.Mesh(archGeo, archMat);
-    m.rotation.z = Math.PI / 2;
     m.visible = false;
     const holes = [];
     for (let h = 0; h < 2; h++) {
@@ -1795,19 +1814,29 @@ function updateTunnel(rz, dt) {
     if (R.tunnel < 0.4) continue;
     const m = tunnelSegs[n++];
     m.visible = true;
-    // Lichtloecher und Fackeln an diesem Segment
+    /* Der Bogen muss auf dem Schnee aufsitzen, nicht darueber schweben. Die
+       1.2 m Einsinken decken Camber und Rollen ab, sonst klaffen an den
+       Waenden Spalte. */
+    const wallX = R.hw * TUN_W, wallY = R.hw * TUN_H;
+    const floorY = terrainH(R.cx, -d) - 1.2;
+    m.position.set(R.cx, floorY, -d);
+    m.scale.set(wallX, wallY, TUN_LEN);
+    /* Die Segmente muessen dem Gefaelle folgen. Waagerechte Roehren ergeben
+       auf 50 % Hang eine Treppe mit 5 m Versatz — mehr als die halbe
+       Gewoelbehoehe. Neigung aus den beiden Segmentenden. */
+    const yBack = terrainH(R.cx, -(d - TUN_LEN / 2));
+    const yFront = terrainH(R.cx, -(d + TUN_LEN / 2));
+    m.rotation.x = -Math.atan2(yBack - yFront, TUN_LEN);
+    /* Lichtloecher und Fackeln sitzen knapp innerhalb derselben Ellipse, damit
+       sie in der Wand liegen und nicht im Raum schweben. */
     const holes = m.userData.holes;
     for (let hIdx = 0; hIdx < holes.length; hIdx++) {
       const a = (hash2(Math.round(d), hIdx) - 0.5) * 1.9;
-      holes[hIdx].position.set(Math.sin(a) * R.hw * 0.74,
-        terrainH(R.cx, -d) - 1.2 + Math.cos(a) * R.hw * 0.74 + 0.2,
-        -d + (hIdx - 0.5) * 5);
-      holes[hIdx].position.x += R.cx;
-      holes[hIdx].lookAt(R.cx, terrainH(R.cx, -d), -d);
+      const h = holes[hIdx], hz = -d + (hIdx - 0.5) * 5;
+      h.position.set(R.cx + Math.sin(a) * wallX * TUN_INSET,
+        floorY + Math.cos(a) * wallY * TUN_INSET, hz);
+      h.lookAt(R.cx, floorY + wallY * 0.35, hz);
     }
-    // Der Bogen muss auf dem Schnee aufsitzen, nicht darueber schweben
-    m.position.set(R.cx, terrainH(R.cx, -d) - 1.2, -d);
-    m.scale.set(R.hw * 0.78, 11.5, R.hw * 0.78);
     // Zapfen an dieses Segment binden
     for (let k = 0; k < 1 && ic < ICICLE_N; k++) {
       const I = icicles[ic++];
@@ -1815,7 +1844,11 @@ function updateTunnel(rz, dt) {
         I.d = d + 6;
         const RR = rowData(I.d, _rowA);
         I.x = RR.cx + (hash2(Math.round(I.d), k) - 0.5) * RR.hw * 1.4;
-        I.top = terrainH(I.x, -I.d) + RR.hw * 0.9;
+        /* Der Zapfen haengt an der Gewoelbedecke, nicht auf fester Hoehe ueber
+           dem Boden: bei RR.hw * 0.9 stand er durch das Dach und schwebte
+           sichtbar ausserhalb der Hoehle. Ellipse an der Stelle I.x. */
+        const q = clamp((I.x - RR.cx) / (RR.hw * TUN_W), -0.97, 0.97);
+        I.top = terrainH(RR.cx, -I.d) - 1.2 + RR.hw * TUN_H * Math.sqrt(1 - q * q);
         I.y = I.top; I.vy = 0;
         I.state = 'hang';
       }
@@ -2541,12 +2574,50 @@ const Audio = (() => {
     g.gain.exponentialRampToValueAtTime(0.0001, t+0.45);
     o.connect(g); g.connect(master); o.start(t); o.stop(t+0.46);
   }
+  /* KNURREN — dauerhafte Schleife, die nur ueber Lautstaerke und Filter
+     gesteuert wird. Zwei Quellen: gefiltertes Rauschen fuer das Rollende und
+     ein tiefer Sawtooth fuer den Brustton, dazu ein langsames LFO-Wummern,
+     damit es atmet statt zu summen. Wird erst beim ersten growl() gebaut. */
+  let growlGain = null, growlFilter = null, growlOsc = null, growlOscGain = null;
+  function buildGrowl() {
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    growlFilter = ctx.createBiquadFilter();
+    growlFilter.type = 'bandpass'; growlFilter.frequency.value = 160; growlFilter.Q.value = 3.2;
+    growlGain = ctx.createGain(); growlGain.gain.value = 0;
+    src.connect(growlFilter); growlFilter.connect(growlGain); growlGain.connect(master);
+    src.start();
+
+    growlOsc = ctx.createOscillator(); growlOsc.type = 'sawtooth';
+    growlOsc.frequency.value = 54;
+    growlOscGain = ctx.createGain(); growlOscGain.gain.value = 0;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 320;
+    growlOsc.connect(lp); lp.connect(growlOscGain); growlOscGain.connect(master);
+    growlOsc.start();
+
+    // Wummern: moduliert die Rauschlautstaerke, macht aus dem Summen ein Atmen
+    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 5.5;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 0.45;
+    lfo.connect(lfoGain); lfoGain.connect(growlGain.gain); lfo.start();
+  }
+  /* near: 0 = weit weg (still), 1 = im Nacken. */
+  function growl(near) {
+    if (!ready) return;
+    if (!growlGain) buildGrowl();
+    const t = ctx.currentTime, n = clamp01(near);
+    growlGain.gain.setTargetAtTime(n * n * 0.30, t, 0.25);
+    growlOscGain.gain.setTargetAtTime(n * n * 0.16, t, 0.25);
+    // naeher = tiefer und offener, das liest sich als groesser und bedrohlicher
+    growlFilter.frequency.setTargetAtTime(120 + n * 190, t, 0.3);
+    growlOsc.frequency.setTargetAtTime(46 + n * 22, t, 0.3);
+  }
   function toggle() {
     muted = !muted;
     if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05);
     return muted;
   }
-  return { init, glide, whoosh, impact, chime, toggle };
+  return { init, glide, whoosh, impact, chime, growl, toggle };
 })();
 
 /* ==========================================================================
@@ -2987,17 +3058,18 @@ function step(dt) {
     /* --- Luft --- */
     rider.airTime += dt;
     rider.edge += (0 - rider.edge) * damp(4, dt);
-    /* DREHIMPULSERHALTUNG statt freier Beschleunigung.
-       In der Luft laesst sich kein Drehimpuls erzeugen — er entsteht beim
-       Absprung aus der Kante. Danach gilt omega = L / I: wer sich einrollt,
-       verkleinert das Traegheitsmoment und dreht schneller; wer sich streckt,
-       wird langsamer. Genau so steuert man einen 720er. */
-    const pin = rider.canFlip ? input.pitchIn : 0;
-    // Nur im kurzen Absprungfenster wird Drehimpuls aufgebaut (der "Pop")
-    if (rider.airTime < P.popWindow) {
-      rider.spinL = clamp(rider.spinL - st * P.spinTorque * dt, -P.spinLMax, P.spinLMax);
-      rider.flipL = clamp(rider.flipL + pin * P.flipTorque * dt, -P.flipLMax, P.flipLMax);
-    }
+    /* DREHIMPULS: der Absprung aus der Kante gibt den Hauptteil, danach laesst
+       sich abgeschwaecht nachdrehen. omega = L / I bleibt erhalten: wer sich
+       einrollt, dreht schneller. So steuert man einen 720er.
+       Frueher war nach P.popWindow (0.26 s) Schluss — wer die Taste einen
+       Sekundenbruchteil zu spaet drueckte, stand steuerlos in der Luft. Und
+       der Ueberschlag hing an rider.canFlip, das nur ein bewusster Absprung
+       oder ein Kicker setzt; im Fluchtmodus gibt es keine Kicker, dort war
+       damit ueberhaupt kein Flip moeglich. */
+    const pin = input.pitchIn;
+    const gain = rider.airTime < P.popWindow ? 1 : P.airControl;
+    rider.spinL = clamp(rider.spinL - st * P.spinTorque * gain * dt, -P.spinLMax, P.spinLMax);
+    rider.flipL = clamp(rider.flipL + pin * P.flipTorque * gain * dt, -P.flipLMax, P.flipLMax);
     // Einrollen: Tasten gedrueckt = kompakt = kleines Traegheitsmoment
     const wantTuck = (st !== 0 || pin !== 0) ? 1 : 0;
     rider.tuck += (wantTuck - rider.tuck) * damp(P.tuckRate, dt);
@@ -3390,6 +3462,7 @@ $('toMenuBtn').addEventListener('click', () => {
 
 function gameOver() {
   State.now = 'GAMEOVER';
+  Audio.growl(0);          // Knurren verstummt beim Ende
   elHud.classList.remove('on');
   ghostRider.visible = false;
   document.querySelector('#over h1').textContent = 'Endstation';
@@ -4057,6 +4130,9 @@ function updateChase(dt) {
   // Ausserhalb des Intros nur noch leichte Anspannung, kein Dauerblick zurueck
   const fearWant = State.intro > 0 ? 1 : clamp01((18 - gap) / 14) * 0.6;
   rider.fear += (fearWant - rider.fear) * damp(3, dt);
+  /* Knurren: ab 34 m hoerbar, im Nacken voll. Quadratisch in growl(), dadurch
+     bleibt es lange leise und wird erst spuerbar, wenn er wirklich aufrueckt. */
+  Audio.growl(clamp01((34 - gap) / 30));
 
   // Eingeholt?
   // Erst greifen, wenn wirklich Fahrt aufgenommen wurde
@@ -4066,6 +4142,7 @@ function updateChase(dt) {
 function caught() {
   if (State.now !== 'PLAYING') return;
   State.now = 'GAMEOVER';
+  Audio.growl(0);          // Knurren verstummt beim Ende
   elHud.classList.remove('on');
   Audio.impact(1);
   flash(0.5);
@@ -4136,6 +4213,10 @@ function frame(now) {
       refreshCoins(rider.pos.z, chaseClock * 2.2);
       const got = collectCoins(rider.pos.x, rider.pos.y, rider.pos.z);
       if (got) { State.coins += got * G.coinValue; Audio.chime(4); }
+    } else {
+      // Das Knurren laeuft als Dauerschleife — ausserhalb der Flucht abregeln,
+      // sonst bleibt es nach dem Moduswechsel auf dem letzten Pegel stehen.
+      Audio.growl(0);
     }
     State.distScore = Math.floor(State.maxDist);
 

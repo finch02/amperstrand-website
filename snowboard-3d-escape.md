@@ -36,9 +36,16 @@ Modus starten: Menü → grüner Knopf **Flucht** (`data-mode="ESCAPE"`).
 - **Soundeffekt fehlt komplett.** Web Audio ist da (`Audio`-Objekt, rein
   prozedural, keine Dateien). Knurren aus gefiltertem Rauschen plus tiefem
   Oszillator, lauter je näher er ist.
-- **Zu wenig Bedrohung.** Man kann normal fahren, ohne das Gefühl, gleich
-  gefressen zu werden. Druck muss spürbarer werden — engere Strecke, schnelleres
-  Aufrücken, Sicht auf ihn am unteren Bildrand.
+- **Bedrohung — ✅ teilweise.** `chaseLag` 2,4 → 1,7 s. Isoliert gemessen (ohne
+  Stolper-Fenster, das sonst auf `chaseLagNear` klemmt und den Wert überdeckt):
+  Medianabstand 32,3 → 24,4 m, Maximalabstand 48,2 → 34,3 m — er bleibt im Bild.
+  Todesrate unverändert: 27 Fänge in 3 min bei identischer Eingabe, vorher wie
+  nachher. Offen bleibt die Sicht auf ihn am unteren Bildrand.
+- **Soundeffekt — ✅ gebaut.** `Audio.growl(near)`: gefiltertes Rauschen plus
+  tiefer Sawtooth-Brustton, 5,5-Hz-LFO als Atmen, quadratisch in der Nähe.
+  Ab 34 m hörbar. Gemessen bei 6,1 m Abstand: Rauschen 0,256 (Soll 0,259),
+  Brustton 0,137 (0,138), Filter 296 Hz (297), Oszillator 66 Hz (66,5).
+  Wird an drei Stellen wieder abgeregelt (Moduswechsel, `gameOver`, `caught`).
 
 ## 2. Intro-Animation
 
@@ -57,8 +64,9 @@ Alle drei fehlen im Fluchtmodus komplett:
 - **Schluchten** zum Drüberspringen mit der dreistufigen Bewertung:
   schlechter Absprung = tot, mittlerer = Stolperer, guter = nichts.
   Die Bewertung existiert schon, sie muss nur angehängt werden.
-- **Steine** — Klassen existieren (klein überspringbar, groß nicht), erscheinen
-  aber nur in `ROCKS`-Abschnitten, die im Fluchtmodus nicht vorkommen.
+- **Steine — ✅ erledigt.** `SECT.ROCKS` zweifach in `RACE_STYLE.escape.fill`
+  aufgenommen. Gemessen: 16 Felsfelder pro Strecke (vorher 0), ohne Anstieg der
+  Sturzverluste (0 in 3 min).
 
 ## 4. Fahrer (blockiert den Intro-Moment)
 
@@ -69,16 +77,35 @@ Alle drei fehlen im Fluchtmodus komplett:
 | Skibrille zu dünn | Nur ein Torus-Band (`TorusGeometry(0.30, 0.075, …)`). Braucht Gehäuse mit Rahmen, Glas und Band. |
 | Brustkorb steht teils nach hinten | Verdacht auf Vorzeichenfehler in `upper.rotation.y` (`-0.62 * stance` in `applyStance`). Messend prüfen — in dieser Sitzung waren schon drei Vorzeichen invertiert. |
 
-## 5. Höhle
+## 5. Höhle — ✅ gegengeprüft und repariert
 
-- Soll eine echte dunkle Höhle sein: Fels statt Eis, nur vereinzelte Lichtlöcher
-  in den Wänden und/oder Fackeln.
-- Soll über die volle Breite gehen — breiter als jetzt, aber schmaler als eine
-  Piste.
-- **In `6f54fae` umgesetzt, aber im Spielverlauf ungetestet.** Lädt fehlerfrei,
-  aber niemand ist durch einen Tunnel gefahren. Zuerst gegenprüfen.
-- **Eiszapfen** wurden auf 7 reduziert, fast verdreifacht und die Vorwarnung von
-  26 auf 55 m gezogen (sie fielen vorher hinter dem Fahrer). Ebenfalls ungeprüft.
+`6f54fae` war im Spielverlauf kaputt. Gemessen im Tunnel bei d≈1790, drei Fehler:
+
+- **Der Bogen stand quer.** `m.rotation.z = PI/2` legte die Zylinderachse auf X
+  statt auf Z: 11,5 m breit × 19,1 m lang bei 24,5 m Pistenbreite — ein Gewölbe
+  quer zur Fahrtrichtung, das nur die halbe Piste überspannte und seitlich offen
+  war. Die Drehung ist jetzt in die Geometrie gebacken (`rotateZ` + `rotateY`),
+  die Skalierung dadurch direkt (Breite, Höhe, Länge). **Neu: 23,3 m bei 24,5 m.**
+- **Lichtlöcher und Fackeln schwebten frei.** Über `sin/cos` in der X-Y-Ebene
+  platziert — richtig gedacht für eine Röhre entlang Z, aber der Bogen lag quer.
+  Jetzt auf derselben Ellipse wie die Wand, gemessener Ellipsenradius 0,96.
+- **Die Segmente bildeten eine Treppe.** Waagerechte Röhren auf 55 % Gefälle:
+  5,25 m Versatz bei 9,8 m Gewölbehöhe, von außen ein schwarzer Keil. Sie folgen
+  jetzt dem Hang (`rotation.x`, gemessen −28,6°), `TUN_LEN` 11,5 → 13.
+  **Überlappung durchgehend 1,29–1,74 m, keine Lücke.**
+
+Altlast, die erst in der geschlossenen Höhle auffiel: **die Eiszapfen hingen
+durchs Dach** (feste Höhe `hw*0.9` gegen eine Decke bei `hw*0.80−1.2`). Sie
+hängen jetzt an der Gewölbeellipse; gemessen 0 von 7 durchs Dach.
+
+Das Abdunkeln aus `6f54fae` war in Ordnung: `tunnelDark` → 1,0, Sonne 2,50 →
+0,30, nach Austritt zurück auf 2,496.
+
+- **Vorwarnung der Zapfen (55 m) wirkt**, aber unvollständig: von 12 Auslösungen
+  lösten 11 rund 37 m vor dem Fahrer, eine 19,8 m dahinter. `near = I.d - d0`
+  wird für Segmente hinter dem Fahrer negativ und ist damit immer `< icicleWarn`.
+  Ein `near > 0` in der Shake-Bedingung stellt es ab — offen gelassen, weil es
+  das Spielgefühl betrifft.
 
 ## 6. Strecke
 
