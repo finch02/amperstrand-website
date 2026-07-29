@@ -3260,14 +3260,22 @@ function addYaw(delta) {
      der Stance kippte weiterhin mitten in der Kurve. */
   const spinning = !rider.grounded && rider.airTime > 0.22;
   if (spinning) rider.stanceAcc += delta;
-  else rider.stanceAcc = 0;   // am Boden nichts ansammeln
+  else if (rider.stanceAcc !== 0) {
+    /* Beim Aufsetzen den Rest auf die NAECHSTE halbe Umdrehung runden, statt
+       ihn zu verwerfen. Ein 360er dreht gemessen 358 Grad: der erste Wechsel
+       faellt bei 180, die restlichen 178 wurden weggeworfen — der Stance blieb
+       gewechselt, obwohl das Board wieder in die Ausgangsrichtung zeigt.
+       Mit der Rundung stimmt jede Drehung: 180er wechselt, 360er nicht. */
+    if (Math.abs(rider.stanceAcc) > Math.PI / 2) rider.stance = -rider.stance;
+    rider.stanceAcc = 0;
+  }
   const before = rider.stance;
   while (rider.stanceAcc >=  Math.PI) { rider.stanceAcc -= Math.PI; rider.stance = -rider.stance; }
   while (rider.stanceAcc <= -Math.PI) { rider.stanceAcc += Math.PI; rider.stance = -rider.stance; }
   /* Ohne diesen Aufruf wechselte zwar der Wert, aber die Figur spiegelte sich
      nie — das fuehrende Bein und die Haende blieben, wo sie waren. Genau
      deshalb war der Stance-Wechsel in der Egoperspektive unsichtbar. */
-  if (rider.stance !== before) applyStance(rider.stance);
+  if (rider.stance !== before) applyStance(stanceVis);
 }
 
 function resetRider(z, keepX) {
