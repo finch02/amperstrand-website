@@ -3641,7 +3641,20 @@ function step(dt) {
      der Start einmal ohne Sprung verlaeuft. */
   State.sinceStart = (State.sinceStart || 0) + dt;
   if (!rider.grounded) State.hasFlown = true;
-  if ((rider.grounded && State.hasFlown) || State.sinceStart > 4) State.steerLocked = false;
+  const warGesperrt = State.steerLocked;
+  if ((rider.grounded && State.hasFlown && State.sinceStart > 0.4)
+      || State.sinceStart > 4) State.steerLocked = false;
+  /* ALLE Eingaben sperren, nicht nur die Lenkung: mit freier Sprung- und
+     Bremstaste machte man auf der Startrampe versehentlich einen Trick und
+     flog quer weg. Erst wenn der Fahrer nach der Anfahrt sauber aufgesetzt
+     hat, uebernimmt der Spieler — und bekommt das auch angezeigt. */
+  if (State.steerLocked) {
+    input.jump = false; input.jumpHeld = false;
+    input.duck = false; input.brake = false; input.boost = false;
+    input.pitchIn = 0;
+  } else if (warGesperrt) {
+    showHint('Los!');
+  }
   const st = State.steerLocked ? 0 : input.steer;
 
   /* --- Ducken / Vorspannen / Bremsen --- */
@@ -4262,6 +4275,7 @@ function startGame(mode, trackId) {
     buildCourse(State.mode, 0x9e3779b9 ^ (State.mode === 'FREESTYLE' ? 0x77 : 0));
   }
   State.steerLocked = true; State.hasFlown = false; State.sinceStart = 0;
+  setTimeout(() => { if (State.steerLocked) showHint('Anfahrt …'); }, 250);
   State.time = 0; State.finished = false;
   State.gatesHit = 0; State.gatesMissed = 0;
   State.countdown = State.mode === 'RACE' ? CONFIG.game.countdown : 0;
