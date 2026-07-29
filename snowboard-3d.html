@@ -264,7 +264,7 @@ const CONFIG = {
   sky:    { fogNear: 55, fogFar: 245 },
   light:  { sunDir: [0.45, 0.78, 0.44], sunColor: 0xfff6e6, sunInt: 2.50,
             hemiSky: 0xbcd9f5, hemiGround: 0xffffff, hemiInt: 1.30, shadowSpan: 34 },
-  camera: { back: 5.6, up: 4.5, lead: 9.0, lookDown: 1.0, lerp: 0.17, lateral: 2.2,
+  camera: { back: 5.6, up: 6.1, lead: 9.0, lookDown: 1.0, lerp: 0.17, lateral: 2.2,
             povUp: 1.95, povFwd: -0.32, povPitch: -0.34, povFov: 96, povArms: 0.85, povTurnDur: 0.34,
             deadZone: 0.20, turnRate: 9.0,
             fovMin: 82, fovMax: 95, fovSpeed: 34 },
@@ -1357,7 +1357,7 @@ const rockGeo = (() => {
       v.fromBufferAttribute(sp, i);
       const f = 0.74 + vnoise(v.x*1.9 + 5.3, v.z*1.9 + v.y*1.3 + 2.7) * 0.46;
       v.multiplyScalar(f);
-      v.y *= 0.72;
+      v.y *= 1.30;   // hoeher: im Schnee vorher kaum als Hindernis lesbar
       sp.setXYZ(i, v.x, v.y, v.z);
     }
   }
@@ -1366,9 +1366,13 @@ const rockGeo = (() => {
   g.computeVertexNormals();
   const nor = g.attributes.normal;
   const col = new Float32Array(p.count*3);
-  const cr = new THREE.Color(CONFIG.color.rock), cs = new THREE.Color(CONFIG.color.snowHi), ct = new THREE.Color();
+  /* Kontrast statt Tarnung: dunkles Grau unten, helles oben, Schneehaube auf
+     den flachen Deckflaechen — drei Abstufungen machen die Tiefe lesbar. */
+  const cr = new THREE.Color(0x4a5563), cm = new THREE.Color(0x8794a5);
+  const cs = new THREE.Color(CONFIG.color.snowHi), ct = new THREE.Color();
   for (let i = 0; i < p.count; i++) {
-    ct.copy(cr).lerp(cs, smoothstep(0.30, 0.72, nor.getY(i)));
+    ct.copy(cr).lerp(cm, smoothstep(-0.4, 0.45, nor.getY(i)));
+    ct.lerp(cs, smoothstep(0.62, 0.92, nor.getY(i)));
     col[i*3] = ct.r; col[i*3+1] = ct.g; col[i*3+2] = ct.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -1423,15 +1427,36 @@ const logSlot = [];
    seiner Absprungbewertung gemessen. Wenige Exemplare als Gruppen. */
 const chasms = [];
 {
-  const wallMat = new THREE.MeshLambertMaterial({ color: 0x101b2a, flatShading: true });
-  const lipMat  = new THREE.MeshLambertMaterial({ color: 0xe9f1f8, flatShading: true });
-  const iceMat  = new THREE.MeshBasicMaterial({ color: 0x2e4a6b, fog: false });
+  /* Aus dem schwarzen Graben wird ein Gebirgsbach: dunkle Uferwaende,
+     leuchtend blaues Wasser als Kontrast zum Schnee, helle Schneekanten.
+     Das Wasser bekommt eine gestreifte Textur, die stromabwaerts wandert —
+     dadurch ist die Fliessrichtung sichtbar. */
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x24384f, flatShading: true });
+  const lipMat  = new THREE.MeshLambertMaterial({ color: 0xf2f8ff, flatShading: true });
+  const waterTex = (() => {
+    const N = 64, cv = document.createElement('canvas');
+    cv.width = 8; cv.height = N;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#2b8ede'; g.fillRect(0, 0, 8, N);
+    for (let i = 0; i < N; i += 8) {
+      g.fillStyle = i % 16 === 0 ? '#6fc4f2' : '#a8e0ff';
+      g.fillRect(0, i, 8, 3);
+    }
+    const t = new THREE.CanvasTexture(cv);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(1, 3);
+    return t;
+  })();
+  const iceMat  = new THREE.MeshBasicMaterial({ map: waterTex, fog: false });
   for (let i = 0; i < Q.chasms; i++) {
     const g = new THREE.Group();
     const pit = new THREE.Mesh(new THREE.BoxGeometry(1, 3.4, 1), wallMat);
     pit.position.y = -1.75;
-    const glow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.5, 0.86), iceMat);
-    glow.position.y = -0.55;
+    /* Wasserflaeche dicht unter die Kante: tiefer gelegt sah man aus der
+       Anfahrt nur die dunklen Uferwaende und der Bach las sich als
+       schwarzer Strich. */
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 0.94), iceMat);
+    glow.position.y = -0.30;
     const lipA = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
     const lipB = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
     lipA.position.y = -0.06; lipA.rotation.x = 0.18;
@@ -1912,6 +1937,12 @@ for (let i = 0; i < ICICLE_N; i++) {
 
 function updateTunnel(rz, dt) {
   tunClock += dt;
+  // Baecher fliessen: die Streifentextur wandert stromabwaerts
+  for (const c of chasms) {
+    if (!c.on) continue;
+    const m = c.glow.material;
+    if (m.map) { m.map.offset.y = (m.map.offset.y - dt * 0.65) % 1; }
+  }
   const d0 = -rz;
   let n = 0, ic = 0;
   for (let d = Math.floor(d0 / 10) * 10; d < d0 + 150 && n < TUNNEL_SEG; d += 10) {
@@ -2328,7 +2359,7 @@ function placeChasm(k, rz) {
     const o = logSlot[j];
     if (o && o.on && Math.abs(o.z - z) < 46) { c.on = false; c.obj.visible = false; return; }
   }
-  const dep = rndR(4.6, 6.2);
+  const dep = rndR(5.0, 6.6);
   c.half = dep / 2;
   const w = R.hw * 2 + 10;
   const gy = terrainH(R.cx, z);
@@ -2539,9 +2570,10 @@ headParts.push(helm);
    echte Augen — der Gesichtsausdruck bleibt sichtbar. Das Gummiband laeuft
    NUR seitlich und hinten um den Helm; vorne sitzt die Brille, kein Band
    darueber. */
-const gogLens = addMesh(head, roundedBox(0.44, 0.17, 0.05, 0.06, 3),
-  new THREE.MeshLambertMaterial({ color: 0x5db8e8, emissive: 0x1a4a70,
-    transparent: true, opacity: 0.5 }), 0, 0.05, 0.262);
+/* Deckendes, dunkles Glas: halbtransparent ueber Hautton war es faktisch
+   unsichtbar. Die Augen dahinter entfallen dadurch. */
+const gogLens = addMesh(head, roundedBox(0.44, 0.17, 0.06, 0.06, 3),
+  new THREE.MeshLambertMaterial({ color: 0x123a5e, emissive: 0x0d2b47 }), 0, 0.05, 0.262);
 headParts.push(gogLens);
 const frameMat = lam(0x23272e, false);
 for (const [fx, fy, fw, fh] of [[0, 0.135, 0.48, 0.035], [0, -0.035, 0.48, 0.035],
@@ -4121,6 +4153,10 @@ const _hq = new THREE.Quaternion();
 const camLook = new THREE.Vector3();
 const _camDesired = new THREE.Vector3();
 let camInit = false, camYaw = 0;
+/* Das Fahrermodell ist mit der Brust auf lokal +Z gebaut, die Piste laeuft
+   nach -Z: ohne diese halbe Drehung steht der Koerper rueckwaerts auf dem
+   Board. Gemessen waren es 180 Grad an der Wurzel, 142 an der Brust. */
+const BODY_FLIP = Math.PI;
 let bodySway = 0, bodyLoad = 0, bobPhase = 0, tunnelDark = 0;
 // konstante Blicksenkung, damit Board und Haende im Bild liegen
 const _povTilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), CONFIG.camera.povPitch);
@@ -4169,7 +4205,11 @@ function updateVisuals(dt) {
   legF.rotation.x = -0.14 * rider.stance + knee;
   legB.rotation.x =  0.14 * rider.stance + knee;
   // Huefte arbeitet gegen den Oberkoerper — das erzeugt die Verwindung
-  legs.rotation.y = hipBase + bodySway * 0.30 * rider.stance;
+  /* +PI: Das Fahrermodell ist mit der Brust auf lokal +Z gebaut, die Piste
+     laeuft aber nach -Z. Ohne diese halbe Drehung stand der komplette Koerper
+     rueckwaerts auf dem Board — gemessen 180 Grad Abweichung an der Wurzel,
+     142 Grad an der Brust. Das Board bleibt unveraendert (symmetrisch). */
+  legs.rotation.y = BODY_FLIP + hipBase + bodySway * 0.30 * rider.stance;
   legs.rotation.z = -rider.roll * 0.12;
 
   upper.position.y = 0.88 - crouch * 0.36 - gLoad * 0.18 - rider.squash * 0.32 - ride + bobUp;
@@ -4194,7 +4234,7 @@ function updateVisuals(dt) {
      Switch-Landung (travelDir -1) drehte der Oberkoerper dadurch hangaufwaerts
      und der Fahrer schaute nach hinten. */
   const openTo = rider.stance * rider.travelDir;
-  upper.rotation.y = -(0.62 + bodySway * 0.62) * openTo;
+  upper.rotation.y = BODY_FLIP - (0.62 + bodySway * 0.62) * openTo;
   // Kopf schaut in die Kurve und dorthin, wo es hingeht
   /* Angst-Pose (fuer die Verfolgung): Kopf dreht ueber die Schulter zurueck,
      Schultern hoch, Koerper tief. Ueber rider.fear von 0 bis 1 mischbar. */
