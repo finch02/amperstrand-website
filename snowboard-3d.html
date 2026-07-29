@@ -342,6 +342,7 @@ const CONFIG = {
     gasAero: 0.62,          // so viel Luftwiderstand faellt bei vollem Gas weg
     gasPush: 5.2,           // Gewichtsverlagerung talwaerts (m/s^2), nur bergab
     speedMax: 46,           // harte Obergrenze, damit nichts davonlaeuft
+    chasmLip: 6.4,          // Anhebung durch die Uferschanze am Bach
     cruiseSpeed: 17,        // Grundgeschwindigkeit ohne Eingabe
     boostSpeed: 31,         // mit gehaltener Beschleunigungstaste
     speedReturn: 1.5,       // wie schnell er auf die Grundgeschwindigkeit zurueckfaellt
@@ -1495,14 +1496,35 @@ const chasms = [];
        hinweg sichtbar ist. */
     const glow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.3, 0.94), iceMat);
     glow.position.y = -0.14;
-    const lipA = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
-    const lipB = new THREE.Mesh(new THREE.BoxGeometry(1, 0.26, 0.42), lipMat);
-    lipA.position.y = -0.06; lipA.rotation.x = 0.18;
-    lipB.position.y = -0.06; lipB.rotation.x = -0.18;
-    g.add(pit, glow, lipA, lipB);
+    /* AUFGEWORFENE UFERWAELLE statt flacher Lippen: aus der Anfahrt lag der
+       Bach optisch auf der Baumgrenze und las sich wie ein See im Hintergrund.
+       Erhoehte Waelle brechen die Schneeflaeche sichtbar auf und werfen
+       Schatten — erst dadurch wird der Bach als Hindernis im Weg lesbar. */
+    const lipA = new THREE.Mesh(new THREE.BoxGeometry(1, 1.05, 1.6), lipMat);
+    const lipB = new THREE.Mesh(new THREE.BoxGeometry(1, 1.05, 1.6), lipMat);
+    lipA.castShadow = true; lipB.castShadow = true;
+    lipA.position.y = 0.30; lipA.rotation.x = 0.16;
+    lipB.position.y = 0.30; lipB.rotation.x = -0.16;
+    // dunkle Schattenkante direkt an der nahen Uferwand
+    const shade = new THREE.Mesh(new THREE.BoxGeometry(1, 0.9, 0.5),
+      new THREE.MeshLambertMaterial({ color: 0x0d2035 }));
+    shade.position.set(0, -0.05, 0);
+    /* WARNSTANGEN an beiden Enden, weit ausserhalb der Fahrbahn: sie stehen
+       hoch genug, um schon von weitem ueber der Schneekante zu stehen. */
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0xff5a1f });
+    const poles = [];
+    for (let q = 0; q < 4; q++) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 4.2, 6), poleMat);
+      pole.castShadow = true;
+      const flag = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 0.08), poleMat);
+      flag.position.set(0.75, 1.7, 0);
+      pole.add(flag);
+      g.add(pole); poles.push(pole);
+    }
+    g.add(pit, glow, shade, lipA, lipB);
     g.visible = false;
     scene.add(g);
-    chasms.push({ obj: g, pit, glow, lipA, lipB, z: 1e9, half: 2.6, on: false });
+    chasms.push({ obj: g, pit, glow, shade, lipA, lipB, poles, z: 1e9, half: 2.6, on: false });
   }
 }
 let chasmPendingQ = null;
@@ -2563,7 +2585,7 @@ function placeChasm(k, rz) {
     const o = logSlot[j];
     if (o && o.on && Math.abs(o.z - z) < 46) { c.on = false; c.obj.visible = false; return; }
   }
-  const dep = rndR(5.0, 6.6);
+  const dep = rndR(4.0, 5.2);   // schmaler: sicher in einem Sprung zu nehmen
   c.half = dep / 2;
   const w = R.hw * 2 + 10;
   const gy = terrainH(R.cx, z);
@@ -2574,8 +2596,16 @@ function placeChasm(k, rz) {
   c.obj.rotation.x = -Math.atan2(yB - yF, dep);
   c.pit.scale.set(w, 1, dep);
   c.glow.scale.set(w * 0.985, 1, dep * 0.86);
-  c.lipA.scale.set(w, 1, 1); c.lipA.position.z = -dep / 2;
-  c.lipB.scale.set(w, 1, 1); c.lipB.position.z =  dep / 2;
+  c.shade.scale.set(w * 0.99, 1, 1); c.shade.position.z = dep / 2 - 0.3;
+  c.lipA.scale.set(w, 1, 1); c.lipA.position.z = -dep / 2 - 0.5;
+  c.lipB.scale.set(w, 1, 1); c.lipB.position.z =  dep / 2 + 0.5;
+  // Warnstangen an beiden Ufern, je links und rechts neben der Fahrbahn
+  const px = R.hw + 3;
+  const stellen = [[-px, -dep/2 - 1], [px, -dep/2 - 1], [-px, dep/2 + 1], [px, dep/2 + 1]];
+  for (let q = 0; q < c.poles.length; q++) {
+    c.poles[q].position.set(stellen[q][0], 2.1, stellen[q][1]);
+    c.poles[q].children[0].position.x = stellen[q][0] < 0 ? 0.75 : -0.75;
+  }
 }
 function seedWorld(rz) {
   // Startbefuellung ueber die ganze Tiefe verteilen (nicht nur weit vorne)
@@ -3340,17 +3370,25 @@ function iceFactor(x, z) {
   return 0;
 }
 /* Baumstaemme waren bisher gar nicht abgefragt — man fuhr glatt hindurch. */
+/* Zwei Zonen je Baum, Rueckgabe 0 / 1 / 2:
+     2 = STAMM  — dagegen zu fahren ist sofort vorbei
+     1 = AESTE  — man rauscht durch die Zweige, das kostet nur den Tritt
+   Vorher galt ein einziger Radius und schon ein Streifen der Zweige warf
+   einen um. */
 function hitsTree(x, z) {
   for (let i = 0; i < Q.trees; i++) {
     const s = treeSlot[i];
     if (!s) continue;
     const dz = z - s.z;
-    if (dz < -2.5 || dz > 2.5) continue;          // schneller Vorfilter
+    if (dz < -3.2 || dz > 3.2) continue;          // schneller Vorfilter
     const dx = x - s.x;
-    const r = 0.42 * s.s + 0.4;                   // Stammradius plus Fahrerbreite
-    if (dx*dx + dz*dz < r*r) return true;
+    const d2 = dx * dx + dz * dz;
+    const stamm = 0.20 * s.s + 0.38;              // Stammradius plus Fahrerbreite
+    if (d2 < stamm * stamm) return 2;
+    const aeste = 0.95 * s.s + 0.45;              // Kronenradius
+    if (d2 < aeste * aeste) return 1;
   }
-  return false;
+  return 0;
 }
 /* Kollision haengt an der HOEHE: kleine Brocken kann man ueberspringen,
    grosse ragen so weit hoch, dass das nicht reicht. */
@@ -3924,6 +3962,25 @@ function step(dt) {
   /* Schlucht: am Boden hinein = Absturz. Wer drueber springt, wird bei der
      Landung an der Absprungbewertung gemessen — ein schwacher Pop schafft die
      Distanz meist ohnehin nicht und endet im Einschnitt. */
+  /* ABSPRUNGKANTE. Die nahe Uferwand ist eine echte Schanze: wer sie am Boden
+     erreicht, wird angehoben — dadurch gibt es einen klaren Absprungpunkt und
+     man muss nicht auf den Zentimeter genau selbst springen. Wer zusaetzlich
+     an der Kante drueckt, nimmt vollen Impuls mit (die Absprungbewertung
+     laeuft weiter ueber popQ). */
+  for (const c of chasms) {
+    if (!c.on || !rider.grounded) continue;
+    const vorKante = -(c.z - rider.pos.z) - c.half;   // >0 = noch davor
+    if (vorKante > 0 && vorKante < 2.6) {
+      terrainNormal(rider.pos.x, rider.pos.z, _nrm);
+      rider.vel.addScaledVector(_nrm, P.chasmLip);
+      rider.grounded = false;
+      rider.airTime = 0.0001;
+      rider.canFlip = true;
+      rider.flipYaw = rider.yaw;
+      burst(rider.pos.x, rider.pos.y, rider.pos.z, 10, 2.2);
+      break;
+    }
+  }
   let overChasm = false;
   for (const c of chasms) if (c.on && Math.abs(rider.pos.z - c.z) < c.half) { overChasm = true; break; }
   if (overChasm) {
@@ -3931,13 +3988,31 @@ function step(dt) {
     chasmPendingQ = rider.popQ;
   } else if (chasmPendingQ !== null && rider.grounded) {
     const q = chasmPendingQ; chasmPendingQ = null;
-    if (q < 0.55) { crash(false); return; }   // wackliger Absprung: Stolperer
+    /* Nur ein wirklich schlechter Absprung stolpert. Mit 0.55 stolperte man
+       fast immer, obwohl die Schanze einen ohnehin sauber hinueberhebt. */
+    if (q >= 0 && q < 0.22) { crash(false); return; }
   }
   if (hitByIcicle(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true); return; }
-  if (rider.pos.y < terrainH(rider.pos.x, rider.pos.z) + 4.5 && hitsTree(rider.pos.x, rider.pos.z)) {
-    crash(true);
-    return;
+  if (rider.pos.y < terrainH(rider.pos.x, rider.pos.z) + 4.5) {
+    const baum = hitsTree(rider.pos.x, rider.pos.z);
+    if (baum === 2) { crash(true); return; }      // Stamm: sofort vorbei
+    if (baum === 1) {
+      /* Aeste: nur ein Stolperer, und danach kurz unverwundbar, damit dieselbe
+         Krone nicht Frame fuer Frame erneut ausloest. */
+      if ((rider.branchT || 0) <= 0) {
+        rider.branchT = 0.6;
+        rider.vel.multiplyScalar(0.72);
+        burst(rider.pos.x, rider.pos.y + 0.6, rider.pos.z, 14, 2.0);
+        State.shake = Math.max(State.shake, 0.5);
+        Audio.impact(0.35);
+        /* In der Flucht zaehlt es als Stolperer (der Yeti rueckt auf), in den
+           anderen Modi kostet es nur Tempo — kein Sturz und kein Leben. Ein
+           Streifen der Zweige darf nicht dasselbe sein wie ein Stamm. */
+        if (State.mode === 'ESCAPE') { stumble(); return; }
+      }
+    }
   }
+  rider.branchT = Math.max(0, (rider.branchT || 0) - dt);
 
   /* Blickrichtung fuer die Egoperspektive. Bewusst in JEDEM Schritt, auch in
      der Luft: sonst startet die Kopfdrehung erst beim Aufsetzen. So laeuft sie
