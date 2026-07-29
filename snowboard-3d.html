@@ -351,8 +351,12 @@ const CONFIG = {
        bei 5.2 kam man ungeladen nicht ueber einen flachen Stamm und der
        Sprung war praktisch nutzlos. Laden gibt jetzt Zusatz, keine
        Grundvoraussetzung mehr. */
-    jumpBase: 8.4,
-    jumpCharged: 11.2,
+    /* Der ungeladene Sprung war weniger als halb so hoch wie der geladene
+       (gemessen 1.56 m gegen 3.64 m). Wer nicht vorher duckt, kam damit ueber
+       nichts. jumpBase liegt jetzt nahe am Maximum, Laden gibt nur noch einen
+       spuerbaren, aber keinen entscheidenden Bonus. */
+    jumpBase: 11.5,
+    jumpCharged: 12.4,
     chargeTime: 0.55,
     alignRate: 7.0,         // Daempfung der Ausrichtung an die Normale
     landAngle: 1.00,        // ~57 Grad Toleranz
