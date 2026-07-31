@@ -2706,9 +2706,88 @@ function hideInstance(mesh, i, z) {
   mesh.setMatrixAt(i, _mx);
 }
 
-function setTree(i, x, z, s, sy) {
+/* ==========================================================================
+   GARANTIERT FAHRBARE LINIE
+   Jede Hindernisart hatte eigene Abstandsregeln, aber keine prueft ueber die
+   Arten hinweg, ob im Querschnitt ueberhaupt noch eine Luecke bleibt — und
+   Baeume in der Spur pruefen bisher gar nichts. So entstanden Querschnitte,
+   die von Rand zu Rand dicht waren und die man unmoeglich passieren konnte.
+   gasseBleibt() sammelt alle seitlich sperrenden Hindernisse in einem Laengs-
+   band um die Kandidatenstelle, rechnet den Kandidaten dazu und prueft, ob
+   innerhalb der Piste noch eine zusammenhaengende Gasse uebrig bleibt.
+   Nicht beruecksichtigt sind Staemme und Schluchten: die sperren zwar quer,
+   sind aber per Sprung oder Slide zu nehmen und haben eigene Laengsabstaende.
+   ========================================================================== */
+/* Ein Stamm verlangt einen Sprung (oder Slide), ein Baum in der Spur ein
+   seitliches Ausweichen. Standen beide dicht hintereinander, war die Stelle
+   nicht zu schaffen — gemessen bis auf 3.4 m Abstand, bei 30 m/s also 0.11 s
+   fuer beides. 30 m geben bei Spitzentempo rund eine Sekunde zum Landen und
+   neu Anvisieren. */
+const KONFLIKT_Z = 30;
+const GASSE_Z = 14;        // Laengsband, in dem Hindernisse zusammen wirken
+const MIN_GASSE = 4.6;     // so breit muss die Durchfahrt mindestens bleiben
+const _sperr = [];
+for (let i = 0; i < 64; i++) _sperr.push([0, 0]);
+
+/* Steht in Reichweite von z ein Stamm oder eine Schlucht? */
+function sprungHindernisNah(z, weite) {
+  for (let i = 0; i < Q.logs; i++) {
+    const l = logSlot[i];
+    if (l && l.on && Math.abs(l.z - z) < weite) return true;
+  }
+  for (const c of chasms) if (c.on && Math.abs(c.z - z) < weite) return true;
+  return false;
+}
+/* Steht in Reichweite von z ein Baum MITTEN in der Fahrbahn? */
+function spurBaumNah(z, weite) {
+  for (let i = 0; i < Q.trees; i++) {
+    const t = treeSlot[i];
+    if (t && t.spur && Math.abs(t.z - z) < weite) return true;
+  }
+  return false;
+}
+
+function gasseBleibt(kx, kr, z, R, ausserBaum, ausserFels) {
+  let n = 0;
+  const setz = (a, b) => { if (n < 64) { _sperr[n][0] = a; _sperr[n][1] = b; n++; } };
+  setz(kx - kr, kx + kr);
+  for (let i = 0; i < Q.trees; i++) {
+    if (i === ausserBaum) continue;
+    const t = treeSlot[i];
+    if (!t || Math.abs(t.z - z) > GASSE_Z) continue;
+    if (Math.abs(t.x - R.cx) > R.hw + 1.5) continue;    // steht ausserhalb der Piste
+    setz(t.x - (0.95 * t.s + 0.45), t.x + (0.95 * t.s + 0.45));
+  }
+  for (let i = 0; i < Q.rocks; i++) {
+    if (i === ausserFels) continue;
+    const f = rockSlot[i];
+    if (!f || f.r <= 0 || Math.abs(f.z - z) > GASSE_Z) continue;
+    setz(f.x - (f.r + 0.55), f.x + (f.r + 0.55));
+  }
+  // nach linker Kante sortieren (Einfuegesortierung, n ist klein)
+  for (let a = 1; a < n; a++) {
+    const lo = _sperr[a][0], hi = _sperr[a][1];
+    let b = a - 1;
+    while (b >= 0 && _sperr[b][0] > lo) { _sperr[b + 1][0] = _sperr[b][0]; _sperr[b + 1][1] = _sperr[b][1]; b--; }
+    _sperr[b + 1][0] = lo; _sperr[b + 1][1] = hi;
+  }
+  // groesste freie Luecke innerhalb der Piste suchen
+  let cur = R.cx - R.hw, best = 0;
+  for (let a = 0; a < n; a++) {
+    if (_sperr[a][0] > cur) best = Math.max(best, _sperr[a][0] - cur);
+    if (_sperr[a][1] > cur) cur = _sperr[a][1];
+  }
+  best = Math.max(best, (R.cx + R.hw) - cur);
+  return best >= MIN_GASSE;
+}
+
+function setTree(i, x, z, s, sy, inSpur) {
   const slot = treeSlot[i] || (treeSlot[i] = {});
   slot.x = x; slot.z = z; slot.s = s;
+  /* Merker fuer die Konfliktpruefung: nur Baeume IN der Fahrbahn verlangen ein
+     seitliches Ausweichen und vertragen sich deshalb nicht mit einem Stamm
+     oder einer Schlucht in Reichweite. Randbaeume sind harmlos. */
+  slot.spur = inSpur ? 1 : 0;
   _q.setFromAxisAngle(_up, rnd() * Math.PI * 2);
   _mx.compose(_pv.set(x, terrainH(x, z) - 0.15, z), _q, _sv.set(s, s * sy, s));
   trees.setMatrixAt(i, _mx);
@@ -2718,8 +2797,13 @@ function placeTree(i, rz, zForce) {
   const R = rowData(-z, _rowA);
   // Mittelinseln bewalden: der Baum steht dann mitten in der Piste
   if (R.isl > 0.55 && rnd() < 0.55) {
-    setTree(i, R.cx + R.islX + rndR(-2.8, 2.8), z, rndR(0.8, 1.35), rndR(0.95, 1.2));
-    return;
+    const bx = R.cx + R.islX + rndR(-2.8, 2.8), bs = rndR(0.8, 1.35);
+    if (!sprungHindernisNah(z, KONFLIKT_Z) &&
+        gasseBleibt(bx, 0.95 * bs + 0.45, z, R, i, -1)) {
+      setTree(i, bx, z, bs, rndR(0.95, 1.2), true);
+      return;
+    }
+    // sonst weiter unten als Randbaum setzen statt die Piste zuzustellen
   }
   /* Flucht: wilder Berg — einzelne Baeume stehen mitten in der Strecke.
      Nicht im Tunnel, nicht am Anfang; ueber i getaktet, damit die Dichte
@@ -2730,9 +2814,20 @@ function placeTree(i, rz, zForce) {
   const eilig = clamp01((rider.vel.length() - 20) / 22);
   if (State.mode === 'ESCAPE' && -z > 140 && R.tunnel < 0.2 && !R.kick &&
       i % 8 === 0 && rnd() < 0.65 * (1 - eilig * 0.45)) {
-    setTree(i, R.cx + rndR(-0.8, 0.8) * Math.max(1.5, R.hw - 2.5), z,
-      rndR(0.85, 1.35), rndR(0.95, 1.25));
-    return;
+    /* Mehrere Versuche: findet sich keine Stelle, die eine Gasse laesst,
+       wird der Baum an den Rand gesetzt statt die Piste zu sperren. */
+    const bs = rndR(0.85, 1.35), br = 0.95 * bs + 0.45;
+    // Nicht in Reichweite eines Stamms oder einer Schlucht — sonst muesste man
+    // springen und gleichzeitig seitlich ausweichen.
+    if (!sprungHindernisNah(z, KONFLIKT_Z)) {
+      for (let t = 0; t < 6; t++) {
+        const bx = R.cx + rndR(-0.8, 0.8) * Math.max(1.5, R.hw - 2.5);
+        if (gasseBleibt(bx, br, z, R, i, -1)) {
+          setTree(i, bx, z, bs, rndR(0.95, 1.25), true);
+          return;
+        }
+      }
+    }
   }
   // An Abbruchkanten nicht auf die Aussenseite pflanzen — dort ist nichts mehr
   let side = rnd() < 0.5 ? -1 : 1;
@@ -2762,6 +2857,8 @@ function placeRock(i, rz) {
       if (!o || o.r <= 0 || j === i) continue;
       if (Math.abs(o.z - z) < T.hazardGapZ && Math.abs(o.x - x) < T.hazardGapX) { ok = false; break; }
     }
+    // zusaetzlich artenuebergreifend: es muss eine Gasse durchgehen
+    if (ok && !gasseBleibt(x, s * 0.8 + 0.55, z, R, -1, i)) ok = false;
   }
   if (!ok) { slot.r = 0; hideInstance(rocks, i, z); return; }
   slot.x = x; slot.r = s * 0.8; slot.top = heightIn(x, R) - s * 0.30 + s * 0.9;
@@ -2810,6 +2907,8 @@ function placeLog(i, rz) {
     if (o && j !== i && o.on && Math.abs(o.z - z) < 30) { slot.on = 0; hideInstance(logs, i, z); return; }
   }
   for (const c of chasms) if (c.on && Math.abs(c.z - z) < 38) { slot.on = 0; hideInstance(logs, i, z); return; }
+  // Gegenrichtung: kein Stamm in Reichweite eines Baums MITTEN in der Spur
+  if (spurBaumNah(z, KONFLIKT_Z)) { slot.on = 0; hideInstance(logs, i, z); return; }
   const high = rnd() < 0.42;
   const x = R.cx + rndR(-1, 1) * Math.max(0, R.hw - LOG_LEN / 2) * 0.8;
   const gy = heightIn(x, R);
@@ -2834,6 +2933,7 @@ function placeChasm(k, rz) {
     const o = logSlot[j];
     if (o && o.on && Math.abs(o.z - z) < 46) { c.on = false; c.obj.visible = false; return; }
   }
+  if (spurBaumNah(z, KONFLIKT_Z)) { c.on = false; c.obj.visible = false; return; }
   const dep = rndR(4.0, 5.2);   // schmaler: sicher in einem Sprung zu nehmen
   c.half = dep / 2;
   const w = R.hw * 2 + 10;
