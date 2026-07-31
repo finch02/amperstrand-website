@@ -37,6 +37,27 @@
   .pill b{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7793ad;font-weight:800}
   .pill span{font-size:clamp(18px,4.6vw,26px);font-weight:800;font-variant-numeric:tabular-nums}
   #lives{font-size:20px;letter-spacing:2px}
+  /* Rotes Todesbild im Fluchtmodus. Die Saettigung faehrt ueber einen Filter
+     auf dem Canvas herunter, darueber liegt ein roter Verlauf, der zu den
+     Raendern hin dichter wird — dadurch bleibt die Szene erkennbar, statt
+     unter einer flachen Farbflaeche zu verschwinden. */
+  #wasted{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;z-index:60;transition:opacity .45s ease}
+  #wasted.on{opacity:1}
+  #wasted::before{content:'';position:absolute;inset:0;transition:opacity .6s ease;
+    background:radial-gradient(ellipse at center,rgba(158,10,10,.66) 0%,rgba(104,4,4,.88) 45%,rgba(26,0,0,.97) 100%)}
+
+  #wasted span{position:relative;font-family:'Inter Tight',system-ui,sans-serif;
+    font-weight:900;font-size:clamp(46px,13vw,132px);letter-spacing:.12em;
+    color:#e8e2dc;text-shadow:0 4px 26px rgba(0,0,0,.65);
+    transform:scale(.82);opacity:0;transition:transform .7s cubic-bezier(.2,.9,.3,1),opacity .5s ease}
+  #wasted.on span{transform:scale(1);opacity:1}
+  /* Wenn die Ergebniskarte kommt, weicht der Schriftzug — sonst lagen beide
+     uebereinander. MUSS nach der .on-Regel stehen und zwei Klassen fuehren:
+     bei gleicher Spezifitaet gewann sonst .on und der Schriftzug blieb. */
+  #wasted.on.leise span{opacity:0;transform:scale(1.06)}
+  #wasted.on.leise::before{opacity:.86}
+  canvas.tot{filter:saturate(.12) contrast(1.08) brightness(.86)}
   #powers{position:absolute;left:0;right:0;top:64px;display:flex;justify-content:center;
     gap:6px;pointer-events:none;flex-wrap:wrap}
   #powers u,#powers i{text-decoration:none;font-style:normal;background:rgba(255,255,255,.92);
@@ -202,6 +223,8 @@
     </div>
   </div>
 </div>
+
+<div id="wasted"><span>WASTED</span></div>
 
 <div class="screen" id="over">
   <div class="card">
@@ -3685,7 +3708,38 @@ const Audio = (() => {
     if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05);
     return muted;
   }
-  return { init, glide, whoosh, impact, chime, growl, roar, toggle };
+  /* Todes-Stinger: ein tiefer, absackender Ton mit einer zweiten Stimme leicht
+     daneben — die Schwebung der beiden macht den unheilvollen Klang. Dazu ein
+     dumpfer Rauschschlag als Anschlag. */
+  function wasted() {
+    if (!ready) return;
+    const t = ctx.currentTime;
+    for (const [f0, f1, det, amp] of [[196, 49, 0, 0.26], [196, 49, 3.2, 0.19]]) {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.detune.value = det * 100;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(f1, t + 1.9);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(1500, t);
+      lp.frequency.exponentialRampToValueAtTime(220, t + 1.9);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(amp, t + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.3);
+      o.connect(lp); lp.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 2.35);
+    }
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.34, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    s.connect(f); f.connect(g); g.connect(master);
+    s.start(t); s.stop(t + 0.95);
+  }
+  return { init, glide, whoosh, impact, chime, growl, roar, wasted, toggle };
 })();
 
 /* ==========================================================================
@@ -4651,7 +4705,8 @@ const elPowers = $('powers');
 let powersCache = '';
 const elCharge = $('charge'), elChargeBar = elCharge.firstElementChild;
 const elSpeed = $('speed'), elFlash = $('flash'), elHud = $('hud');
-const scMenu = $('menu'), scOver = $('over');
+const scMenu = $('menu'), scOver = $('over'), elWasted = $('wasted');
+let wastedTimer = 0;
 
 function showPop(q) {
   const el = $('popInfo');
@@ -4828,6 +4883,7 @@ function startGame(mode, trackId) {
   resetTrail();
   scMenu.classList.remove('on');
   scOver.classList.remove('on');
+  wastedAus();
   elHud.classList.add('on');
   showCombo('');
 }
@@ -4901,6 +4957,7 @@ $('toMenuBtn').addEventListener('click', () => {
   scPause.classList.remove('on');
   elHud.classList.remove('on');
   scOver.classList.remove('on');
+  wastedAus();
   ghostRider.visible = false;
   renderTracks();
   scMenu.classList.add('on');
@@ -5860,7 +5917,24 @@ function caught() {
   $('oDist').textContent = State.coins + ' Münzen';
   $('oBest').textContent = Progress.coins + ' gesamt';
   Progress.coins += State.coins; Progress.save();
-  scOver.classList.add('on');
+  /* Rotes Todesbild statt sofortiger Ergebniskarte: erst der Moment, dann die
+     Zahlen. Die Szene laeuft dahinter weiter, entsaettigt und rot ueberlagert.
+     Die Karte kommt erst nach 1.9 s — vorher ueberdeckte sie den Moment. */
+  Audio.wasted();
+  renderer.domElement.classList.add('tot');
+  elWasted.classList.add('on');
+  clearTimeout(wastedTimer);
+  wastedTimer = setTimeout(() => {
+    elWasted.classList.add('leise');
+    scOver.classList.add('on');
+  }, 1900);
+}
+/* Beim Neustart und beim Verlassen muss beides wieder weg — sonst bleibt das
+   Bild rot und entsaettigt. */
+function wastedAus() {
+  clearTimeout(wastedTimer);
+  elWasted.classList.remove('on', 'leise');
+  renderer.domElement.classList.remove('tot');
 }
 
 /* Ein Stolperer statt eines Sturzes: Tempo weg, Yeti rueckt auf. Der zweite
