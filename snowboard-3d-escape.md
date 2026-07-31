@@ -98,6 +98,44 @@ Altlast, die erst in der geschlossenen Höhle auffiel: **die Eiszapfen hingen
 durchs Dach** (feste Höhe `hw*0.9` gegen eine Decke bei `hw*0.80−1.2`). Sie
 hängen jetzt an der Gewölbeellipse; gemessen 0 von 7 durchs Dach.
 
+### Nachtrag: der eigentliche Grund, warum es trotzdem keine Höhle war
+
+Alles oben stimmte — und der Nutzer sah weiter „eine schwarze Felswand ohne
+Durchgang". Die Ursache war nicht die Geometrie, sondern **die Kamerahöhe**:
+
+- Der Gewölbescheitel lag bei Schnee **+5,5 m**, die Verfolgerkamera schwebt auf
+  **+6,0 m**. Die Kamera steckte also im Deckenblock. Ein Raycast aus der Kamera
+  traf in **alle** Richtungen nach 2 m Fels — Bild komplett zu.
+- `TUN_H` 0,80 → **1,45**, `TUN_W` 0,95 → **1,05**. Scheitel jetzt +10,9 m, rund
+  4 m Luft über der Kamera, auch während eines 3,3-m-Sprungs. Nachgemessen:
+  Sicht 207–272 m statt 2 m, Deckenunterkante 1,8 m über der Kamera, Wände
+  lückenlos von x −13 bis +84.
+- Die Felsscheiben brauchen **`DoubleSide`**. Einseitig werden sie von innen
+  weggeschnitten, und man schaut durch den Berg in den Himmel — auch das liest
+  sich als „kein Hohlraum". Ein erster Versuch damit wurde verworfen, weil das
+  Bild schwarz wurde; das lag aber allein an der Beleuchtung. Jetzt DoubleSide
+  **und** helleres Gestein (`0x4d5768` → `0x6b7789`), Abdunklung entschärft
+  (Sonne 0,45 → 0,35, Hemi 0,30 → 0,20).
+- Tunnelsektionen werden im Fluchtmodus nicht mehr auf 58 % gekürzt: bei 92 m
+  Länge und 42 m Einblendung je Ende erreichte der Bogen nie volle Größe.
+  Mindestens 190 m.
+
+**Methodischer Hinweis für die nächste Sitzung:** „X Segmente sind `visible`"
+beweist gar nichts. Sichtbar heißt nicht, dass es dort steht, wo die Kamera ist.
+Verlässlich ist ein Raycast aus `camera.position` in mehrere Richtungen —
+er hat den Fehler in einem Zug gezeigt, nachdem ihn Bildvergleiche und
+Sichtbarkeitszählungen über viele Iterationen nicht gefunden hatten.
+
+Zweiter Stolperstein im Testaufbau: fährt man mit `step()` ohne Lenkung los,
+driftet der Fahrer der Falllinie nach und liegt nach 1290 m **71 m neben der
+Ideallinie** — der Tunnel steht dann korrekt, nur eben weit weg. Im Testlauf
+`rider.pos.x = rowData(d).cx` je Schritt nachführen.
+
+**Noch offen:** Die Decke ist geometrisch da und dicht, wirkt aber flach. Die
+drei Felsnasen je Segment sitzen auf der jetzt deutlich größeren Ellipse und
+tragen weniger als gedacht. Für „abwechslungsreiche Deckenstruktur" braucht es
+mehr und größere Nasen.
+
 Das Abdunkeln aus `6f54fae` war in Ordnung: `tunnelDark` → 1,0, Sonne 2,50 →
 0,30, nach Austritt zurück auf 2,496.
 
