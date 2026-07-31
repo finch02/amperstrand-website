@@ -273,7 +273,10 @@ const CONFIG = {
     width0: 30, width1: 17, narrowDist: 1500,        // Piste wird enger
     camber: 0.16,                                    // lineare Querneigung (max ~9 Grad)
     crossRoll: 1.7,                                  // Querwellen ueber die Pistenbreite
-    icicleWarn: 55, icicleShake: 0.85,   // Vorwarnstrecke und Zitterdauer
+    /* Vorwarnstrecke und Zitterdauer. Beide erhoeht: der Brocken soll lange
+       genug sichtbar wackeln, damit man reagieren kann, und frueh genug
+       fallen, um VOR dem Fahrer aufzuschlagen statt neben ihm. */
+    icicleWarn: 70, icicleShake: 1.35,
     islandW: 8.5, islandH: 3.2,                      // Mittelinseln teilen die Piste
     cliffDepth: 14, cliffShelf: 5, cliffSlope: 1.15, // Schulter, dann steiler Abhang
     hazardGapZ: 26, hazardGapX: 13,                  // Mindestluecke zwischen Hindernissen
@@ -776,7 +779,11 @@ function buildCourse(mode, seedIn, style) {
     /* Flucht: kurze Abschnitte, dichter Wechsel — Temple-Run-Takt statt langer
        Leerlaufstuecke. Untergrenze 92 m haelt die 42-m-Ueberblendung an beiden
        Enden intakt. */
-    if (mode === 'ESCAPE') len = Math.max(92, len * 0.58);
+    /* Tunnel NICHT verkuerzen: die Ueberblendung braucht allein 42 m an jedem
+       Ende. Auf 92 m gestutzt blieb dazwischen kaum Strecke, auf der der
+       Bogen ueberhaupt seine volle Groesse erreicht — der Berg wirkte
+       kaputt und der letzte Teil des Tunnels hatte gar kein Gewoelbe mehr. */
+    if (mode === 'ESCAPE') len = spec.tunnel ? Math.max(len, 190) : Math.max(92, len * 0.58);
     sections.push({ d0: d, d1: d + len, spec, islX: (rnd2() - 0.5) * 12 });
     if (spec.park) buildPark(sections[sections.length - 1], rnd2);
     if (spec.jump) {
@@ -1935,7 +1942,10 @@ let tunClock = 0;
 /* MODULEBENE, nicht im Aufbau-Block: updateTunnel weist das Portalmaterial
    pro Frame zu. Im Block deklariert warf jeder Tunnel eine ReferenceError,
    und das Spiel blieb beim ersten Tunnel haengen. */
-const archMat = new THREE.MeshLambertMaterial({ color: 0x2b3444, flatShading: true,
+/* Die Innenwand der Hoehle. Dunkelgrau wie gewuenscht, aber hell genug, dass
+   Struktur und Tiefe erkennbar bleiben — bei 0x2b3444 war es eine schwarze
+   Flaeche ohne jede Plastizitaet. */
+const archMat = new THREE.MeshLambertMaterial({ color: 0x5a6478, flatShading: true,
   side: THREE.BackSide });
 const portalMat = new THREE.MeshLambertMaterial({ color: 0x46566e, flatShading: true,
   side: THREE.BackSide });
@@ -1945,7 +1955,12 @@ const portalMat = new THREE.MeshLambertMaterial({ color: 0x46566e, flatShading: 
    Waende ausserhalb des befahrbaren Bandes. TUN_LEN muss groesser sein als der
    Segmentabstand ENTLANG des Hangs: 10 m Raster waagerecht sind bei 55 %
    Gefaelle 11.4 m schraeg. TUN_INSET haelt Loecher knapp innerhalb der Wand. */
-const TUN_W = 0.95, TUN_H = 0.80, TUN_LEN = 13, TUN_INSET = 0.96;
+/* TUN_H bestimmt die Scheitelhoehe. Mit 0.80 lag der Scheitel bei Schnee
+   +5.5 m — die Verfolgerkamera schwebt aber auf +6.0 m und steckte damit im
+   Deckenblock: das Bild war von allen Seiten Fels, die Hoehle sah aus wie eine
+   schwarze Wand. 1.45 hebt den Scheitel auf +10.9 m, also 5 m Luft ueber der
+   Kamera, auch waehrend eines 3.3-m-Sprungs. */
+const TUN_W = 1.05, TUN_H = 1.45, TUN_LEN = 13, TUN_INSET = 0.96;
 const tunnelSegs = [];
 /* BERGMASSIV mit dem Tunnel als einzigem Durchgang. Statt eines frei auf der
    Piste stehenden Gewoelbes steht am Tunnelanfang und -ende eine Felswand
@@ -1956,7 +1971,13 @@ const tunnelSegs = [];
 const PORTAL_N = TUNNEL_SEG + 2;   // eine Scheibe je Bogensegment plus Portale
 const portals = [];
 {
-  const rockMat = new THREE.MeshLambertMaterial({ color: 0x55606e, flatShading: true });
+  /* DoubleSide ist notwendig: einseitig werden die Bloecke von INNEN
+     weggeschnitten und man schaut durch den Berg in den Himmel — genau der
+     Eindruck "ich fahre durch eine schwarze Wand, da ist kein Hohlraum".
+     Beim ersten Versuch damit war nur die Beleuchtung zu dunkel; deshalb
+     jetzt DoubleSide UND ein deutlich helleres Gestein. */
+  const rockMat = new THREE.MeshLambertMaterial({ color: 0x6b7789, flatShading: true,
+    side: THREE.DoubleSide });
   const snowMat = new THREE.MeshLambertMaterial({ color: 0xeef4fa, flatShading: true });
   for (let i = 0; i < PORTAL_N; i++) {
     const g = new THREE.Group();
@@ -1970,9 +1991,15 @@ const portals = [];
       b.castShadow = true; g.add(b); bulk.push(b);
     }
     const cap = mk(snowMat);           // Schneehaube auf dem Grat
+    // Felsnasen, die von der Decke in den Hohlraum ragen
+    const zapfen = [];
+    for (let k = 0; k < 2; k++) {
+      const z = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), rockMat);
+      z.visible = false; g.add(z); zapfen.push(z);
+    }
     g.visible = false;
     scene.add(g);
-    portals.push({ obj: g, left, right, top, bulk, cap, d: -1 });
+    portals.push({ obj: g, left, right, top, bulk, cap, zapfen, d: -1 });
   }
 }
 {
@@ -2012,12 +2039,25 @@ const portals = [];
     return mergeParts(parts);
   })();
   const torchMat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false });
-  const glowGeo = new THREE.SphereGeometry(1.5, 10, 8);
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff8a24, transparent: true,
-    opacity: 0.16, depthWrite: false, fog: false });
+  /* Der Lichtschein war mit Radius 1.5 und 16 % Deckkraft eine grosse orange
+     Scheibe, die als Objekt statt als Licht las. Kleiner und schwaecher. */
+  const glowGeo = new THREE.SphereGeometry(0.62, 10, 8);
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffa63c, transparent: true,
+    opacity: 0.09, depthWrite: false, fog: false });
   for (let i = 0; i < TUNNEL_SEG; i++) {
     const m = new THREE.Mesh(archGeo, archMat);
     m.visible = false;
+    /* DECKENSTRUKTUR: drei Felsnasen je Bogensegment, die von oben in den
+       Hohlraum ragen. Ohne sie ist die Decke eine glatte Roehre. Sie haengen
+       am Segment, sind also innen sichtbar. */
+    const nasen = [];
+    for (let k = 0; k < 3; k++) {
+      const n2 = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0),
+        new THREE.MeshLambertMaterial({ color: 0x49546a, flatShading: true }));
+      scene.add(n2); nasen.push(n2);
+    }
+    m.userData = m.userData || {};
+    m.userData.nasen = nasen;
     const holes = [];
     for (let h = 0; h < 4; h++) {
       const mesh = new THREE.Mesh(torchGeo, torchMat);
@@ -2026,15 +2066,33 @@ const portals = [];
       scene.add(mesh);
       holes.push(mesh);
     }
-    m.userData = { holes };
+    /* NICHT ueberschreiben: die Deckennasen liegen bereits in userData und
+       wurden von einem neuen Objektliteral geloescht — updateTunnel griff
+       danach auf undefined zu und das Spiel startete gar nicht mehr. */
+    m.userData.holes = holes;
     scene.add(m);
     tunnelSegs.push(m);
   }
 }
-const icicleGeo = new THREE.ConeGeometry(0.40, 2.6, 8);
-icicleGeo.translate(0, -1.3, 0);          // Spitze nach unten, Aufhaengung oben
-const icicleMat = new THREE.MeshLambertMaterial({ color: 0xdff0fb, flatShading: true,
-  transparent: true, opacity: 0.92 });
+/* FALLENDE BROCKEN, nicht mehr Eiszapfen: in einer Felshoehle faellt Gestein.
+   HELLGRAU gegen die dunkelgraue Decke, damit sie sich abheben — als helles
+   Eis auf hellem Grund waren sie kaum zu sehen. Unregelmaessige Form statt
+   glattem Kegel, deutlich groesser. */
+const icicleGeo = (() => {
+  const g = new THREE.IcosahedronGeometry(0.85, 1);
+  const pos = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const f = 0.72 + vnoise(v.x * 2.1 + 3.3, v.z * 2.1 + v.y * 1.7) * 0.55;
+    v.multiplyScalar(f);
+    v.y *= 1.35;                          // laenglich nach unten
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  g.translate(0, -0.9, 0);                // Aufhaengung oben
+  return g;
+})();
+const icicleMat = new THREE.MeshLambertMaterial({ color: 0xb9c4d2, flatShading: true });
 const icicles = [];
 for (let i = 0; i < ICICLE_N; i++) {
   const m = new THREE.Mesh(icicleGeo, icicleMat);
@@ -2082,6 +2140,7 @@ function placePortal(P0, d, R) {
   // Schneehaube auf dem Grat
   P0.cap.scale.set(SPAN * 0.8, 2.5, TH + 2);
   P0.cap.position.set(0, H - 2.6, 0);
+
 }
 
 function updateTunnel(rz, dt) {
@@ -2152,6 +2211,21 @@ function updateTunnel(rz, dt) {
                    + 0.08 * Math.sin(tunClock * 29 + hIdx);
       h.scale.set(fl, fl * (1 + 0.10 * Math.sin(tunClock * 21 + hIdx * 1.7)), fl);
     }
+    /* DECKENSTRUKTUR: drei Felsnasen je Segment, unterschiedlich gross und
+       verteilt — ohne sie ist die Decke eine glatte Roehre. Die Lage haengt an
+       der Streckenposition, wiederholt sich also nicht. */
+    for (let k = 0; k < m.userData.nasen.length; k++) {
+      const n2 = m.userData.nasen[k];
+      const f = hash2(Math.round(d) + k * 37, k * 13);
+      const seit = (hash2(Math.round(d) + k * 11, 7) - 0.5) * 1.75;
+      const q = clamp(seit, -0.92, 0.92);
+      const decke = floorY + wallY * Math.sqrt(1 - q * q);
+      n2.visible = true;
+      n2.scale.set(0.55 + f * 1.15, 0.75 + f * 1.9, 0.55 + f * 1.0);
+      n2.position.set(R.cx + seit * wallX * 0.92, decke - 0.45 - f * 0.8,
+                      -d + (k - 1) * TUN_LEN * 0.3);
+      n2.rotation.set(f * 0.7, f * 3.1, seit * 0.45);
+    }
     // Zapfen an dieses Segment binden
     for (let k = 0; k < 1 && ic < ICICLE_N; k++) {
       const I = icicles[ic++];
@@ -2172,6 +2246,7 @@ function updateTunnel(rz, dt) {
   for (let i = n; i < TUNNEL_SEG; i++) {
     tunnelSegs[i].visible = false;
     for (const h of tunnelSegs[i].userData.holes) h.visible = false;
+    for (const n2 of tunnelSegs[i].userData.nasen) n2.visible = false;
   }
   for (let i = 0; i < n; i++) for (const h of tunnelSegs[i].userData.holes) h.visible = true;
 
@@ -2188,7 +2263,14 @@ function updateTunnel(rz, dt) {
     } else if (I.state === 'shake') {
       I.t += dt;
       I.mesh.position.set(I.x, I.top, -I.d);
-      I.mesh.rotation.z = Math.sin(I.t * 38) * 0.16;      // sichtbares Zittern
+      /* Deutlich sichtbares Wackeln, das zum Fall hin staerker wird — so ist
+         vorhersehbar, welcher Brocken als naechstes kommt. */
+      const auf = clamp01(I.t / T.icicleShake);
+      I.mesh.rotation.z = Math.sin(I.t * 34) * (0.10 + auf * 0.30);
+      I.mesh.rotation.x = Math.cos(I.t * 27) * (0.06 + auf * 0.20);
+      I.mesh.position.y = I.top - auf * 0.25;
+      if (auf > 0.55 && Math.random() < 0.09)
+        burst(I.x, I.top - 0.6, -I.d, 2, 0.6);           // rieselnder Staub
       if (I.t > T.icicleShake) { I.state = 'fall'; I.vy = 0; I.y = I.top; }
     } else {
       I.vy -= 22 * dt; I.y += I.vy * dt;
@@ -5009,8 +5091,13 @@ function updateVisuals(dt) {
   const inTun = rowData(-rider.pos.z, _rowA).tunnel;
   tunnelDark += (inTun - tunnelDark) * damp(2.5, dt);
   if (tunnelDark > 0.002) {
-    sun.intensity = CONFIG.light.sunInt * lastLookSun * (1 - tunnelDark * 0.88);
-    hemi.intensity = CONFIG.light.hemiInt * lastLookHemi * (1 - tunnelDark * 0.75);
+    /* Nicht ganz so finster: bei 88 % Abdunklung sah man die Fahrbahn und den
+       eigenen Fahrer nicht mehr — die Fackeln sollen die Hoehle ausleuchten,
+       nicht nur Stimmung machen. */
+    /* Gedaempft, aber nicht finster: die Waende muessen sichtbar bleiben,
+       sonst wirkt die Hoehle wie ein Loch statt wie Fels. */
+    sun.intensity = CONFIG.light.sunInt * lastLookSun * (1 - tunnelDark * 0.35);
+    hemi.intensity = CONFIG.light.hemiInt * lastLookHemi * (1 - tunnelDark * 0.20);
   }
   mountains.position.set(rider.pos.x * 0.35, rider.pos.y - 95, rider.pos.z);
   skyDome.position.copy(camera.position);
