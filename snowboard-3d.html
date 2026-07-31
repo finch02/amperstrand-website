@@ -389,7 +389,9 @@ const CONFIG = {
              konnte. catchDist bleibt bei 4.5 — enger wuerde nur zufaellig
              toeten, statt den Druck spuerbar zu machen. */
           chaseLag: 1.7, chaseLagNear: 0.75, catchDist: 4.5,
-          safeWindow: 15, introTime: 4.4, coinValue: 1,
+          /* Das ganze Intro dauert 3 s: Schnitt auf den Yeti, Schnitt auf
+             das erschrockene Gesicht, dann der Einstieg in die Verfolgung. */
+          safeWindow: 15, introTime: 3.0, coinValue: 1,
           trick360: 300, trick540: 600, trick720: 1200 }
 };
 
@@ -2549,6 +2551,22 @@ const yeti = (() => {
   g.userData = { arms: yArms, legs: yLegs, torso, jaw, headG };
   return g;
 })();
+/* Abstand vom Gruppenursprung zum tiefsten Punkt des Modells. Gesetzt wurde
+   bisher der URSPRUNG auf den Schnee — die Beine steckten dadurch darunter,
+   gemessen 0.40 bis 1.26 m tief, im Intro wie in der Verfolgung. Aus dem
+   Modell gerechnet statt fest verdrahtet, damit es bei Aenderungen am Yeti
+   richtig bleibt. */
+const YETI_FUSS = (() => {
+  yeti.updateWorldMatrix(true, true);
+  return yeti.position.y - new THREE.Box3().setFromObject(yeti).min.y;
+})();
+/* Der Galopp hebt den Koerper zusaetzlich an und sein Versatz wird nie null —
+   gemessenes Minimum 0.29 m. Mit nur 0.15 m Einsenkung schwebte der Yeti
+   dadurch dauerhaft ueber dem Schnee (gemessen +0.14 bis +1.00 m). 0.39 setzt
+   den tiefsten Punkt des Galopps knapp unter die Oberflaeche, so dass die
+   Fuesse im Schnee aufsetzen statt darueber zu schweben oder darin zu
+   versinken. */
+const YETI_SENK = 0.39;
 let yetiRoarT = 1.0, yetiRoarAnim = 0, yetiStompT = 0;
 /* GALOPP — die Gangart eines sprintenden Vierbeiners, kein Gehen. Der
    Zyklus (0..1) laeuft: Vorderbeine landen versetzt und ziehen den Koerper
@@ -3232,58 +3250,93 @@ headParts.push(addMesh(head, new THREE.SphereGeometry(0.29, 16, 12), lam(C.rider
 headParts.push(addMesh(head, shapedBox(0.34, 0.26, 0.32, 0.12, t => ({ x: 0.9 + t*0.14, z: 0.9 + t*0.12 })),
   lam(C.riderSkin, false), 0, -0.13, 0.02));
 // Helmschale
-/* Kappe endet OBERHALB der Brille; Seiten und Hinterkopf deckt eine
-   Teilschale, deren Luecke vorn den Ausschnitt fuer die Brille bildet. */
-const helm = addMesh(head, new THREE.SphereGeometry(0.335, 22, 14, 0, Math.PI*2, 0, Math.PI*0.36),
+/* Gerechnet, nicht geschaetzt. Der Schaedel ist eine Kugel r=0.29 um
+   (0, 0, 0.01), seine Front liegt also bei z = 0.30. Die Brille sass bei
+   z = 0.262 und steckte damit VOLLSTAENDIG im Kopf — sichtbar war nur, was an
+   den Raendern herausragte, wo die Kugel wegkruemmt. Genau das sah aus wie
+   eine ins Gesicht gedrueckte Brille.
+   Die Kappe endete ausserdem bei y = 0.24 (theta 0.36*PI um den Mittelpunkt
+   y = 0.10, Halbachse 0.308). Sie deckte damit nur die oberste Schaedeldecke,
+   die Stirn blieb frei — zusammen mit der Luecke vorn wirkte der Helm wie ein
+   Stirnband.
+   Jetzt: die Kappe reicht bis zur Aequatorhoehe y = 0.10 (theta = 0.5*PI) und
+   deckt die ganze Stirn bis knapp ueber die Brille. Weil dort vorn nichts mehr
+   im Weg ist, braucht sie GAR KEINE Luecke. */
+const helm = addMesh(head, new THREE.SphereGeometry(0.335, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.5),
   lam(C.riderHat, false), 0, 0.10, -0.02);
 helm.scale.set(1, 0.92, 1.06);
+/* Seiten und Hinterkopf reichen tiefer (bis y = -0.10). Nur DIESES Stueck
+   braucht vorn eine Aussparung, weil es auf Brillenhoehe laeuft. Der
+   Brillenrahmen spannt von der Mitte aus atan(0.26/0.30) = 41 Grad zu jeder
+   Seite; 100 Grad Luecke lassen ihn frei. phi = PI/2 zeigt nach +Z, also nach
+   vorn — die frueher noetige Drehung um PI entfaellt. */
 const helmBack = addMesh(head, new THREE.SphereGeometry(0.335, 22, 14,
-  0, Math.PI * 2, Math.PI * 0.34, Math.PI * 0.26), lam(C.riderHat, false), 0, 0.10, -0.02);
+  Math.PI * 0.778, Math.PI * 1.444, Math.PI * 0.48, Math.PI * 0.26),
+  lam(C.riderHat, false), 0, 0.10, -0.02);
 helmBack.scale.set(1, 0.92, 1.06);
-helmBack.rotation.y = Math.PI;          // Luecke nach vorn drehen
 headParts.push(helmBack);
 headParts.push(helm);
-/* Brille anatomisch: offener Rahmen um halbtransparentes Glas, dahinter
-   echte Augen — der Gesichtsausdruck bleibt sichtbar. Das Gummiband laeuft
-   NUR seitlich und hinten um den Helm; vorne sitzt die Brille, kein Band
-   darueber. */
-/* Deckendes, dunkles Glas: halbtransparent ueber Hautton war es faktisch
-   unsichtbar. Die Augen dahinter entfallen dadurch. */
-/* Brille sitzt TIEFER, klar unter der Helmkante (y 0.05 -> -0.01): auf
-   Helmhoehe stiess sie in die Schale und wurde von ihr verdeckt. */
-const GOG_Y = -0.01;
-const gogLens = addMesh(head, roundedBox(0.44, 0.15, 0.06, 0.05, 3),
-  new THREE.MeshLambertMaterial({ color: 0x123a5e, emissive: 0x0d2b47 }), 0, GOG_Y, 0.262);
+/* Brille SITZT VOR dem Gesicht, nicht darin: Glasmitte z = 0.295, Tiefe 0.05,
+   also 0.270 bis 0.320 — die Rueckseite taucht leicht in die Wange ein, die
+   Front steht 0.02 heraus. Genau so sitzt eine Skibrille auf. */
+const GOG_Y = -0.01, GOG_Z = 0.295;
+/* Getoentes statt deckendes Glas: dahinter bleiben Augen und Brauen lesbar,
+   und der Gesichtsausdruck kommt an. Deckend war die Brille ein schwarzer
+   Balken ohne Gesicht. */
+const gogLens = addMesh(head, roundedBox(0.42, 0.145, 0.05, 0.035, 3),
+  new THREE.MeshLambertMaterial({ color: 0x1b4a72, emissive: 0x123253,
+    transparent: true, opacity: 0.62 }), 0, GOG_Y, GOG_Z);
 headParts.push(gogLens);
+/* Schlankerer Rahmen: 0.03 hoch wirkte als schwarzer Balken. */
 const frameMat = lam(0x23272e, false);
-for (const [fx, fy, fw, fh] of [[0, GOG_Y + 0.085, 0.48, 0.03], [0, GOG_Y - 0.085, 0.48, 0.03],
-                                [-0.235, GOG_Y, 0.04, 0.17], [0.235, GOG_Y, 0.04, 0.17]]) {
-  headParts.push(addMesh(head, roundedBox(fw, fh, 0.06, 0.015, 2), frameMat, fx, fy, 0.262));
+for (const [fx, fy, fw, fh] of [[0, GOG_Y + 0.082, 0.455, 0.022], [0, GOG_Y - 0.082, 0.455, 0.022],
+                                [-0.222, GOG_Y, 0.032, 0.166], [0.222, GOG_Y, 0.032, 0.166]]) {
+  headParts.push(addMesh(head, roundedBox(fw, fh, 0.05, 0.012, 2), frameMat, fx, fy, GOG_Z));
 }
-/* Augenbrauen UEBER der Brille auf der freien Stirn — sie tragen den
-   Ausdruck, weil die Augen hinter dem dunklen Glas nicht lesbar sind. */
+/* Augen als flache Scheiben auf der Wange, HINTER dem Glas. Als volle Kugeln
+   bei z = 0.245 ragten sie durch die duennen Randbereiche des Glases hindurch
+   und lagen als zwei schwarze Klekse obenauf. */
+const eyeMat = lam(0x2a2118, false);
+const eyeL = addMesh(head, new THREE.SphereGeometry(0.040, 10, 8), eyeMat, -0.098, 0.005, 0.262);
+const eyeR = addMesh(head, new THREE.SphereGeometry(0.040, 10, 8), eyeMat,  0.098, 0.005, 0.262);
+eyeL.scale.z = 0.45; eyeR.scale.z = 0.45;
+headParts.push(eyeL, eyeR);
+/* Brauen ebenfalls hinter das Glas: ueber der Brille liegt jetzt die
+   Helmkante, dort waeren sie verdeckt. Durch das getoente Glas tragen sie den
+   Ausdruck mit. Deutlich schlanker als vorher — 0.035 hoch waren Balken. */
 const browMat = lam(0x3a2b20, false);
-const browL = addMesh(head, roundedBox(0.15, 0.035, 0.04, 0.012, 2), browMat, -0.105, 0.135, 0.255);
-const browR = addMesh(head, roundedBox(0.15, 0.035, 0.04, 0.012, 2), browMat,  0.105, 0.135, 0.255);
-browL.rotation.z = -0.18; browR.rotation.z = 0.18;
+const BROW_Y = 0.058;
+const browL = addMesh(head, roundedBox(0.125, 0.024, 0.03, 0.010, 2), browMat, -0.098, BROW_Y, 0.258);
+const browR = addMesh(head, roundedBox(0.125, 0.024, 0.03, 0.010, 2), browMat,  0.098, BROW_Y, 0.258);
+browL.rotation.z = -0.20; browR.rotation.z = 0.20;
 headParts.push(browL, browR);
 head.userData.brows = [browL, browR];
 {
   /* Bandbogen: Torus-Teilstueck, die Oeffnung nach vorn gedreht und flach auf
      Brillenhoehe gelegt. */
-  const strapGeo = new THREE.TorusGeometry(0.328, 0.028, 8, 22, Math.PI * 1.25);
+  /* Radius ueber die Helmschale (0.335 * 1.06 in z): mit 0.328 lag das Band
+     INNERHALB des Helms und war unsichtbar. */
+  const strapGeo = new THREE.TorusGeometry(0.352, 0.026, 8, 22, Math.PI * 1.25);
   strapGeo.rotateZ(-3.534);          // Luecke des Teilkreises nach +Y drehen
   strapGeo.rotateX(Math.PI / 2);     // +Y -> +Z: Oeffnung zeigt nach vorn
   const strap = addMesh(head, strapGeo, lam(0x24303f, false), 0, 0.045, -0.01);
   strap.scale.set(1, 1, 0.94);
   headParts.push(strap);
 }
-/* Augen hinter dem Glas und Mund: beide reissen im Angst-Moment auf. */
-const eyeMat = lam(0x2a2118, false);
-const eyeL = addMesh(head, new THREE.SphereGeometry(0.042, 8, 6), eyeMat, -0.10, 0.045, 0.245);
-const eyeR = addMesh(head, new THREE.SphereGeometry(0.042, 8, 6), eyeMat, 0.10, 0.045, 0.245);
-headParts.push(eyeL, eyeR);
-const mouth = addMesh(head, roundedBox(0.11, 0.035, 0.03, 0.012, 2), lam(0x7a4433, false), 0, -0.175, 0.20);
+/* NASE. Fehlte komplett — ohne sie ist das Gesicht eine Flaeche mit Brille.
+   Sie sitzt zwischen Brillenunterkante (y = -0.092) und Mund, auf der
+   Schaedeloberflaeche: bei y = -0.10 liegt die Kugelfront bei
+   z = 0.01 + sqrt(0.29^2 - 0.10^2) = 0.282. */
+const nose = addMesh(head, shapedBox(0.075, 0.10, 0.085, 0.03,
+  t => ({ x: 0.55 + t * 0.55, z: 0.7 + t * 0.4 })),
+  lam(C.riderSkin, false), 0, -0.118, 0.272);
+nose.rotation.x = -0.22;
+headParts.push(nose);
+/* MUND: breiter und tiefer als vorher und deutlich weiter vorn. Bei z = 0.20
+   lag er 0.07 INNERHALB des Schaedels (Front bei y = -0.175 ist z = 0.241)
+   und war nur als brauner Fleck zu ahnen. */
+const mouth = addMesh(head, roundedBox(0.135, 0.042, 0.045, 0.018, 3),
+  lam(0x5e2a24, false), 0, -0.188, 0.243);
 headParts.push(mouth);
 head.userData.mouth = mouth;
 head.userData.eyes = [eyeL, eyeR];
@@ -5349,13 +5402,19 @@ function updateVisuals(dt) {
   head.rotation.x = -rider.squash * 0.3 + clamp01(speed / 40) * 0.1 - rider.fear * 0.25;
   // Schreck-Gesicht: Mund und Augen reissen mit der Angst auf
   const mouth = head.userData.mouth;
-  if (mouth) mouth.scale.set(1 + rider.fear * 0.5, 1 + rider.fear * 4.5, 1);
+  /* 4.5 machte aus dem 0.042 hohen Mund einen 0.23 m hohen Klotz — hoeher als
+     breit und damit kein Mund mehr. 2.2 ergibt aufgerissen 0.13 x 0.17 m,
+     also etwas breiter als hoch, wie ein echter Schreckmund. */
+  if (mouth) mouth.scale.set(1 + rider.fear * 0.25, 1 + rider.fear * 2.2, 1);
   if (head.userData.eyes) for (const e of head.userData.eyes) e.scale.setScalar(1 + rider.fear * 0.8);
   /* Schreck-Ausdruck: die Brauen ziehen hoch und stellen sich schraeg. */
   const brows = head.userData.brows;
   if (brows) {
-    brows[0].position.y = 0.135 + rider.fear * 0.045;
-    brows[1].position.y = 0.135 + rider.fear * 0.045;
+    /* Ruhelage aus der Geometrie lesen statt hart 0.135: die Brauen sitzen
+       jetzt hinter dem Glas bei y = 0.058. Mit dem alten festen Wert schob die
+       Angst-Pose sie zurueck unter die Helmkante, wo sie verdeckt waren. */
+    brows[0].position.y = BROW_Y + rider.fear * 0.030;
+    brows[1].position.y = BROW_Y + rider.fear * 0.030;
     brows[0].rotation.z = -0.18 + rider.fear * 0.42;
     brows[1].rotation.z =  0.18 - rider.fear * 0.42;
   }
@@ -5706,7 +5765,8 @@ function updateChase(dt) {
     const p = 1 - State.intro / CONFIG.game.introTime;
     const back = lerp(58, 20, smooth(clamp01(p / 0.72)));
     const zx = rider.pos.x + Math.sin(p * 9) * 1.2;
-    yeti.position.set(zx, terrainH(zx, rider.pos.z + back) - 0.2, rider.pos.z + back);
+    yeti.position.set(zx, terrainH(zx, rider.pos.z + back) + YETI_FUSS - YETI_SENK,
+                      rider.pos.z + back);
     yeti.rotation.y = Math.PI;
     const A = yeti.userData;
     yeti.position.y += yetiGallop((p * 4.2) % 1);
@@ -5737,7 +5797,7 @@ function updateChase(dt) {
     const i = (histHead - k + RIDER_HIST) % RIDER_HIST;
     if (histT[i] <= target) { px = histX[i]; py = histY[i]; pz = histZ[i]; break; }
   }
-  yeti.position.set(px, Math.max(py, terrainH(px, pz)) - 0.2, pz);
+  yeti.position.set(px, Math.max(py, terrainH(px, pz)) + YETI_FUSS - YETI_SENK, pz);
   // zum Fahrer ausrichten
   yeti.rotation.y = Math.atan2(rider.pos.x - px, rider.pos.z - pz) + Math.PI;
   /* Galopp auf allen vieren: Vorderbeine greifen gemeinsam aus, die
