@@ -3381,15 +3381,48 @@ const GOG_Y = -0.01, GOG_Z = 0.295;
 /* Getoentes statt deckendes Glas: dahinter bleiben Augen und Brauen lesbar,
    und der Gesichtsausdruck kommt an. Deckend war die Brille ein schwarzer
    Balken ohne Gesicht. */
-const gogLens = addMesh(head, roundedBox(0.42, 0.145, 0.05, 0.035, 3),
-  new THREE.MeshLambertMaterial({ color: 0x1b4a72, emissive: 0x123253,
-    transparent: true, opacity: 0.62 }), 0, GOG_Y, GOG_Z);
+/* SPIEGELNDES GLAS. Lambert kennt keine envMap — fuer eine echte Spiegelung
+   braucht es Phong mit reflectivity. Die Umgebung liefert eine CubeCamera am
+   Kopf, die NUR waehrend des Intros rendert (sechs Seiten pro Bild sind zu
+   teuer fuers laufende Spiel). Ausserhalb des Intros bleibt die letzte
+   Aufnahme stehen — als statische Reflexion voellig ausreichend. */
+/* Das Glas ist GEKRUEMMT, nicht flach: eine Skibrille wickelt sich um das
+   Gesicht. Die Woelbung entsteht durch Verschieben der Punkte nach hinten,
+   quadratisch mit dem Abstand zur Mitte — dadurch bleiben die Kanten weich
+   statt als Kasten zu stehen. Grosser Eckradius und mehr Segmente tun den
+   Rest. */
+function woelbe(geo, staerke) {
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    pos.setZ(i, pos.getZ(i) - x * x * staerke);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+const gogLens = addMesh(head, woelbe(roundedBox(0.46, 0.16, 0.055, 0.072, 5), 1.05),
+  /* VOLLVERSPIEGELT: undurchsichtig, reflectivity 1 und MixOperation lassen
+     praktisch nur noch die Spiegelung stehen. Die Augen dahinter sind damit
+     verdeckt — den Ausdruck tragen jetzt Mund und Kopfhaltung. */
+  new THREE.MeshPhongMaterial({ color: 0x8fa6bd, specular: 0xffffff,
+    shininess: 110, reflectivity: 1.0, combine: THREE.MixOperation }),
+  0, GOG_Y, GOG_Z);
 headParts.push(gogLens);
+/* 128 Pixel je Seite: die Brille ist selbst im Grossbild nur rund 200 px
+   breit, mehr Aufloesung waere nicht zu sehen. */
+const gogCubeRT = new THREE.WebGLCubeRenderTarget(128);
+const gogCube = new THREE.CubeCamera(0.4, 220, gogCubeRT);
+scene.add(gogCube);
+gogLens.material.envMap = gogCubeRT.texture;
 /* Schlankerer Rahmen: 0.03 hoch wirkte als schwarzer Balken. */
 const frameMat = lam(0x23272e, false);
-for (const [fx, fy, fw, fh] of [[0, GOG_Y + 0.082, 0.455, 0.022], [0, GOG_Y - 0.082, 0.455, 0.022],
-                                [-0.222, GOG_Y, 0.032, 0.166], [0.222, GOG_Y, 0.032, 0.166]]) {
-  headParts.push(addMesh(head, roundedBox(fw, fh, 0.05, 0.012, 2), frameMat, fx, fy, GOG_Z));
+/* Rahmen ebenfalls gewoelbt und mit vollem Eckradius, damit er der Scheibe
+   folgt statt als scharfkantiger Balken davorzustehen. */
+for (const [fx, fy, fw, fh] of [[0, GOG_Y + 0.090, 0.475, 0.026], [0, GOG_Y - 0.090, 0.475, 0.026],
+                                [-0.232, GOG_Y, 0.030, 0.180], [0.232, GOG_Y, 0.030, 0.180]]) {
+  const g = woelbe(roundedBox(fw, fh, 0.055, Math.min(fw, fh) * 0.48, 3), 1.05);
+  if (fx !== 0) g.translate(-fx * fx * 1.05, 0, 0);   // Woelbung an den Seiten ausgleichen
+  headParts.push(addMesh(head, g, frameMat, fx, fy, GOG_Z));
 }
 /* Augen als flache Scheiben auf der Wange, HINTER dem Glas. Als volle Kugeln
    bei z = 0.245 ragten sie durch die duennen Randbereiche des Glases hindurch
@@ -3941,7 +3974,7 @@ const State = {
   mode: 'ENDLESS',
   time: 0, pathDist: 0, raceLen: 1200, finished: false, track: null, trackId: 'tal',
   ghost: null, ghostRec: null, ghostIdx: 0,
-  gatesHit: 0, gatesMissed: 0, countdown: 0,
+  gatesHit: 0, gatesMissed: 0, countdown: 0, gameOverT: 0,
   pov: false,
   chaseLag: 2.2, stumbles: 0, safeT: 0, coins: 0, intro: 0,
   lives: G.lives,
@@ -3950,6 +3983,7 @@ const State = {
      bonusScore sammelt die Extrapunkte aus "Doppelte Punkte" — dadurch bleibt
      die normale Punktrechnung unangetastet und der Bonus exakt. */
   power: { sprung: 0, jet: 0, schild: 0, doppel: 0, magnet: 0 },
+  todesart: 'sturz',
   bonusScore: 0, letzteSumme: 0, powerName: '', powerNameT: 0,
   maxDist: 0, combo: 1, crashT: 0, shake: 0,
   best: 0
@@ -4113,10 +4147,13 @@ function fellIntoChasm() {
     $('oBest').textContent = Progress.coins + ' gesamt';
     Progress.coins += State.coins; Progress.save();
     scOver.classList.add('on');
-  } else crash(true);
+  } else crash(true, 'wasser');
 }
-function crash(hard) {
+function crash(hard, art) {
   if (State.now !== 'PLAYING') return;
+  /* Die Todesart bestimmt spaeter die Pose. 'sturz' ist der Faceplant im
+     Schnee und gilt als Standard, wenn nichts anderes angegeben ist. */
+  State.todesart = art || 'sturz';
   /* SCHUTZSCHILD faengt genau einen Fehler ab — in jedem Modus, also auch den
      Stolperer in der Flucht, der dort den Vorsprung kostet. */
   if (State.power.schild > 0) {
@@ -4163,7 +4200,7 @@ function land() {
   rider.squash = Math.min(1, impactV / 13);   // Beine federn den Aufprall ab
   burst(rider.pos.x, rider.pos.y - 0.1, rider.pos.z, Math.min(26, 8 + impactV*1.6), 2 + impactV*0.35);
 
-  if (!clean && airTime > 0.30) { crash(impactV > 12); return; }
+  if (!clean && airTime > 0.30) { crash(impactV > 12, 'sturz'); return; }
   rider.flip = 0;                     // sauber gelandet -> Ueberschlag ausbuchen
   rider.canFlip = false;
 
@@ -4681,8 +4718,8 @@ function step(dt) {
   const geschuetzt = (rider.schutzT || 0) > 0;
   rider.schutzT = Math.max(0, (rider.schutzT || 0) - dt);
   const pruefen = !imFlug && !geschuetzt;
-  if (pruefen && hitsRock(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true); return; }
-  if (pruefen && hitsLog(rider.pos.x, rider.pos.z, rider.pos.y, rider.crouch)) { crash(false); return; }
+  if (pruefen && hitsRock(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true, 'fels'); return; }
+  if (pruefen && hitsLog(rider.pos.x, rider.pos.z, rider.pos.y, rider.crouch)) { crash(false, 'sturz'); return; }
   /* Limbo-Slide: geduckt unter dem hohen Stamm durch — die Visuals legen den
      Oberkoerper seitlich flach; rider.limbo klingt von selbst wieder ab. */
   rider.limbo = Math.max(0, (rider.limbo || 0) - dt * 3.2);
@@ -4722,12 +4759,12 @@ function step(dt) {
     const q = chasmPendingQ; chasmPendingQ = null;
     /* Nur ein wirklich schlechter Absprung stolpert. Mit 0.55 stolperte man
        fast immer, obwohl die Schanze einen ohnehin sauber hinueberhebt. */
-    if (q >= 0 && q < 0.22) { crash(false); return; }
+    if (q >= 0 && q < 0.22) { crash(false, 'sturz'); return; }
   }
-  if (pruefen && hitByIcicle(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true); return; }
+  if (pruefen && hitByIcicle(rider.pos.x, rider.pos.z, rider.pos.y)) { crash(true, 'fels'); return; }
   if (pruefen && rider.pos.y < terrainH(rider.pos.x, rider.pos.z) + 4.5) {
     const baum = hitsTree(rider.pos.x, rider.pos.z);
-    if (baum === 2) { crash(true); return; }      // Stamm: sofort vorbei
+    if (baum === 2) { crash(true, 'baum'); return; }      // Stamm: sofort vorbei
     if (baum === 1) {
       /* Aeste: nur ein Stolperer, und danach kurz unverwundbar, damit dieselbe
          Krone nicht Frame fuer Frame erneut ausloest. */
@@ -5609,9 +5646,73 @@ function updateVisuals(dt) {
     head.rotation.z += limbo * 0.12 * rider.stance;
   }
 
-  if (State.now === 'CRASHED') {
-    riderTilt.rotation.x += State.crashT * 6.0;
-    riderTilt.rotation.z += State.crashT * 4.0;
+  /* ==========================================================================
+     STERBE-POSEN — je nach Ursache eine andere Haltung. Der Fahrer bleibt
+     immer heil und lebendig, es geht um Slapstick, nicht um Schaden.
+     ========================================================================== */
+  if (State.now === 'CRASHED' || (State.now === 'GAMEOVER' && State.todesart === 'yeti')) {
+    const t = State.now === 'CRASHED' ? State.crashT : (State.gameOverT || 0);
+    const k = clamp01(t / 0.45);            // Einlauf in die Pose
+    const art = State.todesart || 'sturz';
+    const boden = terrainH(rider.pos.x, rider.pos.z);
+
+    if (art === 'baum') {
+      /* UM DEN AST GEWICKELT: er haengt bauchueber ueber einem Ast in
+         Kronenhoehe und pendelt aus. Der Ast selbst ist nicht als Objekt
+         greifbar — die Hoehe kommt aus dem Kronenradius. */
+      const astY = boden + 2.6;
+      rider.pos.y += (astY - rider.pos.y) * damp(6, dt);
+      riderTilt.rotation.x = lerp(riderTilt.rotation.x, Math.PI * 0.52, k);
+      riderTilt.rotation.z = lerp(riderTilt.rotation.z,
+        Math.sin(t * 3.4) * 0.45 * Math.exp(-t * 0.8), k);
+      legs.rotation.x = 1.15; upper.rotation.x = -0.85;
+      armL.rotation.x = -2.2; armR.rotation.x = -2.2;
+      elbowL.rotation.x = -0.4; elbowR.rotation.x = -0.4;
+
+    } else if (art === 'fels') {
+      /* AM STEIN: auf die Seite gekippt, angelehnt liegen geblieben. */
+      riderTilt.rotation.z = lerp(riderTilt.rotation.z, Math.PI * 0.42, k);
+      riderTilt.rotation.x = lerp(riderTilt.rotation.x, 0.35, k);
+      legs.rotation.x = 0.75; upper.rotation.x = 0.25;
+      armL.rotation.x = -0.6; armR.rotation.x = -1.5;
+
+    } else if (art === 'wasser') {
+      /* IM WASSER: flach auf dem Ruecken, treibt und schaukelt leicht. */
+      riderTilt.rotation.x = lerp(riderTilt.rotation.x, -Math.PI * 0.48, k);
+      riderTilt.rotation.z = Math.sin(t * 1.9) * 0.16;
+      rider.pos.y += (boden - 0.55 - rider.pos.y) * damp(3, dt);
+      legs.rotation.x = -0.35; upper.rotation.x = 0.15;
+      armL.rotation.x = -1.9; armR.rotation.x = -1.9;
+
+    } else if (art === 'yeti') {
+      /* QUER IM MAUL: der Yeti traegt ihn seitlich im Fang. Er zappelt noch. */
+      const A = yeti.userData;
+      A.jaw.updateWorldMatrix(true, false);
+      _tmp.setFromMatrixPosition(A.jaw.matrixWorld);
+      /* Schnell einrasten: aus zwei Metern Entfernung soll er im Fang haengen,
+         bevor die Kamera umschwenkt. */
+      rider.pos.lerp(_tmp, damp(14, dt));
+      riderRoot.quaternion.setFromEuler(new THREE.Euler(0, yeti.rotation.y + Math.PI / 2, 0));
+      riderTilt.rotation.set(0, 0, 0.12 + Math.sin(t * 9) * 0.10);
+      legs.rotation.x = -0.5 + Math.sin(t * 11) * 0.35;
+      upper.rotation.x = 0.4;
+      armL.rotation.x = -2.4 + Math.sin(t * 13) * 0.5;
+      armR.rotation.x = -2.4 - Math.sin(t * 13) * 0.5;
+
+    } else {
+      /* FACEPLANT: Gesicht voraus im Schnee, rutscht aus. Genau die Pose fuer
+         Landung, Stamm und misslungenen Schluchtsprung. */
+      riderTilt.rotation.x = lerp(riderTilt.rotation.x, Math.PI * 0.46, k);
+      riderTilt.rotation.z = lerp(riderTilt.rotation.z, 0.22, k);
+      rider.pos.y += (boden + 0.28 - rider.pos.y) * damp(7, dt);
+      legs.rotation.x = -0.30; upper.rotation.x = 0.20;
+      // Arme schleifen nach hinten mit
+      armL.rotation.x = -2.5; armR.rotation.x = -2.5;
+      elbowL.rotation.x = -0.25; elbowR.rotation.x = -0.25;
+    }
+    // Kopf hebt sich benommen, in jeder Pose
+    head.rotation.x = -0.35 + Math.sin(t * 2.2) * 0.12;
+    if (head.userData.mouth) head.userData.mouth.scale.set(1.2, 2.4, 1);
   }
 
   /* Welt folgt */
@@ -5895,15 +5996,21 @@ function updateChase(dt) {
   if (State.intro > 0) {
     // Er stuermt im Intro heran: von 58 auf 20 Meter, gestampft
     const p = 1 - State.intro / CONFIG.game.introTime;
-    const back = lerp(58, 20, smooth(clamp01(p / 0.72)));
-    const zx = rider.pos.x + Math.sin(p * 9) * 1.2;
+    /* ZEITLUPE im ersten Drittel: der Yeti kriecht zunaechst heran und wird
+       dann schnell. Die Intro-Uhr laeuft dabei normal weiter, das Intro bleibt
+       also bei 3 s — nur SEINE Bewegung ist gedehnt. Genau dieser Teil ist im
+       zweiten Schnitt in der Brillenspiegelung zu sehen. */
+    const pY = p < 0.40 ? Math.pow(p / 0.40, 2.1) * 0.40 : p;
+    const back = lerp(58, 20, smooth(clamp01(pY / 0.72)));
+    const zx = rider.pos.x + Math.sin(pY * 9) * 1.2;
     yeti.position.set(zx, terrainH(zx, rider.pos.z + back) + YETI_FUSS - YETI_SENK,
                       rider.pos.z + back);
     yeti.rotation.y = Math.PI;
     // im Intro laeuft er hangabwaerts auf die Kamera zu
     neigeZumHang(zx, rider.pos.z + back, 0, -1);
     const A = yeti.userData;
-    const hubI = yetiGallop((p * 4.2) % 1) - YETI_HUB0;
+    // auch der Galopp laeuft in der Zeitlupe langsamer
+    const hubI = yetiGallop((pY * 4.2) % 1) - YETI_HUB0;
     setzePfotenAufSchnee();
     yeti.position.y += hubI;
     A.headG.rotation.x = -0.10 - yetiRoarAnim * 0.30;
@@ -5995,6 +6102,8 @@ function updateChase(dt) {
 function caught() {
   if (State.now !== 'PLAYING') return;
   State.now = 'GAMEOVER';
+  State.todesart = 'yeti';
+  State.gameOverT = 0;
   Audio.growl(0);          // Knurren verstummt beim Ende
   elHud.classList.remove('on');
   Audio.impact(1);
@@ -6049,6 +6158,9 @@ function frame(now) {
   if (!(dt > 0)) dt = 0.016;
   dt = Math.min(dt, 0.1);
 
+  /* ZEITLUPE im ersten Intro-Drittel: der Yeti springt heran und man sieht
+     ihn in der Brille. Nur die Intro-Uhr wird gebremst, nicht die Physik —
+     der Fahrer steht in dieser Phase ohnehin. */
   if (State.now === 'PLAYING' && State.mode === 'ESCAPE' && State.intro > 0) {
     // Filmisches Intro: Yeti kommt den Hang herunter, Nahaufnahme, dann los
     State.intro -= dt;
@@ -6141,6 +6253,15 @@ function frame(now) {
       if (State.maxDist >= State.raceLen && !State.finished) finishRace();
     }
     updateHUD();
+  } else if (State.now === 'GAMEOVER' && State.mode === 'ESCAPE' && State.todesart === 'yeti') {
+    /* Nach dem Zuschnappen laeuft die Darstellung weiter: der Yeti traegt den
+       Fahrer quer im Maul davon. Ohne diesen Zweig fror das Bild ein. */
+    /* updateChase NICHT aufrufen: der Yeti folgt darin weiter der
+       aufgezeichneten Linie und lief dem gepackten Fahrer davon (gemessen
+       37.7 m Abstand zum Maul). Er bleibt jetzt stehen, wo er zugeschnappt
+       hat, und traegt den Fahrer nur noch im Fang. */
+    State.gameOverT += dt;
+    updateVisuals(dt);   // enthaelt auch die Kamerafuehrung
   } else if (State.now === 'CRASHED') {
     State.crashT += dt;
     rider.vel.y -= CONFIG.phys.gravity * dt * 0.4;
@@ -6174,6 +6295,17 @@ function frame(now) {
   }
 
   updateVisuals(dt);
+  /* Spiegelung nachfuehren, solange das Intro laeuft: die CubeCamera sitzt
+     an der Brille und nimmt die Umgebung auf — im Gesichts-Schnitt sieht man
+     den heranspringenden Yeti darin. Das Glas selbst muss dabei unsichtbar
+     sein, sonst filmt die Kamera die Innenseite der eigenen Scheibe. */
+  if (State.mode === 'ESCAPE' && State.intro > 0 && State.now === 'PLAYING') {
+    gogLens.updateWorldMatrix(true, false);
+    gogCube.position.setFromMatrixPosition(gogLens.matrixWorld);
+    gogLens.visible = false;
+    gogCube.update(renderer, scene);
+    gogLens.visible = true;
+  }
   renderer.render(scene, camera);
 }
 
