@@ -276,7 +276,10 @@ const CONFIG = {
     /* Vorwarnstrecke und Zitterdauer. Beide erhoeht: der Brocken soll lange
        genug sichtbar wackeln, damit man reagieren kann, und frueh genug
        fallen, um VOR dem Fahrer aufzuschlagen statt neben ihm. */
-    icicleWarn: 70, icicleShake: 1.35,
+    /* Der Brocken haengt schon ab rund 270 m sichtbar an der Decke. Ab 60 m
+       beginnt das Zittern als eigentliche Vorwarnung, 2.2 s lang — bei
+       Spitzentempo bleiben danach noch gut zwei Sekunden zum Ausweichen. */
+    icicleWarn: 60, icicleShake: 2.2,
     islandW: 8.5, islandH: 3.2,                      // Mittelinseln teilen die Piste
     cliffDepth: 14, cliffShelf: 5, cliffSlope: 1.15, // Schulter, dann steiler Abhang
     hazardGapZ: 26, hazardGapX: 13,                  // Mindestluecke zwischen Hindernissen
@@ -296,6 +299,13 @@ const CONFIG = {
     pivotScale: 2.1,        // langsam: fast auf der Stelle pivotieren
     carveScale: 0.62,       // schnell: traege, dafuer stabil
     steerFalloff: 22,       // ab dieser Geschwindigkeit gilt carveScale
+    /* Ueber steerFalloff hinaus waechst die Drehrate wieder mit dem Tempo.
+       Die seitliche Ausweichstrecke auf eine feste Sichtweite ist proportional
+       zu (Drehrate / Tempo): bleibt die Drehrate konstant, halbiert doppeltes
+       Tempo den Ausweichweg. Genau daran wurde das Spiel schnell unspielbar.
+       0.85 haelt den Ausweichweg bis zum doppelten Falloff-Tempo nahezu
+       konstant, ohne dass es sich bei Normaltempo zappelig anfuehlt. */
+    steerAgil: 0.85,
     popSweet: 0.92, popTol: 0.45,   // Idealpunkt auf der Rampe und Toleranz
     popWorst: 0.72, popBest: 1.32,  // Impulsfaktor je nach Timing
     popWindow: 0.26,        // so lange nach dem Absprung entsteht voller Drehimpuls
@@ -1937,7 +1947,7 @@ const startGate = (() => {
    EISTUNNEL — Gewoelbe ueber der Piste, aus dem Eiszapfen fallen.
    Jeder Zapfen wackelt erst und faellt dann; man muss ausweichen.
    ========================================================================== */
-const TUNNEL_SEG = 14, ICICLE_N = 7;
+const TUNNEL_SEG = 14, ICICLE_N = 10;
 let tunClock = 0;
 /* MODULEBENE, nicht im Aufbau-Block: updateTunnel weist das Portalmaterial
    pro Frame zu. Im Block deklariert warf jeder Tunnel eine ReferenceError,
@@ -2079,23 +2089,37 @@ const portals = [];
    Eis auf hellem Grund waren sie kaum zu sehen. Unregelmaessige Form statt
    glattem Kegel, deutlich groesser. */
 const icicleGeo = (() => {
-  const g = new THREE.IcosahedronGeometry(0.85, 1);
+  /* Bei 86 Grad Sichtfeld ist ein 2.6-m-Brocken auf 75 m Entfernung nur 24 px
+     gross — ein Fleck, den man nicht als Warnung liest. 2.1 ergibt gut 5 m
+     Breite: aus der Ferne klar erkennbar und nah eine echte Ausweichaufgabe,
+     ohne die 17.5 m breite Roehre zuzustellen. */
+  const g = new THREE.IcosahedronGeometry(2.10, 1);
   const pos = g.attributes.position, v = new THREE.Vector3();
   for (let i = 0; i < pos.count; i++) {
     v.fromBufferAttribute(pos, i);
     const f = 0.72 + vnoise(v.x * 2.1 + 3.3, v.z * 2.1 + v.y * 1.7) * 0.55;
     v.multiplyScalar(f);
-    v.y *= 1.35;                          // laenglich nach unten
+    v.y *= 1.75;                          // laenglich nach unten
     pos.setXYZ(i, v.x, v.y, v.z);
   }
   g.computeVertexNormals();
-  g.translate(0, -0.9, 0);                // Aufhaengung oben
+  /* Der Brocken haengt DEUTLICH unter die Decke herunter. Sass er buendig im
+     Gewoelbe, verschwand er aus der Verfolgerperspektive in der Deckenkante —
+     man sah ihn erst im Fall, also zu spaet zum Ausweichen. */
+  g.translate(0, -1.9, 0);                // Aufhaengung oben
   return g;
 })();
-const icicleMat = new THREE.MeshLambertMaterial({ color: 0xb9c4d2, flatShading: true });
+/* Eigenleuchten: in der abgedunkelten Hoehle bekommt die Decke kaum Sonne ab,
+   ein rein diffus beleuchteter Brocken war dort praktisch schwarz vor
+   schwarzem Fels. Mit emissive hebt er sich klar ab — lesbar als vom
+   Fackelschein angestrahlter, loser Block. */
+const icicleMat = new THREE.MeshLambertMaterial({ color: 0xb9c4d2, flatShading: true,
+  emissive: 0x6f7c8d });
 const icicles = [];
 for (let i = 0; i < ICICLE_N; i++) {
-  const m = new THREE.Mesh(icicleGeo, icicleMat);
+  /* Eigene Materialinstanz je Brocken: nur so kann der eine, der gerade
+     zittert, heller pulsen, ohne dass alle anderen mitleuchten. */
+  const m = new THREE.Mesh(icicleGeo, icicleMat.clone());
   m.visible = false;
   m.castShadow = true;
   scene.add(m);
@@ -2107,8 +2131,12 @@ for (let i = 0; i < ICICLE_N; i++) {
 function placePortal(P0, d, R) {
   const wallX = R.hw * TUN_W, wallY = R.hw * TUN_H;
   const floorY = terrainH(R.cx, -d) - 1.2;
-  const SPAN = R.hw * 2 + 80;          // weit ueber die Piste hinaus
-  const H = wallY + 26;                // hoch genug, dass kein Himmel durchscheint
+  const SPAN = R.hw * 2 + 150;         // weit ueber die Piste hinaus
+  /* Der Grat war ueber die ganze Sektion gleich hoch — von aussen eine Mauer,
+     die auf die Piste gesetzt wurde. Die Hoehe schwankt jetzt entlang der
+     Strecke, so entsteht eine echte Kammlinie statt einer Oberkante. Der
+     Mindestwert haelt den Himmel weiterhin draussen. */
+  const H = wallY + 22 + vnoise(d * 0.021, 5.7) * 30;
   const TH = 11.5;                     // etwas mehr als das 10-m-Raster: die
                                        // Scheiben ueberlappen, keine Fugen
   /* Die Wand muss WEIT unter die Fahrbahn reichen: ihre Unterkante ist gerade,
@@ -2131,14 +2159,21 @@ function placePortal(P0, d, R) {
      wie ein Berg aussieht und nicht wie eine Mauer. */
   for (let k = 0; k < P0.bulk.length; k++) {
     const b = P0.bulk[k];
-    const f = hash2(Math.round(d), k);
-    const sx = 8 + f * 16, sy = 5 + f * 11, sz = 6 + f * 9;
+    /* Zwei getrennte Hashes: vorher bestimmte derselbe Wert Groesse UND Lage,
+       dadurch lagen die grossen Bloecke immer aussen und die kleinen immer in
+       der Mitte — ein sichtbares Muster. */
+    const f = hash2(Math.round(d), k), g2 = hash2(Math.round(d) + 91, k * 7 + 3);
+    const u = (g2 - 0.5) * 1.9;                 // Lage quer, bis ueber den Rand
+    /* Zu den Flanken hin kleiner: die Masse laeuft aus, statt an der
+       Scheibenkante abzubrechen. */
+    const rand = 1 - Math.min(1, Math.abs(u)) * 0.55;
+    const sx = (9 + f * 18) * rand, sy = (6 + f * 13) * rand, sz = 7 + f * 10;
     b.scale.set(sx, sy, sz);
-    b.position.set((f - 0.5) * SPAN * 0.8, H - 4 + sy * 0.3, (f - 0.5) * TH);
-    b.rotation.set(f * 2, f * 3, f * 1.5);
+    b.position.set(u * SPAN * 0.5, H - 5 + sy * 0.3, (f - 0.5) * TH);
+    b.rotation.set(f * 2, g2 * 3, f * 1.5);
   }
   // Schneehaube auf dem Grat
-  P0.cap.scale.set(SPAN * 0.8, 2.5, TH + 2);
+  P0.cap.scale.set(SPAN * 0.72, 2.5, TH + 2);
   P0.cap.position.set(0, H - 2.6, 0);
 
 }
@@ -2226,20 +2261,41 @@ function updateTunnel(rz, dt) {
                       -d + (k - 1) * TUN_LEN * 0.3);
       n2.rotation.set(f * 0.7, f * 3.1, seit * 0.45);
     }
-    // Zapfen an dieses Segment binden
-    for (let k = 0; k < 1 && ic < ICICLE_N; k++) {
-      const I = icicles[ic++];
-      if (I.state === 'idle') {
-        I.d = d + 6;
-        const RR = rowData(I.d, _rowA);
-        I.x = RR.cx + (hash2(Math.round(I.d), k) - 0.5) * RR.hw * 1.4;
-        /* Der Zapfen haengt an der Gewoelbedecke, nicht auf fester Hoehe ueber
-           dem Boden: bei RR.hw * 0.9 stand er durch das Dach und schwebte
-           sichtbar ausserhalb der Hoehle. Ellipse an der Stelle I.x. */
-        const q = clamp((I.x - RR.cx) / (RR.hw * TUN_W), -0.97, 0.97);
-        I.top = terrainH(RR.cx, -I.d) - 1.2 + RR.hw * TUN_H * Math.sqrt(1 - q * q);
-        I.y = I.top; I.vy = 0;
-        I.state = 'hang';
+    /* Brocken an die Decke haengen.
+       Zwei Fehler von vorher: (1) jedes Segment bekam einen, also alle 10 m —
+       viel zu viel. (2) Sie wurden 6 m vor dem Fahrer gesetzt, die Segmente
+       reichen aber nur 150 m nach vorn; zusammen mit der Vorwarnung zitterten
+       oder fielen praktisch alle gleichzeitig und keiner hing je ruhig da.
+       Jetzt: rund jedes dritte Segment (gut 30 m Abstand) und 120 m weiter
+       vorn gesetzt, damit jeder Brocken lange sichtbar an der Decke haengt,
+       bevor die Vorwarnung ueberhaupt greift. */
+    if (hash2(Math.round(d) + 17, 5) < 0.34) {
+      const dz = d + 120;
+      const RR = rowData(dz, _rowB);
+      /* Belegtpruefung: updateTunnel laeuft je Physikschritt, und solange der
+         Fahrer im selben 10-m-Raster steht, trifft die Schleife dieselbe
+         Stelle immer wieder. Ohne diese Pruefung wurden alle zehn Brocken
+         innerhalb weniger Schritte auf denselben Punkt gesetzt. */
+      let belegt = false;
+      for (let t = 0; t < ICICLE_N; t++)
+        if (icicles[t].state !== 'idle' && Math.abs(icicles[t].d - dz) < 8) { belegt = true; break; }
+      if (RR.tunnel > 0.6 && !belegt) {
+        for (let t = 0; t < ICICLE_N; t++) {
+          const I = icicles[t];
+          if (I.state !== 'idle') continue;
+          I.d = dz;
+          I.x = RR.cx + (hash2(Math.round(dz), 3) - 0.5) * RR.hw * 1.4;
+          /* Der Brocken haengt an der Gewoelbeellipse, nicht auf fester Hoehe
+             ueber dem Boden: sonst stand er durch das Dach. */
+          const q = clamp((I.x - RR.cx) / (RR.hw * TUN_W), -0.97, 0.97);
+          /* 2.5 m unter die Ellipse: der Deckenquader beginnt 2 m UNTER dem
+             Bogenscheitel, ein exakt auf der Ellipse haengender Brocken steckte
+             also im Fels und war von der Kamera aus verdeckt. */
+          I.top = terrainH(RR.cx, -dz) - 1.2 + RR.hw * TUN_H * Math.sqrt(1 - q * q) - 2.5;
+          I.y = I.top; I.vy = 0;
+          I.state = 'hang';
+          break;
+        }
       }
     }
   }
@@ -2257,8 +2313,11 @@ function updateTunnel(rz, dt) {
     I.mesh.visible = true;
     const near = I.d - d0;
     if (I.state === 'hang') {
+      /* Schon im Ruhezustand ein leises Pendeln: so ist von weitem erkennbar,
+         welcher Brocken lose ist und welcher zur festen Decke gehoert. */
       I.mesh.position.set(I.x, I.top, -I.d);
-      I.mesh.rotation.z = 0;
+      I.mesh.rotation.z = Math.sin(tunClock * 1.7 + I.d * 0.31) * 0.055;
+      I.mesh.rotation.x = Math.cos(tunClock * 1.3 + I.d * 0.19) * 0.04;
       if (near < T.icicleWarn) { I.state = 'shake'; I.t = 0; }
     } else if (I.state === 'shake') {
       I.t += dt;
@@ -2269,14 +2328,27 @@ function updateTunnel(rz, dt) {
       I.mesh.rotation.z = Math.sin(I.t * 34) * (0.10 + auf * 0.30);
       I.mesh.rotation.x = Math.cos(I.t * 27) * (0.06 + auf * 0.20);
       I.mesh.position.y = I.top - auf * 0.25;
-      if (auf > 0.55 && Math.random() < 0.09)
-        burst(I.x, I.top - 0.6, -I.d, 2, 0.6);           // rieselnder Staub
+      /* Auf 60 m Entfernung ist ein 5-m-Brocken bei 86 Grad Sichtfeld nur rund
+         50 px gross — zu wenig, um das Wackeln allein zu erkennen. Er pulst
+         deshalb zusaetzlich hell auf, so wie die Fackeln auf dieselbe Distanz
+         gut sichtbar sind. Das Pulsen wird zum Fall hin schneller. */
+      const puls = 0.5 + 0.5 * Math.sin(I.t * (9 + auf * 16));
+      I.mesh.material.emissive.setRGB(
+        0.43 + puls * (0.30 + auf * 0.27),
+        0.49 + puls * (0.28 + auf * 0.23),
+        0.55 + puls * (0.25 + auf * 0.20));
+      // Rieselnder Staub von Anfang an, zum Fall hin dichter
+      if (Math.random() < 0.05 + auf * 0.22)
+        burst(I.x, I.top - 1.8, -I.d, 3, 0.9);
       if (I.t > T.icicleShake) { I.state = 'fall'; I.vy = 0; I.y = I.top; }
     } else {
       I.vy -= 22 * dt; I.y += I.vy * dt;
       I.mesh.position.set(I.x, I.y, -I.d);
       I.mesh.rotation.z = 0;
-      if (I.y < terrainH(I.x, -I.d) - 1) { I.state = 'idle'; I.mesh.visible = false; }
+      if (I.y < terrainH(I.x, -I.d) - 1) {
+        I.state = 'idle'; I.mesh.visible = false;
+        I.mesh.material.emissive.setHex(0x6f7c8d);   // Grundleuchten zurueck
+      }
     }
   }
 }
@@ -2284,9 +2356,11 @@ function updateTunnel(rz, dt) {
 function hitByIcicle(x, z, y) {
   for (const I of icicles) {
     if (I.state !== 'fall') continue;
-    if (Math.abs(-z - I.d) > 1.3) continue;
-    if (Math.abs(x - I.x) > 1.1) continue;
-    if (I.y - 1.5 < y + 1.9 && I.y > y - 0.3) return true;
+    /* Trefferzone waechst mit dem Brocken mit — sonst faellt sichtbar Fels
+       durch den Fahrer hindurch. */
+    if (Math.abs(-z - I.d) > 2.2) continue;
+    if (Math.abs(x - I.x) > 2.4) continue;
+    if (I.y - 3.0 < y + 1.9 && I.y > y - 0.3) return true;
   }
   return false;
 }
@@ -2650,8 +2724,12 @@ function placeTree(i, rz, zForce) {
   /* Flucht: wilder Berg — einzelne Baeume stehen mitten in der Strecke.
      Nicht im Tunnel, nicht am Anfang; ueber i getaktet, damit die Dichte
      kalkulierbar bleibt (hitsTree macht jeden davon zum Stolperer). */
+  /* Je schneller, desto weniger Baeume in der Spur: die Abstaende bleiben in
+     Metern gleich, aber die Reaktionszeit schrumpft mit dem Tempo. Bei 42 m/s
+     steht nur noch gut die Haelfte davon. */
+  const eilig = clamp01((rider.vel.length() - 20) / 22);
   if (State.mode === 'ESCAPE' && -z > 140 && R.tunnel < 0.2 && !R.kick &&
-      i % 8 === 0 && rnd() < 0.65) {
+      i % 8 === 0 && rnd() < 0.65 * (1 - eilig * 0.45)) {
     setTree(i, R.cx + rndR(-0.8, 0.8) * Math.max(1.5, R.hw - 2.5), z,
       rndR(0.85, 1.35), rndR(0.95, 1.25));
     return;
@@ -3832,7 +3910,9 @@ function step(dt) {
     /* Lenken — langsam laesst sich das Board fast auf der Stelle pivotieren,
        schnell dreht es traeger. */
     const speed0 = rider.vel.length();
-    const steerScale = lerp(P.pivotScale, P.carveScale, clamp01(speed0 / P.steerFalloff));
+    const ueber = Math.max(0, speed0 - P.steerFalloff) / P.steerFalloff;
+    const steerScale = lerp(P.pivotScale, P.carveScale, clamp01(speed0 / P.steerFalloff))
+                     * (1 + ueber * P.steerAgil);
     // yaw waechst gegen den Uhrzeigersinn (nach links) -> D (st=+1) muss abziehen
     const steerDelta = -st * P.steerRate * steerScale * dt * (1 - rider.onIce * 0.45);
 
@@ -3961,7 +4041,12 @@ function step(dt) {
            Zielgeschwindigkeit mehr — dort bestimmt allein das Gefaelle das
            Tempo, so wie es sich physikalisch gehoert. */
         if (escape) {
-          const ramp = 0.85 + clamp01(State.maxDist / 2200) * 0.70;
+          /* Der Vollausbau lag bei 2.2 km — nach wenigen Minuten erreicht.
+             Jetzt zieht es ueber 6 km an, und der Anstieg ist hinten gewichtet
+             (Exponent 1.35), damit die ersten Kilometer ruhig bleiben und der
+             Druck erst mit fortgeschrittenem Spielstand kommt. */
+          const rampT = clamp01(State.maxDist / 6000);
+          const ramp = 0.80 + Math.pow(rampT, 1.35) * 0.62;
           const targetSpeed = P.cruiseSpeed * ramp;
           if (speed > targetSpeed) speed -= (speed - targetSpeed) * P.speedReturn * dt;
           // nachziehen nur bergab, sonst koennte man endlos aufwaerts fahren
