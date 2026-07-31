@@ -2591,6 +2591,50 @@ const YETI_FUSS = (() => {
    versinken. */
 const YETI_SENK = 0.39;
 let yetiRoarT = 1.0, yetiRoarAnim = 0, yetiStompT = 0;
+/* Legt den Yeti auf das Gefaelle. dx/dz ist seine Laufrichtung; gemessen wird
+   das Gelaende 1.8 m davor und dahinter, also ueber seine Rumpflaenge. */
+function neigeZumHang(px, pz, dx, dz) {
+  const L = Math.hypot(dx, dz) || 1;
+  const ux = dx / L, uz = dz / L;
+  const yVorn   = terrainH(px + ux * 1.8, pz + uz * 1.8);
+  const yHinten = terrainH(px - ux * 1.8, pz - uz * 1.8);
+  /* Vorzeichen gemessen, nicht hergeleitet: bergab voraus muss die Nase
+     sinken. Der Rumpf ist laenger als breit, deshalb reicht die Neigung um
+     die Querachse — eine Rollkomponente faellt am Yeti nicht auf. */
+  yeti.rotation.x = Math.atan2(yVorn - yHinten, 3.6) * YETI_NEIG;
+}
+/* Faktor aus zwei Messpunkten bestimmt, nicht geraten. Gemessen wurde die
+   Differenz (Vorderpfoten minus Hinterpfoten) ueber dem jeweiligen Boden:
+     Faktor +1  ->  +1.0 m (Nase zu hoch)
+     Faktor -1  ->  -2.0 m (Nase zu tief)
+   Der Nulldurchgang liegt danach bei rund +0.33. Dass er nicht bei 0 liegt,
+   kommt vom Gruppenursprung: er sitzt nicht in der Rumpfmitte, deshalb hebt
+   die Drehung Vorder- und Hinterhand unterschiedlich stark. */
+const YETI_NEIG = 0.33;
+/* Statt YETI_FUSS, YETI_SENK und YETI_NEIG gegeneinander zu tarieren, wird der
+   Yeti ueber seinen tatsaechlich tiefsten Punkt aufgesetzt: die Huelle ueber
+   das ganze Modell messen und die Gruppe so verschieben, dass der unterste
+   Punkt knapp unter der Schneeoberflaeche liegt. Das bleibt richtig, egal wie
+   stark er gerade geneigt ist oder in welcher Phase der Galopp steht — die
+   Hinterpfoten schwebten vorher 0.26 bis 1.30 m ueber dem Schnee.
+   Der Galopp-Hub kommt danach obendrauf, damit die Flugphase erhalten bleibt. */
+/* Der Galopp-Hub wird nie null — sein Sockel liegt bei rund 0.29 m und hob den
+   Yeti dauerhaft vom Schnee ab (gemessen tiefster Punkt +0.18 statt -0.12).
+   Der Sockel wird deshalb einmal aus der Funktion selbst bestimmt und abgezogen,
+   damit die Pfoten im tiefsten Punkt des Zyklus wirklich aufsetzen und nur die
+   Flugphase abhebt. */
+const YETI_HUB0 = (() => {
+  let m = Infinity;
+  for (let i = 0; i < 240; i++) m = Math.min(m, yetiGallop(i / 240));
+  return m;
+})();
+const _yBox = new THREE.Box3();
+function setzePfotenAufSchnee() {
+  yeti.updateWorldMatrix(true, true);
+  _yBox.setFromObject(yeti);
+  const soll = terrainH(yeti.position.x, yeti.position.z) - 0.12;
+  yeti.position.y += soll - _yBox.min.y;
+}
 /* GALOPP — die Gangart eines sprintenden Vierbeiners, kein Gehen. Der
    Zyklus (0..1) laeuft: Vorderbeine landen versetzt und ziehen den Koerper
    nach, dann schnellen die Hinterbeine gemeinsam nach vorn und stossen ab,
@@ -5825,8 +5869,12 @@ function updateChase(dt) {
     yeti.position.set(zx, terrainH(zx, rider.pos.z + back) + YETI_FUSS - YETI_SENK,
                       rider.pos.z + back);
     yeti.rotation.y = Math.PI;
+    // im Intro laeuft er hangabwaerts auf die Kamera zu
+    neigeZumHang(zx, rider.pos.z + back, 0, -1);
     const A = yeti.userData;
-    yeti.position.y += yetiGallop((p * 4.2) % 1);
+    const hubI = yetiGallop((p * 4.2) % 1) - YETI_HUB0;
+    setzePfotenAufSchnee();
+    yeti.position.y += hubI;
     A.headG.rotation.x = -0.10 - yetiRoarAnim * 0.30;
     A.jaw.rotation.x = 0.35 + yetiRoarAnim * 0.55;
     return;
@@ -5857,6 +5905,11 @@ function updateChase(dt) {
   yeti.position.set(px, Math.max(py, terrainH(px, pz)) + YETI_FUSS - YETI_SENK, pz);
   // zum Fahrer ausrichten
   yeti.rotation.y = Math.atan2(rider.pos.x - px, rider.pos.z - pz) + Math.PI;
+  /* AUF DAS GEFAELLE LEGEN. Er stand senkrecht, auch auf 24 Grad Hang —
+     dadurch griffen die Vorderlaeufe ins Leere und die Hinterpfoten standen
+     nicht im Schnee. Die Neigung kommt aus dem Gelaende 1.8 m vor und hinter
+     ihm entlang seiner Laufrichtung. */
+  neigeZumHang(px, pz, rider.pos.x - px, rider.pos.z - pz);
   /* Galopp auf allen vieren: Vorderbeine greifen gemeinsam aus, die
      Hinterbeine stossen gemeinsam ab, der Rumpf wogt, der ganze Koerper hebt
      in der Flugphase ab — die Gangart eines hetzenden Baeren. */
@@ -5870,7 +5923,11 @@ function updateChase(dt) {
      Auge unruhig. Ein schwerer Yeti galoppiert ohnehin langsamer als eine
      Katze (belegt: 1.6-2.2 Hz fuer Baeren, grosse Tiere am unteren Ende). */
   const cyc = (chaseClock * 1.35) % 1;
-  yeti.position.y += yetiGallop(cyc);
+  /* Erst die Gangart setzen (yetiGallop dreht die Laeufe und liefert den Hub),
+     dann die Pfoten wirklich auf den Schnee stellen, dann den Hub obendrauf. */
+  const hub = yetiGallop(cyc) - YETI_HUB0;
+  setzePfotenAufSchnee();
+  yeti.position.y += hub;
   A.headG.rotation.x = -0.10 - Math.sin(cyc * Math.PI * 2) * 0.16 - yetiRoarAnim * 0.30;
   // Beim Aufschlag der Pranken stiebt der Schnee
   if (cyc > 0.26 && cyc < 0.34 && chaseClock - yetiStompT > 0.25) {
