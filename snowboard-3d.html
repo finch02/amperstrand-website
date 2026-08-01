@@ -47,6 +47,15 @@
   #wasted::before{content:'';position:absolute;inset:0;transition:opacity .6s ease;
     background:radial-gradient(ellipse at center,rgba(158,10,10,.66) 0%,rgba(104,4,4,.88) 45%,rgba(26,0,0,.97) 100%)}
 
+  #wasted{flex-direction:column;gap:10px}
+  /* Der Spielstand steht direkt unter dem Schriftzug und blendet spaeter ein,
+     damit er den Moment nicht ueberlagert. */
+  #wasted b{position:relative;font-family:'Inter Tight',system-ui,sans-serif;
+    font-weight:800;font-size:clamp(15px,3.4vw,26px);letter-spacing:.02em;
+    color:#f0d9d5;opacity:0;transform:translateY(10px);
+    transition:opacity .5s ease .55s,transform .6s cubic-bezier(.2,.9,.3,1) .55s;
+    text-shadow:0 2px 14px rgba(0,0,0,.6)}
+  #wasted.on b{opacity:.92;transform:translateY(0)}
   #wasted span{position:relative;font-family:'Inter Tight',system-ui,sans-serif;
     font-weight:900;font-size:clamp(46px,13vw,132px);letter-spacing:.12em;
     color:#e8e2dc;text-shadow:0 4px 26px rgba(0,0,0,.65);
@@ -224,7 +233,7 @@
   </div>
 </div>
 
-<div id="wasted"><span>WASTED</span></div>
+<div id="wasted"><span>WASTED</span><b id="wastedScore"></b></div>
 
 <div class="screen" id="over">
   <div class="card">
@@ -336,6 +345,10 @@ const CONFIG = {
        0.85 haelt den Ausweichweg bis zum doppelten Falloff-Tempo nahezu
        konstant, ohne dass es sich bei Normaltempo zappelig anfuehlt. */
     steerAgil: 0.85,
+    /* Nur die Sinkphase wird beschleunigt, der Anstieg bleibt bei 1.0.
+       1.75 fuehlte sich laut Nutzer "richtig komisch" an — 1.45 kuerzt den
+       Bogen hinten spuerbar, laesst ihm aber seine Flugphase. */
+    fallBoost: 1.45,
     popSweet: 0.92, popTol: 0.45,   // Idealpunkt auf der Rampe und Toleranz
     popWorst: 0.72, popBest: 1.32,  // Impulsfaktor je nach Timing
     popWindow: 0.26,        // so lange nach dem Absprung entsteht voller Drehimpuls
@@ -2952,6 +2965,17 @@ function sprungHindernisNah(z, weite) {
   for (const c of chasms) if (c.on && Math.abs(c.z - z) < weite) return true;
   return false;
 }
+/* Baeume MITTEN in der Fahrbahn in Reichweite von z aus dem Weg raeumen.
+   Sie werden nach hinten aus dem Sichtbereich geschoben; das Pooling setzt sie
+   ohnehin neu, sobald der Fahrer vorbei ist. */
+function entferneSpurBaeume(z, weite) {
+  for (let i = 0; i < Q.trees; i++) {
+    const t = treeSlot[i];
+    if (!t || !t.spur || Math.abs(t.z - z) > weite) continue;
+    t.spur = 0; t.s = 0; t.z = z + 4000;
+    hideInstance(trees, i, t.z);
+  }
+}
 /* Steht in Reichweite von z ein Baum MITTEN in der Fahrbahn? */
 function spurBaumNah(z, weite) {
   for (let i = 0; i < Q.trees; i++) {
@@ -3111,18 +3135,31 @@ function placeLog(i, rz) {
   const z = rz - rndR(AHEAD_MIN, AHEAD_MAX), d = -z;
   const slot = logSlot[i] || (logSlot[i] = {});
   slot.z = z;
+  /* Bei Ablehnung den Slot direkt HINTER den Fahrer parken, damit er im
+     naechsten Bild eine neue Stelle wuerfelt. Vorher blieb er auf der
+     abgelehnten Position weit vorn liegen und war damit fuer Hunderte Meter
+     aus dem Spiel — von 12 Slots waren so nur 3 je aktiv. */
+  const verwerfen = () => { slot.on = 0; slot.z = rz + BEHIND + 0.1; hideInstance(logs, i, z); };
   const R = rowData(d, _rowA);
   if (State.mode !== 'ESCAPE' || d < 130 || R.tunnel > 0.25 || R.park > 0.5 || R.kick) {
-    slot.on = 0; hideInstance(logs, i, z); return;
+    slot.on = 0; hideInstance(logs, i, z); return;      // Abschnitt taugt nicht: normal parken
   }
   // Mindestabstand zu anderen Staemmen und Schluchten, sonst unfaire Doppel
   for (let j = 0; j < Q.logs; j++) {
     const o = logSlot[j];
-    if (o && j !== i && o.on && Math.abs(o.z - z) < 30) { slot.on = 0; hideInstance(logs, i, z); return; }
+    /* 95 m Mindestabstand: mit 30 m packten sich die zwoelf Slots durch den
+       Sofort-Neuwurf auf Minimalabstand (gemessen Mittel 45 m) — und weil um
+       jeden Stamm 30 m Baeume geraeumt werden, blieb KEIN Spurbaum mehr
+       uebrig. Der ganze Hindernistyp Baum war aus dem Spiel. */
+    if (o && j !== i && o.on && Math.abs(o.z - z) < 95) { verwerfen(); return; }
   }
-  for (const c of chasms) if (c.on && Math.abs(c.z - z) < 38) { slot.on = 0; hideInstance(logs, i, z); return; }
-  // Gegenrichtung: kein Stamm in Reichweite eines Baums MITTEN in der Spur
-  if (spurBaumNah(z, KONFLIKT_Z)) { slot.on = 0; hideInstance(logs, i, z); return; }
+  for (const c of chasms) if (c.on && Math.abs(c.z - z) < 38) { verwerfen(); return; }
+  /* Gegenrichtung: steht ein Baum MITTEN in der Spur in Reichweite, gewinnt
+     der Stamm und der Baum weicht. Vorher wurde umgekehrt der Stamm verworfen —
+     und weil fast ueberall ein Spurbaum in 30 m Reichweite steht, kamen ueber
+     26000 Schritte NULL Staemme vor: der Hindernistyp war komplett weg.
+     Staemme sind seltener und interessanter, deshalb haben sie Vorrang. */
+  entferneSpurBaeume(z, KONFLIKT_Z);
   const high = rnd() < 0.42;
   const x = R.cx + rndR(-1, 1) * Math.max(0, R.hw - LOG_LEN / 2) * 0.8;
   const gy = heightIn(x, R);
@@ -3139,15 +3176,17 @@ function placeChasm(k, rz) {
   const c = chasms[k];
   const z = rz - rndR(AHEAD_MIN + 30, AHEAD_MAX + 120), d = -z;
   c.z = z;
+  const verwerfen = () => { c.on = false; c.z = rz + BEHIND + 0.1; c.obj.visible = false; };
   const R = rowData(d, _rowA);
   if (State.mode !== 'ESCAPE' || d < 180 || R.tunnel > 0.2 || R.park > 0.5 ||
       R.kick || Math.abs(R.curv) > 0.25) { c.on = false; c.obj.visible = false; return; }
-  for (const o of chasms) if (o !== c && o.on && Math.abs(o.z - z) < 110) { c.on = false; c.obj.visible = false; return; }
+  for (const o of chasms) if (o !== c && o.on && Math.abs(o.z - z) < 110) { verwerfen(); return; }
   for (let j = 0; j < Q.logs; j++) {
     const o = logSlot[j];
-    if (o && o.on && Math.abs(o.z - z) < 46) { c.on = false; c.obj.visible = false; return; }
+    if (o && o.on && Math.abs(o.z - z) < 46) { verwerfen(); return; }
   }
-  if (spurBaumNah(z, KONFLIKT_Z)) { c.on = false; c.obj.visible = false; return; }
+  // Auch die Schlucht hat Vorrang vor einem Baum in der Spur
+  entferneSpurBaeume(z, KONFLIKT_Z);
   const dep = rndR(4.0, 5.2);   // schmaler: sicher in einem Sprung zu nehmen
   c.half = dep / 2;
   const w = R.hw * 2 + 10;
@@ -3983,7 +4022,7 @@ const State = {
      bonusScore sammelt die Extrapunkte aus "Doppelte Punkte" — dadurch bleibt
      die normale Punktrechnung unangetastet und der Bonus exakt. */
   power: { sprung: 0, jet: 0, schild: 0, doppel: 0, magnet: 0 },
-  todesart: 'sturz',
+  todesart: 'sturz', totLupe: 1,
   bonusScore: 0, letzteSumme: 0, powerName: '', powerNameT: 0,
   maxDist: 0, combo: 1, crashT: 0, shake: 0,
   best: 0
@@ -4151,6 +4190,12 @@ function fellIntoChasm() {
 }
 function crash(hard, art) {
   if (State.now !== 'PLAYING') return;
+  /* Drehzaehler ausbuchen. land() setzt sie erst ganz am Ende zurueck — der
+     Crash-Pfad kehrt aber vorher zurueck. Nach jedem Sturz (in der Flucht:
+     jedem Stolperer) blieb die angesammelte Drehung stehen, und der naechste
+     Sprung addierte darauf: ein 180er wurde als "360" angezeigt. */
+  rider.spinAcc = 0;
+  rider.flipAcc = 0;
   /* Die Todesart bestimmt spaeter die Pose. 'sturz' ist der Faceplant im
      Schnee und gilt als Standard, wenn nichts anderes angegeben ist. */
   State.todesart = art || 'sturz';
@@ -4585,7 +4630,17 @@ function step(dt) {
       const snapF = Math.round(rider.flip / (Math.PI * 2)) * Math.PI * 2;
       rider.flip += (snapF - rider.flip) * damp(k, dt);
     }
-    rider.vel.y -= P.gravity * dt;
+    /* FALLBESCHLEUNIGUNG. Der Sprung trug zu weit: man kam hinter dem
+       Hindernis erst wieder runter und landete dort im naechsten. Der Anstieg
+       bleibt unveraendert (die Sprunghoehe darf nicht sinken), aber ab dem
+       Scheitel zieht es staerker nach unten. Dadurch wird der Bogen hinten
+       kuerzer, ohne dass man niedriger springt — die uebliche Loesung in
+       Sprungspielen. */
+    /* NUR im Fluchtmodus: dort stehen die Hindernisse dicht und ein zu langer
+       Bogen traegt einen ins naechste. In den freien Modi bleibt die normale
+       ballistische Kurve — dort ist weit springen ja gerade der Reiz. */
+    const fallE = State.mode === 'ESCAPE' && rider.vel.y < 0 ? P.fallBoost : 1;
+    rider.vel.y -= P.gravity * fallE * dt;
     rider.vel.multiplyScalar(1 - 0.02 * dt);
     State.airScore += G.airPointsPerSec * dt;
   }
@@ -6118,8 +6173,14 @@ function caught() {
      Zahlen. Die Szene laeuft dahinter weiter, entsaettigt und rot ueberlagert.
      Die Karte kommt erst nach 1.9 s — vorher ueberdeckte sie den Moment. */
   Audio.wasted();
+  $('wastedScore').textContent =
+    Math.floor(State.maxDist) + ' m  ·  ' + State.coins + ' Münzen  ·  '
+    + State.score.toLocaleString('de-DE') + ' Punkte';
   renderer.domElement.classList.add('tot');
   elWasted.classList.add('on');
+  /* ZEITLUPE: der Fahrer haengt im Fang und zappelt in halbem Tempo weiter,
+     solange das rote Bild steht. Danach laeuft es wieder normal. */
+  State.totLupe = 0.30;
   clearTimeout(wastedTimer);
   wastedTimer = setTimeout(() => {
     elWasted.classList.add('leise');
@@ -6132,6 +6193,7 @@ function wastedAus() {
   clearTimeout(wastedTimer);
   elWasted.classList.remove('on', 'leise');
   renderer.domElement.classList.remove('tot');
+  State.totLupe = 1;
 }
 
 /* Ein Stolperer statt eines Sturzes: Tempo weg, Yeti rueckt auf. Der zweite
@@ -6260,8 +6322,9 @@ function frame(now) {
        aufgezeichneten Linie und lief dem gepackten Fahrer davon (gemessen
        37.7 m Abstand zum Maul). Er bleibt jetzt stehen, wo er zugeschnappt
        hat, und traegt den Fahrer nur noch im Fang. */
-    State.gameOverT += dt;
-    updateVisuals(dt);   // enthaelt auch die Kamerafuehrung
+    const lupe = State.totLupe || 1;
+    State.gameOverT += dt * lupe;
+    updateVisuals(dt * lupe);   // enthaelt auch die Kamerafuehrung
   } else if (State.now === 'CRASHED') {
     State.crashT += dt;
     rider.vel.y -= CONFIG.phys.gravity * dt * 0.4;
