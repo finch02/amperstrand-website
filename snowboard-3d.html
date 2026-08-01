@@ -2496,8 +2496,11 @@ const yeti = (() => {
   }
   /* Maul als schmaler Spalt unter der Schnauze, nicht als Kasten. Er oeffnet
      sich beim Bruellen ueber jaw.rotation.x. */
+  /* Kiefer hoeher und weiter vorn angesetzt: bei y -0.30 klaffte zwischen
+     Oberkiefer und Unterkiefer ein Streifen Fell — das Maul las sich als zwei
+     getrennte schwarze Flaechen. */
   const jaw = new THREE.Group();
-  jaw.position.set(0, -0.30, 0.34); headG.add(jaw);
+  jaw.position.set(0, -0.24, 0.40); headG.add(jaw);
   const jawMesh = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 9), skin);
   jawMesh.scale.set(0.90, 0.46, 0.60); jawMesh.position.set(0, -0.04, 0.14);
   jaw.add(jawMesh);
@@ -5853,11 +5856,16 @@ function updateVisuals(dt) {
          waechst brueellend auf sie zu und fuellt das Bild, statt als Punkt am
          Horizont zu tippeln. */
       _tmp.set(yeti.position.x - rider.pos.x, 0, yeti.position.z - rider.pos.z).normalize();
-      const cx = yeti.position.x - _tmp.x * 7, cz = yeti.position.z - _tmp.z * 7;
-      /* Kamera auf IHREM Boden verankern und flach auf ihn halten — sonst
-         haengt er kontrastlos vor dem Himmel statt vor dem Hang. */
-      camera.position.set(cx, terrainH(cx, cz) + 2.0, cz);
-      camLook.set(yeti.position.x, yeti.position.y + 1.7, yeti.position.z);
+      /* 13 m Abstand statt 7: bei 7 m fuellte das 6.6-m-Tier das Bild als
+         weisse Wand, die Kamera schaute nach oben in den Himmel und die
+         Fuesse hingen ohne Bodenkontakt im Bild. Mit 13 m und Blick auf die
+         Brust steht er KOMPLETT im Bild, mit Schnee unter den Pranken. */
+      const cx = yeti.position.x - _tmp.x * 10, cz = yeti.position.z - _tmp.z * 10;
+      /* Tief und leicht aufwaerts: die Masse tuermt sich auf, aber der Schnee
+         unter den Pranken bleibt im Bild — sonst liest sich der Galopp im
+         Standbild als Schweben. */
+      camera.position.set(cx, terrainH(cx, cz) + 1.7, cz);
+      camLook.set(yeti.position.x, yeti.position.y + 2.9, yeti.position.z);
       // sein Galopp erschuettert die Kamera, das Bruellen reisst sie an
       const sh = 0.12 + yetiRoarAnim * 0.22;
       camera.position.x += Math.sin(chaseClock * 43) * sh;
@@ -5887,7 +5895,10 @@ function updateVisuals(dt) {
       camera.position.set(rider.pos.x + Math.sin(a) * dist,
                           rider.pos.y + lerp(1.9, cfg.up, k),
                           rider.pos.z + Math.cos(a) * dist);
-      _tmp.copy(rider.pos); _tmp.z -= lerp(1, cfg.lead, k); _tmp.y += 1.1;
+      /* Der Blick bleibt auf dem FAHRER und wandert erst zum Schluss (k^3)
+         nach vorn — linear eingeblendet zog er schon ab halbem Schwenk bergab
+         und der Fahrer hing abgeschnitten am Bildrand. */
+      _tmp.copy(rider.pos); _tmp.z -= lerp(1, cfg.lead, k * k * k); _tmp.y += 1.1;
       camLook.copy(_tmp);
     }
     camera.lookAt(camLook);
@@ -6056,7 +6067,9 @@ function updateChase(dt) {
        also bei 3 s — nur SEINE Bewegung ist gedehnt. Genau dieser Teil ist im
        zweiten Schnitt in der Brillenspiegelung zu sehen. */
     const pY = p < 0.40 ? Math.pow(p / 0.40, 2.1) * 0.40 : p;
-    const back = lerp(58, 20, smooth(clamp01(pY / 0.72)));
+    /* Bis auf 9 m heran statt 20: in der Brillenspiegelung (Phase 2) war er
+       auf 27 m nur ein Punkt — jetzt springt er darin sichtbar heran. */
+    const back = lerp(58, 9, smooth(clamp01(pY / 0.72)));
     const zx = rider.pos.x + Math.sin(pY * 9) * 1.2;
     yeti.position.set(zx, terrainH(zx, rider.pos.z + back) + YETI_FUSS - YETI_SENK,
                       rider.pos.z + back);
@@ -6069,7 +6082,15 @@ function updateChase(dt) {
     setzePfotenAufSchnee();
     yeti.position.y += hubI;
     A.headG.rotation.x = -0.10 - yetiRoarAnim * 0.30;
-    A.jaw.rotation.x = 0.35 + yetiRoarAnim * 0.55;
+    A.jaw.rotation.x = 0.22 + yetiRoarAnim * 0.68;
+    /* Schnee stiebt beim Prankenaufschlag auch im Intro — vorher gab es das
+       nur in der Verfolgung, der Anlauf wirkte dadurch schwerelos. */
+    const cycI = (pY * 4.2) % 1;
+    if (cycI > 0.26 && cycI < 0.34 && chaseClock - yetiStompT > 0.20) {
+      yetiStompT = chaseClock;
+      burst(yeti.position.x, yeti.position.y + 0.4, yeti.position.z + 1.4, 14, 3.2);
+    }
+    chaseClock += dt;
     return;
   }
   chaseClock += dt;
@@ -6129,7 +6150,9 @@ function updateChase(dt) {
   }
   // Maul: dauerhaft drohend offen, beim Bruellen ganz aufgerissen
   yetiRoarAnim = Math.max(0, yetiRoarAnim - dt * 1.4);
-  A.jaw.rotation.x = 0.35 + yetiRoarAnim * 0.55;
+  /* Grundoeffnung kleiner, Bruell-Ausschlag groesser: dauerhaft 0.35 offen
+     wirkte wie ein aufgeklapptes Scharnier, nicht wie ein Maul. */
+  A.jaw.rotation.x = 0.22 + yetiRoarAnim * 0.68;
 
   // Angst steigt, je naeher er ist
   const gap = Math.hypot(rider.pos.x - px, rider.pos.z - pz);
