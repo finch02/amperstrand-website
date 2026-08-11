@@ -657,8 +657,8 @@
 <!-- MARQUEE STRIP -->
 <section class="strip" aria-hidden="true">
   <div class="strip-row">
-    <span>Augustiner Hell&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wildberry Lillet&nbsp;<span class="sep">✦</span>&nbsp;fritz-kola&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Salitos Tequila&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Chips&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
-    <span>Augustiner Hell&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wildberry Lillet&nbsp;<span class="sep">✦</span>&nbsp;fritz-kola&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Salitos Tequila&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Chips&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;WM Public Viewing · Sundowner · DJ Sets&nbsp;<span class="sep">✦</span>&nbsp;</span>
+    <span>Augustiner Hell&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wildberry Lillet&nbsp;<span class="sep">✦</span>&nbsp;fritz-kola&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Salitos Tequila&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Chips&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;Paulaner Spezi&nbsp;<span class="sep">✦</span>&nbsp;</span>
+    <span>Augustiner Hell&nbsp;·&nbsp;Aperol Spritz&nbsp;·&nbsp;Gösser Radler&nbsp;·&nbsp;Wildberry Lillet&nbsp;<span class="sep">✦</span>&nbsp;fritz-kola&nbsp;·&nbsp;Weinschorle Rosé&nbsp;·&nbsp;Salitos Tequila&nbsp;<span class="sep">✦</span>&nbsp;Kesselnüsse Paprika&nbsp;·&nbsp;Erdnüsse&nbsp;·&nbsp;Chips&nbsp;<span class="sep">✦</span>&nbsp;kukki Cocktails&nbsp;·&nbsp;Paulaner Spezi&nbsp;<span class="sep">✦</span>&nbsp;</span>
   </div>
 </section>
 
@@ -682,6 +682,7 @@
 
           <div class="section-label">Spritz & Aperitivo</div>
           <div class="item"><span>Aperol Spritz</span><span class="dots"></span><span class="price">5,00</span></div>
+          <div class="item"><span>Campari Spritz</span><span class="dots"></span><span class="price">5,00</span></div>
           <div class="item"><span>Wildberry Lillet</span><span class="dots"></span><span class="price">5,00</span></div>
 
           <div class="section-label">Snacks</div>
@@ -699,15 +700,18 @@
         </div>
       </a>
 
-      <a href="events.html" class="teaser t-events reveal" data-delay="80">
+      <!-- Events-Kachel: Inhalt kommt aus assets/events-data.js und aktualisiert sich
+           automatisch. Zeigt immer den nächsten kommenden Termin. Die Texte unten sind
+           nur Fallback, falls JavaScript aus ist. -->
+      <a href="events.html" class="teaser t-events reveal" data-delay="80" data-events-teaser>
         <div class="label">
-          <div class="top"><span>Events</span><span>WM 2026</span></div>
+          <div class="top"><span>Events</span><span data-ev-kicker>Saison 2026</span></div>
           <div>
-            <h3>WM auf der Leinwand,<br>Füße im Sand.</h3>
-            <span class="arrow">→ Alle Public-Viewing-Termine</span>
+            <h3 data-ev-title>Was als Nächstes<br>am Strand läuft.</h3>
+            <span class="arrow" data-ev-cta>→ Alle Termine</span>
           </div>
         </div>
-        <div class="big-num" data-current-month>07</div>
+        <div class="big-num" data-current-month>08</div>
       </a>
 
       <a href="oeffnungszeiten.html" class="teaser t-oeff reveal" data-delay="140">
@@ -831,8 +835,44 @@
 
 <div data-mount-footer></div>
 
+<script src="assets/events-data.js?v=1"></script>
 <script src="assets/shared.js?v=19"></script>
 <script>
+  /* Events-Kachel füllen — zieht aus assets/events-data.js immer den nächsten
+     kommenden Termin. Fällt ein Event durchs Datum raus, rückt automatisch das
+     nächste nach; ist gar nichts mehr da, greift der Leer-Zustand. */
+  (function eventsTeaser(){
+    const root = document.querySelector('[data-events-teaser]');
+    const data = window.AMPERSTRAND_EVENTS;
+    if (!root || !Array.isArray(data)) return;
+
+    const wd = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const set = (sel, txt) => { const el = root.querySelector(sel); if (el) el.textContent = txt; };
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const upcoming = data
+      .map(e => ({ ...e, d: new Date(e.date + 'T00:00:00') }))
+      .filter(e => e.d.getTime() >= today.getTime())
+      .sort((a, b) => a.d - b.d);
+
+    if (!upcoming.length) {
+      set('[data-ev-kicker]', 'Archiv');
+      set('[data-ev-title]', 'Bald geht es weiter.');
+      set('[data-ev-cta]', '→ Vergangene Events ansehen');
+      return;
+    }
+
+    const next = upcoming[0];
+    const dd = String(next.d.getDate()).padStart(2, '0');
+    const mm = String(next.d.getMonth() + 1).padStart(2, '0');
+
+    set('[data-ev-kicker]', upcoming.length === 1 ? '1 Termin' : upcoming.length + ' Termine');
+    set('[data-ev-title]', next.title);
+    set('[data-ev-cta]', `→ ${wd[next.d.getDay()]} ${dd}.${mm}. · Alle Termine`);
+    // Die große Zahl bleibt der aktuelle Monat — wird von shared.js über
+    // [data-current-month] gefüllt, bewusst nicht vom Event-Datum überschrieben.
+  })();
+
   // Build Ampel 7-day strip — daten kommen live aus Google Sheet (via shared.js)
   (async function(){
     const TOTAL = 21; // Fenster: 21 Tage ab heute
