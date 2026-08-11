@@ -147,6 +147,8 @@
   .evm-row { display: grid; grid-template-columns: 132px 1fr; gap: 16px; padding: 9px 0; border-bottom: 1px solid rgba(10,10,10,.07); }
   .evm-row dt { font-weight: 600; font-size: 14px; }
   .evm-row dd { margin: 0; font-size: 14px; line-height: 1.5; opacity: .85; }
+  .evm-cta { margin-top: 26px; }
+  .evm-cta-note { margin-top: 10px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; opacity: .5; }
   .event[data-evkey] { cursor: pointer; }
   @media (max-width: 560px) {
     .ev-modal-card { padding: 36px 22px 26px; }
@@ -161,7 +163,7 @@
   <div class="wrap">
     <span class="eyebrow reveal">§ Events · Saison 2026</span>
     <h1 class="reveal" style="margin-top: 22px;">Musik, Menschen,<br>Sommerstimmung.</h1>
-    <p class="lead reveal">Was bei uns so los ist — diesen Sommer vor allem: WM-Public-Viewing am Strand. Alle Spiele zeigen wir live über MagentaTV — dafür haben wir uns extra die offizielle FIFA-Lizenz geholt. Eintritt immer frei, Plätze nach Verfügbarkeit. Kurzfristige Änderungen posten wir auf Instagram &amp; WhatsApp.</p>
+    <p class="lead reveal">Was bei uns so los ist. Bis Ende September ist fast jedes Wochenende was los — Karaoke, Pub-Quiz, Live-Musik und zum Abschluss der Flohmarkt. Eintritt immer frei, Plätze nach Verfügbarkeit. Bei zwei Abenden brauchst Du vorher eine Anmeldung, das steht dann in den Details. Wir öffnen nur bei schönem Wetter — kurzfristige Änderungen posten wir auf Instagram &amp; WhatsApp.</p>
   </div>
   <div class="head-wave" aria-hidden="true">
     <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
@@ -329,8 +331,15 @@
   </div>
 </section>
 
-<!-- WM K.o.-PLAN -->
-<section class="ko-sec">
+<!--
+  WM K.o.-PLAN
+  Wird automatisch ausgeblendet, sobald das letzte Datum (KO_PLAN_LAST im Script
+  unten) vorbei ist — genauso wie die Event-Karten ins Archiv rutschen. Die
+  einzelnen K.o.-Spiele stehen ohnehin als Events im EVENTS-Array und tauchen
+  danach unten im Archiv auf. Für ein künftiges Turnier: Zeilen ersetzen und
+  KO_PLAN_LAST hochsetzen, dann kommt der Block von allein zurück.
+-->
+<section class="ko-sec" id="koSection" style="display:none;">
   <div class="wrap">
     <div class="ko-card reveal">
       <span class="eyebrow">§ K.o.-Runde · 04. — 19. Juli</span>
@@ -369,7 +378,116 @@
 // "date" muss ISO sein (YYYY-MM-DD), wird zur Sortierung + Past/Upcoming-Trennung benutzt.
 // size: lg | md | sm  ·  bg: yel | ink | paper | deep
 // status: active | out | off  (zeigt grünen/gelben/roten Punkt)
+// signup: optionale URL zu einem Anmeldeformular. Ist sie gesetzt, zeigt die Karte
+//         "Anmeldung →" statt "Details →" und im Detail-Overlay erscheint ein CTA-Button.
+
+// Letztes Datum des fest im HTML stehenden WM-K.o.-Plans. Ist es vorbei, blendet
+// sich die Sektion aus. Für ein neues Turnier hier das neue End-Datum eintragen.
+const KO_PLAN_LAST = '2026-07-19';
+
 const EVENTS = [
+  // ---- Restsaison 2026 ----
+  {
+    date: '2026-08-14',
+    when: '19:00 – 22:00',
+    title: 'Karaoke-Abend.',
+    desc: 'Songliste, Mikro, Publikum — mehr braucht es nicht. Egal ob Stimmwunder oder mutig: Auf die Bühne darf jeder.',
+    tags: ['Karaoke', 'Musik'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'sm',
+    bg: 'paper',
+  },
+  {
+    date: '2026-08-28',
+    when: '19:00 – 22:00',
+    title: 'Karaoke-Abend.',
+    desc: 'Songliste, Mikro, Publikum — mehr braucht es nicht. Egal ob Stimmwunder oder mutig: Auf die Bühne darf jeder.',
+    tags: ['Karaoke', 'Musik'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'sm',
+    bg: 'ink',
+  },
+  {
+    date: '2026-08-29',
+    when: '19:00 – 22:00',
+    title: 'PowerPoint-Slam.',
+    desc: 'Ein paar Minuten, eine Präsentation, ein Thema Deiner Wahl — je absurder, desto besser. Du bringst die Folien mit, wir stellen Beamer, Technik und ein Publikum, das mitgeht. Wer vortragen will, meldet sich vorher an: Die Slots sind begrenzt, Anmeldeschluss ist Mittwoch, der 27.08.',
+    tags: ['Bühne', 'Mitmachen', 'Anmeldung'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'lg',
+    bg: 'yel',
+    signup: 'https://docs.google.com/forms/d/1Ubm1Oza8fC65ENkUqEa2Z6ot-eTYvaHtXTrNwRF9VjM/viewform',
+  },
+  {
+    date: '2026-09-04',
+    when: '19:00 – 22:00',
+    title: 'Pub-Quiz.',
+    desc: 'Teams bilden, Fragen knacken, kalte Getränke. Kommt zu zweit, zu fünft oder allein — Teams finden sich vor Ort.',
+    tags: ['Quiz', 'Teams'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'sm',
+    bg: 'deep',
+  },
+  {
+    date: '2026-09-05',
+    when: '19:00 – 22:00',
+    title: 'Live-Musik mit Vince Stillner.',
+    desc: 'Akustik am Wasser, während die Sonne runtergeht. Hinsetzen, zuhören, Getränk in der Hand.',
+    tags: ['Live', 'Musik'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'ink',
+  },
+  {
+    date: '2026-09-11',
+    when: '19:00 – 22:00',
+    title: 'Karaoke-Abend.',
+    desc: 'Songliste, Mikro, Publikum — mehr braucht es nicht. Egal ob Stimmwunder oder mutig: Auf die Bühne darf jeder.',
+    tags: ['Karaoke', 'Musik'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'sm',
+    bg: 'paper',
+  },
+  {
+    date: '2026-09-18',
+    when: '19:00 – 22:00',
+    title: 'Single-Abend.',
+    desc: 'Dein Bestie verdient die große Bühne: Wer möchte, stellt einen Single aus dem Freundeskreis vor — der Rest schaut zu, lacht mit und lernt sich kennen. Egal ob 18 oder 80, dieser Abend ist für alle. Wer jemanden vorstellen will, meldet sich vorher an und bekommt einen Slot.',
+    tags: ['Kennenlernen', 'Bühne', 'Anmeldung'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'md',
+    bg: 'yel',
+    signup: 'https://docs.google.com/forms/d/1uI3I2dYmzUdndNY6hqjExo-csqZ99l8I42a3rPqh1_A/viewform',
+  },
+  {
+    date: '2026-09-24',
+    when: '19:00 – 22:00',
+    title: 'Pub-Quiz.',
+    desc: 'Teams bilden, Fragen knacken, kalte Getränke. Kommt zu zweit, zu fünft oder allein — Teams finden sich vor Ort.',
+    tags: ['Quiz', 'Teams'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'sm',
+    bg: 'deep',
+  },
+  {
+    date: '2026-09-26',
+    when: 'Uhrzeit folgt',
+    title: 'Flohmarkt zum Saisonabschluss.',
+    desc: 'Zum Ende der Saison wird der Strand zum Trödelplatz: kein Standgeld, kein Eintritt. Decke ausbreiten und verkaufen, was zu Hause nur Platz wegnimmt. Danach machen wir Feierabend für dieses Jahr.',
+    tags: ['Flohmarkt', 'Saisonabschluss', 'Familien'],
+    location: 'Amperstrand',
+    status: 'active',
+    size: 'lg',
+    bg: 'ink',
+  },
   {
     date: '2026-04-28',
     when: 'ab 15:00',
@@ -656,11 +774,18 @@ const EVENTS = [
             <div class="ev-when">${e.when}</div>
             <div class="ev-meta"><span class="ev-loc">${pinSvg}${e.location || 'Amperstrand'}</span></div>
           </div>
-          <span class="ev-arrow">Details →</span>
+          <span class="ev-arrow">${e.signup ? 'Anmeldung →' : 'Details →'}</span>
         </div>
         <div class="big-date">${String(e.dateObj.getDate()).padStart(2,'0')}<span class="big-mon">${monthsShort[e.dateObj.getMonth()]}</span></div>
       </article>`;
     }).join('');
+  }
+
+  // WM-K.o.-Plan nur zeigen, solange er nicht vorbei ist
+  const koSec = document.getElementById('koSection');
+  if (koSec) {
+    const koLast = new Date(KO_PLAN_LAST + 'T00:00:00');
+    koSec.style.display = koLast.getTime() >= today.getTime() ? '' : 'none';
   }
 
   // Past als kompakte Liste
@@ -705,6 +830,8 @@ const EVENTS = [
       <div class="evm-when">${e.when || ''}${e.location ? ' · ' + e.location : ''}</div>
       ${e.desc ? `<p class="evm-desc">${e.desc}</p>` : ''}
       ${e.tags && e.tags.length ? `<div class="ev-tags" style="margin-top:16px;">${e.tags.map(t => `<span class="ev-tag">${t}</span>`).join('')}</div>` : ''}
+      ${e.signup ? `<a class="btn alt evm-cta" href="${e.signup}" target="_blank" rel="noopener">Zur Anmeldung <span class="arrow">→</span></a>
+      <div class="evm-cta-note">Öffnet ein Google-Formular · Plätze begrenzt</div>` : ''}
     `;
     if (isPV(e)) {
       html += `<div class="evm-info"><div class="evm-info-h">Gut zu wissen</div><dl>`
