@@ -204,6 +204,8 @@ function formatNoteAsSub(note) {
   return parsed.open + ' – ' + parsed.close;
 }
 window.formatNoteAsSub = formatNoteAsSub;
+window.parseHoursFromNote = parseHoursFromNote;
+window.getStandardHours = getStandardHours;
 
 function fmtCountdown(min) {
   if (min < 60) return min + ' min';

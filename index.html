@@ -296,6 +296,8 @@
   .hero-ampel[data-state="closed"] .ha-status { color: var(--ink); }
   .hero-ampel[data-state="closed"] .ha-status .pulse { background: var(--ink); }
   .hero-ampel[data-state="closed"] .ha-status .pulse::after { display:none; }
+  /* Vorschau eines Tages in der Zukunft: kein Pulsieren, nur Info */
+  .hero-ampel[data-preview="1"] .ha-status .pulse::after { animation: none; display: none; }
 
   .ha-head, .ha-link { display: none; }
   .ha-status { color: inherit; text-decoration: none; }
@@ -836,7 +838,7 @@
 <div data-mount-footer></div>
 
 <script src="assets/events-data.js?v=1"></script>
-<script src="assets/shared.js?v=19"></script>
+<script src="assets/shared.js?v=20"></script>
 <script>
   /* Events-Kachel füllen — zieht aus assets/events-data.js immer den nächsten
      kommenden Termin. Fällt ein Event durchs Datum raus, rückt automatisch das
@@ -907,10 +909,24 @@
     let winStart = 0;   // Index des ersten sichtbaren Tages
     let selected = 0;   // Index des hervorgehobenen Tages (default = heute)
 
+    // Öffnungszeiten eines Tages: Sheet-Notiz zuerst, sonst Standardzeiten des Wochentags.
+    function hoursText(o) {
+      const dow = (o.dateObj.getDay() + 6) % 7; // Mo=0
+      const h = (o.fromSheet && window.parseHoursFromNote ? window.parseHoursFromNote(o.sub) : null)
+             || (window.getStandardHours ? window.getStandardHours(dow) : null);
+      return h ? `${h.open} – ${h.close}` : null;
+    }
+
     function fmtLabel(o) {
       const stateLabels = { green: 'Geöffnet', amber: 'Wetterabhängig', red: 'Geschlossen', grey: 'Vor Saisonstart' };
-      // Sheet-Notiz priorisieren, sonst Default-Label
-      const statusText = (o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || 'Geschlossen');
+      let statusText;
+      if (!o.isToday && o.cls === 'green') {
+        // Tag in der Zukunft: nicht "Geöffnet" (das gilt nur für jetzt), sondern die geplanten Zeiten
+        statusText = hoursText(o) || ((o.fromSheet && o.sub) ? o.sub : 'Geplant geöffnet');
+      } else {
+        // Sheet-Notiz priorisieren, sonst Default-Label
+        statusText = (o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || 'Geschlossen');
+      }
       const dayText = o.isToday ? 'Heute' : `${o.wd}, ${o.d}. ${o.m}`;
       return `<span class="lbl-day">${dayText}</span><span class="lbl-sub">${statusText}</span>`;
     }
@@ -938,6 +954,9 @@
       const sel = out[selected];
       const [state] = stateMap[sel.cls] || ['closed'];
       wrap.dataset.state = state;
+      // Nur der heutige Tag ist ein Live-Status (Puls). Zukunftstage sind Vorschau.
+      if (sel.isToday) wrap.removeAttribute('data-preview');
+      else wrap.setAttribute('data-preview', '1');
       lbl.innerHTML = fmtLabel(sel);
 
       prevBtn.disabled = winStart === 0;
