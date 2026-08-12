@@ -16,28 +16,48 @@ mit den jetzigen Bildern weiter.
 
 ## Was noch fehlt: das Token
 
-Das ist der einzige Schritt, der nicht automatisiert werden kann, weil dafuer
-eine Anmeldung bei Meta noetig ist.
+Das ist der einzige Schritt, den niemand ausser dem Kontoinhaber machen kann —
+er verlangt eine Anmeldung bei Meta mit dem Instagram-Passwort. Einmal zwei
+Minuten, danach laeuft es von allein.
 
-1. `@amperstrand_ffb` muss ein **Business-** oder **Creator-Konto** sein
-   (Instagram-App → Einstellungen → Kontotyp). Bei einem privaten Konto gibt
-   Meta die API nicht frei.
-2. Auf [developers.facebook.com](https://developers.facebook.com/apps) eine App
-   anlegen und das Produkt **Instagram** hinzufuegen.
-3. Dort ein **Long-Lived Access Token** fuer das Konto erzeugen. Es braucht
-   Leserechte auf die eigenen Medien (`instagram_business_basic` bzw.
-   `instagram_graph_user_media`, je nach Anbindung).
-4. Im Repo unter **Settings → Secrets and variables → Actions** anlegen:
-   - `IG_TOKEN` — das Token (Pflicht)
-   - `IG_USER_ID` — nur noetig, wenn die Anbindung ueber eine Facebook-Seite
-     laeuft statt ueber Instagram-Login
-5. Unter **Actions → Instagram-Bilder → Run workflow** einmal von Hand starten.
+**Voraussetzung:** `@amperstrand_ffb` muss ein **Business-** oder
+**Creator-Konto** sein (Instagram-App → Einstellungen → Kontotyp). Bei einem
+privaten Konto gibt Meta die API gar nicht frei.
 
-**Wichtig:** Das Token laeuft nach ~60 Tagen ab. Danach schlaegt der Job fehl
-(GitHub schickt eine Mail) und die Bilder bleiben auf dem letzten Stand — die
-Seite bricht nicht. Dann Schritt 3 bis 4 wiederholen. Meta aendert an dieser
-API regelmaessig etwas; wenn die Oberflaeche anders aussieht als hier
-beschrieben, gilt die Doku bei Meta.
+1. [developers.facebook.com/apps](https://developers.facebook.com/apps) →
+   **App erstellen** → Verwendungszweck **Andere** → Typ **Business**.
+2. Im [Graph API Explorer](https://developers.facebook.com/tools/explorer/)
+   oben die App auswaehlen, **Generate Access Token**, mit dem Facebook-Konto
+   anmelden, das die Amperstrand-Seite verwaltet. Berechtigungen anhaken:
+   `instagram_basic`, `pages_show_list`, `pages_read_engagement`.
+3. Das erzeugte Token in den
+   [Access Token Debugger](https://developers.facebook.com/tools/debug/accesstoken/)
+   einfuegen → **Extend Access Token** (macht daraus ein 60-Tage-Token).
+4. Zurueck im Explorer mit dem verlaengerten Token `me/accounts` abfragen. Die
+   Antwort enthaelt pro Seite ein `access_token` — **das** ist das Seiten-Token,
+   und Seiten-Token laufen nicht ab. Dazu die `instagram_business_account.id`
+   der Amperstrand-Seite notieren.
+5. Im Repo unter **Settings → Secrets and variables → Actions → New repository
+   secret** anlegen:
+   - `IG_TOKEN` — das Seiten-Token aus Schritt 4
+   - `IG_USER_ID` — die Instagram-ID aus Schritt 4
+6. **Actions → Instagram-Bilder → Run workflow** einmal von Hand starten.
+
+### Token, das nicht ablaeuft
+
+Nimmt man in Schritt 4 das Seiten-Token statt des Nutzer-Tokens, laeuft es
+nicht ab — dann ist hier nie wieder etwas zu tun. Der Job prueft das bei jedem
+Lauf selbst und schreibt das Ergebnis in die Job-Zusammenfassung:
+
+- „Token laeuft nicht ab" → alles gut, nichts weiter zu tun.
+- „Token laeuft am TT.MM. ab" → es wurde das Nutzer-Token erwischt. Schritt 4
+  nachholen, wenn man die Erinnerung nicht alle 60 Tage haben will.
+
+Laeuft ein Token doch einmal ab, schlaegt der Job fehl, GitHub schickt eine
+Mail, und die Bilder bleiben auf dem letzten Stand. Die Seite bricht nicht.
+
+Meta aendert an dieser API regelmaessig etwas. Wenn die Oberflaeche anders
+aussieht als hier beschrieben, gilt die Doku bei Meta.
 
 ## Lokal ausprobieren
 

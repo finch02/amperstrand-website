@@ -83,10 +83,44 @@ async function fetchMedia() {
       log(`${attempt.name}: ${data.data?.length ?? 0} Posts erhalten`);
       return data.data || [];
     } catch (err) {
-      errors.push(`${attempt.name}: ${err.message}`);
+      errors.push(err.message);
     }
   }
   fail(`Kein Weg zur API hat funktioniert.\n  - ${errors.join('\n  - ')}`);
+}
+
+/* --- Token-Diagnose ------------------------------------------------------ */
+
+/* Es gibt zwei Sorten Token: Seiten-Token laufen nicht ab (expires_at 0),
+   Nutzer-Token nach ~60 Tagen. Welche Sorte man hat, sieht man dem String
+   nicht an — also fragen wir Meta und schreiben die Antwort in die
+   Job-Zusammenfassung. So faellt ein ablaufendes Token auf, bevor es kippt,
+   statt erst wenn die Bilder alt sind. */
+async function describeToken() {
+  try {
+    const url = `https://graph.facebook.com/v21.0/debug_token?input_token=${encodeURIComponent(TOKEN)}&access_token=${encodeURIComponent(TOKEN)}`;
+    const { data } = await getJson(url, 'Token-Pruefung');
+    if (!data) return null;
+    if (!data.expires_at) return { permanent: true, text: 'Token laeuft nicht ab — hier ist nie wieder etwas zu tun.' };
+    const at = new Date(data.expires_at * 1000);
+    const days = Math.round((at - Date.now()) / 86400000);
+    return {
+      permanent: false,
+      soon: days <= 14,
+      text: `Token laeuft am ${at.toLocaleDateString('de-DE')} ab (in ${days} Tagen). `
+        + 'Siehe scripts/INSTAGRAM.md, Abschnitt "Token, das nicht ablaeuft".',
+    };
+  } catch {
+    // Die Pruefung ist Beiwerk. Schlaegt sie fehl, holen wir trotzdem Bilder.
+    return null;
+  }
+}
+
+/* Schreibt eine Zeile in die GitHub-Job-Zusammenfassung, falls wir dort laufen. */
+async function summary(line) {
+  const file = process.env.GITHUB_STEP_SUMMARY;
+  if (!file) return;
+  await writeFile(file, `${line}\n`, { flag: 'a' });
 }
 
 /* --- Bilder -------------------------------------------------------------- */
@@ -131,6 +165,14 @@ async function writeTile(buffer, index) {
 
 async function main() {
   if (!FIXTURE && !TOKEN) fail('IG_TOKEN fehlt. Siehe scripts/INSTAGRAM.md.');
+
+  if (!FIXTURE) {
+    const token = await describeToken();
+    if (token) {
+      log(token.text);
+      await summary(token.permanent ? `✅ ${token.text}` : `${token.soon ? '⚠️' : 'ℹ️'} ${token.text}`);
+    }
+  }
 
   const raw = FIXTURE
     ? JSON.parse(await readFile(FIXTURE, 'utf8'))
@@ -178,6 +220,7 @@ async function main() {
     `${JSON.stringify({ updated: new Date().toISOString(), tiles: manifest }, null, 2)}\n`,
   );
   log(`Fertig — ${written} Kacheln aktualisiert.`);
+  await summary(`${written} von ${COUNT} Kacheln aktualisiert.`);
 }
 
 main().catch((err) => fail(err.stack || err.message));
