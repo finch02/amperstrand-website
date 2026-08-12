@@ -840,6 +840,29 @@
 <script src="assets/events-data.js?v=1"></script>
 <script src="assets/shared.js?v=20"></script>
 <script>
+  /* Instagram-Kacheln: assets/insta/insta.json wird vom Cron-Job mitgeschrieben
+     (scripts/fetch-instagram.mjs) und hängt an jede Kachel den echten Post-Link
+     plus Bildtext. Fehlt die Datei, bleibt alles so, wie es im HTML steht —
+     die Bilder liegen ohnehin lokal, die Kacheln verlinken dann aufs Profil. */
+  (function instaLinks(){
+    const tiles = document.querySelectorAll('.ig-grid .tile');
+    if (!tiles.length) return;
+
+    fetch('assets/insta/insta.json', { cache: 'no-cache' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data || !Array.isArray(data.tiles)) return;
+        data.tiles.forEach((t, i) => {
+          const tile = tiles[i];
+          if (!tile || !t) return;
+          if (t.permalink) tile.href = t.permalink;
+          const img = tile.querySelector('img');
+          if (img && t.alt) img.alt = t.alt;
+        });
+      })
+      .catch(() => {});
+  })();
+
   /* Events-Kachel füllen — zieht aus assets/events-data.js immer den nächsten
      kommenden Termin. Fällt ein Event durchs Datum raus, rückt automatisch das
      nächste nach; ist gar nichts mehr da, greift der Leer-Zustand. */

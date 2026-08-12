@@ -1,0 +1,60 @@
+{
+  "note": "Handverlesener Ausgangsstand. Wird von scripts/fetch-instagram.mjs ueberschrieben, sobald der Cron-Job laeuft.",
+  "updated": null,
+  "tiles": [
+    {
+      "file": "assets/insta/insta-01.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand am Wasser",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-02.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-03.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-04.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-05.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-06.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-07.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-08.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    },
+    {
+      "file": "assets/insta/insta-09.jpg",
+      "permalink": "https://www.instagram.com/amperstrand_ffb/",
+      "alt": "Amperstrand",
+      "timestamp": null
+    }
+  ]
+}

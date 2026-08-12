@@ -1,0 +1,48 @@
+name: Instagram-Bilder
+
+# Holt taeglich die neuesten Posts von @amperstrand_ffb und schreibt sie nach
+# assets/insta/. Aendert sich nichts, wird auch nichts committet.
+#
+# Abschalten: in der Actions-Oberflaeche "Disable workflow" — die Bilder
+# bleiben dann einfach auf dem Stand des letzten Laufs.
+on:
+  schedule:
+    - cron: "30 4 * * *" # taeglich 04:30 UTC (~06:30 Europe/Berlin)
+  workflow_dispatch: {} # manueller Start ueber die Actions-Oberflaeche
+
+# Nur der Commit-Schritt braucht Schreibrechte.
+permissions:
+  contents: write
+
+# Zwei gleichzeitige Laeufe wuerden sich gegenseitig die Bilder ueberschreiben.
+concurrency:
+  group: instagram-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install --no-save sharp
+
+      - run: node scripts/fetch-instagram.mjs
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+
+      - name: Aenderungen committen
+        run: |
+          if [ -z "$(git status --porcelain assets/insta)" ]; then
+            echo "Keine neuen Bilder — nichts zu committen."
+            exit 0
+          fi
+          git config user.name "amperstrand-bot"
+          git config user.email "noreply@amperstrand-ffb.de"
+          git add assets/insta
+          git commit -m "Instagram-Bilder aktualisiert"
+          git push
