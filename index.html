@@ -282,9 +282,17 @@
   }
   .ha-status .lbl .lbl-day { display: block; font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: -.01em; text-transform: none; opacity: 1; margin-bottom: 2px; }
   .ha-status .lbl .lbl-sub { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+  /* Puls ist bewusst opt-in: er läuft NUR, wenn gerade wirklich offen ist.
+     Umgekehrt (überall abschalten, wo er nicht hingehört) wurde vergessen,
+     sobald ein Fall dazukam — deshalb hier die strengere Richtung. */
   .ha-status .pulse::after {
     content: ''; position: absolute; inset: -4px; border-radius: 50%;
     border: 1px solid currentColor; opacity: .4;
+    animation: none;
+    display: none;
+  }
+  .hero-ampel.is-now-open[data-state="open"] .ha-status .pulse::after {
+    display: block;
     animation: haPulse 2.2s ease-out infinite;
   }
   @keyframes haPulse { 0% { transform: scale(.6); opacity: .6; } 100% { transform: scale(1.6); opacity: 0; } }
@@ -296,8 +304,6 @@
   .hero-ampel[data-state="closed"] .ha-status { color: var(--ink); }
   .hero-ampel[data-state="closed"] .ha-status .pulse { background: var(--ink); }
   .hero-ampel[data-state="closed"] .ha-status .pulse::after { display:none; }
-  /* Vorschau eines Tages in der Zukunft: kein Pulsieren, nur Info */
-  .hero-ampel[data-preview="1"] .ha-status .pulse::after { animation: none; display: none; }
 
   .ha-head, .ha-link { display: none; }
   .ha-status { color: inherit; text-decoration: none; }
@@ -940,10 +946,25 @@
       return h ? `${h.open} – ${h.close}` : null;
     }
 
+    // Ist an einem grünen Tag GERADE geöffnet? Nur heute kann das "ja" sein.
+    // Gibt den aufgelösten Zustand zurück (soon / open / closed) oder null.
+    function nowState(o) {
+      if (!o.isToday || o.cls !== 'green' || !window.resolveOpenStateNow) return null;
+      const sheetRow = o.fromSheet ? { note: (o.sub === 'Geöffnet' ? '' : o.sub) } : null;
+      return window.resolveOpenStateNow(new Date(), sheetRow);
+    }
+
     function fmtLabel(o) {
       const stateLabels = { green: 'Geöffnet', amber: 'Wetterabhängig', red: 'Geschlossen', grey: 'Vor Saisonstart' };
       let statusText;
-      if (!o.isToday && o.cls === 'green') {
+      const now = nowState(o);
+      if (now) {
+        // Heute und offen laut Plan — aber "Geöffnet" gilt erst ab Öffnungszeit.
+        // Vorher stehen dort die Zeiten, nachher, dass für heute Schluss ist.
+        if (now.key === 'open') statusText = 'Jetzt geöffnet';
+        else if (now.key === 'closed') statusText = now.sub ? `Heute vorbei · ${now.sub}` : 'Heute vorbei';
+        else statusText = hoursText(o) || now.label;
+      } else if (!o.isToday && o.cls === 'green') {
         // Tag in der Zukunft: nicht "Geöffnet" (das gilt nur für jetzt), sondern die geplanten Zeiten
         statusText = hoursText(o) || ((o.fromSheet && o.sub) ? o.sub : 'Geplant geöffnet');
       } else {
@@ -977,9 +998,10 @@
       const sel = out[selected];
       const [state] = stateMap[sel.cls] || ['closed'];
       wrap.dataset.state = state;
-      // Nur der heutige Tag ist ein Live-Status (Puls). Zukunftstage sind Vorschau.
-      if (sel.isToday) wrap.removeAttribute('data-preview');
-      else wrap.setAttribute('data-preview', '1');
+      // Der Puls ist ein Live-Signal: nur wenn heute ausgewählt ist UND wir
+      // gerade wirklich innerhalb der Öffnungszeit sind. Vor 17 Uhr an einem
+      // Öffnungstag pulsiert nichts — da steht die Uhrzeit.
+      wrap.classList.toggle('is-now-open', nowState(sel)?.key === 'open');
       lbl.innerHTML = fmtLabel(sel);
 
       prevBtn.disabled = winStart === 0;
