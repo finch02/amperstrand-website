@@ -93,14 +93,15 @@ window.AMPERSTRAND_EVENTS = [
   },
   {
     date: '2026-09-12',
-    when: '11:00 – 16:00',
+    when: '11:00 – 22:00',
     title: 'Amper Cars.',
-    desc: 'Show & Shine am Strand: Oldtimer, Youngtimer, US-Cars und Tuning stehen zwischen Sand und Amper. Kein Rennen, kein Posen — die Autos stehen, die Leute reden, Grill und Bar laufen. Eintritt frei, kein Standgeld, Kinderbereich ist da.',
+    desc: 'Show & Shine am Strand: Oldtimer, Youngtimer, US-Cars und Tuning stehen zwischen Sand und Amper — rund 40 ausgewählte Fahrzeuge. Kein Rennen, kein Posen: Die Autos stehen, die Leute reden, Grill und Bar laufen. Ab 16 Uhr legt ein DJ auf, um 19 Uhr wird das Publikumsvoting ausgezählt und geehrt, um 22 Uhr ist Schluss. Eintritt frei, kein Standgeld, Kinderbereich ist da. Wer sein Auto ausstellen will, meldet es vorher an — die Plätze sind begrenzt.',
     tags: ['Amper Cars', 'Show & Shine', 'Familien'],
     location: 'Amperstrand',
     status: 'active',
     size: 'lg',
     bg: 'deep',
+    signup: 'https://www.ampercars-ffb.de/',
   },
   {
     date: '2026-09-20',
