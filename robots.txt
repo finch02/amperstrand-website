@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /snowboard-3d.html
+
+Sitemap: https://amperstrand-ffb.de/sitemap.xml
