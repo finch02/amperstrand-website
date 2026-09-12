@@ -70,14 +70,22 @@
   :root[data-herotone="ink"] .badge-kiosk { background: var(--yellow); color: var(--ink); }
   :root[data-herotone="ink"] .eyebrow { color: var(--paper); opacity: .6; }
 
-  .hero-inner { max-width: var(--max); margin: 0 auto; width: 100%; flex: 1; display:flex; flex-direction:column; justify-content:center; padding-bottom: 4vh; }
+  .hero-inner {
+    max-width: var(--max); margin: 0 auto; width: 100%; flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.18fr) minmax(240px, .82fr);
+    align-items: center;
+    gap: clamp(28px, 4.5vw, 72px);
+    padding-bottom: 6vh;
+  }
+  .hero-copy { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
   .hero-eyebrow { display:flex; gap: 14px; align-items:center; margin-bottom: 24px; }
   .hero-eyebrow .line { flex: 0 0 40px; height: 1px; background: var(--ink); opacity:.3; }
   .hero h1 {
-    font-size: clamp(52px, 10vw, 160px);
+    font-size: clamp(42px, 5.2vw, 78px);
     letter-spacing: -0.045em;
     line-height: .95;
-    max-width: 14ch;
+    max-width: 16ch;
   }
   .hero h1 .hand { font-family: var(--font-hand); font-weight: 500; font-size: 0.72em; line-height: 1; display: inline-block; transform: rotate(-2deg) translateY(-0.07em); margin-right: 0.15em; }
   :root[data-hand="off"] .hero h1 .hand { font-family: var(--font-display); font-weight: 800; transform: none; font-size: 1em; }
@@ -114,6 +122,32 @@
   }
   @media (max-width: 820px) { .badge-kiosk { display: none; } }
 
+  /* Foto rechts — schwarzweiss, ruhig, gleiche Rundung wie die Teaser */
+  .hero-shot { margin: 0; min-width: 0; }
+  .hero-shot .frame {
+    position: relative;
+    border-radius: 28px;
+    overflow: hidden;
+    aspect-ratio: 4 / 5;
+    max-height: min(58vh, 620px);
+    background: rgba(10,10,10,.07);
+  }
+  .hero-shot img {
+    width: 100%; height: 100%; display: block;
+    object-fit: cover;
+    object-position: 50% 56%;
+    filter: grayscale(1) contrast(1.06) brightness(1.02);
+  }
+  .hero-shot figcaption {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 16px;
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+    opacity: .55;
+  }
+  .hero-shot figcaption .line { flex: 0 0 28px; height: 1px; background: var(--ink); opacity: .45; }
+  :root[data-herotone="ink"] .hero-shot figcaption { color: var(--paper); }
+  :root[data-herotone="ink"] .hero-shot figcaption .line { background: var(--paper); }
+
   /* Wave */
   .hero-wave { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; height: 22vh; min-height: 180px; }
   .hero-wave svg { width: 100%; height: 100%; display: block; }
@@ -128,7 +162,7 @@
   /* Niedrige Desktop-Viewports: Hero-Inhalt unter die fixierte Ampel-Pille setzen,
      damit die Koordinaten-Zeile nicht von der Ampel überlagert wird. */
   @media (min-width: 821px) and (max-height: 880px) {
-    .hero-inner { justify-content: flex-start; padding-top: 64px; padding-bottom: 0; }
+    .hero-inner { align-items: start; padding-top: 64px; padding-bottom: 0; }
   }
   @media (min-width: 821px) and (max-height: 720px) {
     .hero-inner { padding-top: 72px; }
@@ -235,8 +269,10 @@
     .ampel-day { padding: 14px 6px; min-width: 0; }
     .ampel-day .d { font-size: 18px; }
     /* Hero mobil: nicht mehr auf 100vh zentriert — sonst riesige Leerräume */
-    .hero { min-height: auto; padding-top: 148px; padding-bottom: 44px; }
-    .hero-inner { justify-content: flex-start; flex: none; padding-bottom: 0; }
+    .hero { min-height: auto; padding-top: 148px; padding-bottom: 140px; }
+    .hero-inner { grid-template-columns: 1fr; align-items: start; flex: none; gap: 34px; padding-bottom: 0; }
+    .hero-shot .frame { aspect-ratio: 5 / 4; max-height: none; border-radius: 22px; }
+    .hero-shot figcaption { margin-top: 12px; }
     .hero-sub { margin-top: 22px; }
     .hero-actions { margin-top: 26px; }
     .hero-meta { margin-top: 26px; }
@@ -602,6 +638,7 @@
 <!-- HERO -->
 <section class="hero" data-screen-label="01 Hero">
   <div class="hero-inner">
+   <div class="hero-copy">
     <div class="hero-eyebrow reveal">
       <span class="line"></span>
       <span class="eyebrow">Fürstenfeldbruck · Bayern · 48.18°N</span>
@@ -630,6 +667,15 @@
       <span>·</span>
       <span>Bullachstraße 27 · 82256 FFB</span>
     </div>
+   </div>
+
+   <figure class="hero-shot reveal" data-delay="260">
+     <div class="frame">
+       <img src="assets/img/hero-amper.jpg" width="1050" height="1400" fetchpriority="high" decoding="async"
+            alt="Liegestühle im Sand am Ufer der Amper, darüber Wimpelketten">
+     </div>
+     <figcaption><span class="line"></span>Sandstrand an der Amper</figcaption>
+   </figure>
   </div>
 
   <!-- HERO AMPEL · zentriert unter der Nav -->
