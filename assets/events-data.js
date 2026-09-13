@@ -138,17 +138,6 @@ window.AMPERSTRAND_EVENTS = [
     bg: 'deep',
   },
   {
-    date: '2026-09-26',
-    when: 'Uhrzeit folgt',
-    title: 'Flohmarkt zum Saisonabschluss.',
-    desc: 'Zum Ende der Saison wird der Strand zum Trödelplatz: kein Standgeld, kein Eintritt. Decke ausbreiten und verkaufen, was zu Hause nur Platz wegnimmt. Danach machen wir Feierabend für dieses Jahr.',
-    tags: ['Flohmarkt', 'Saisonabschluss', 'Familien'],
-    location: 'Amperstrand',
-    status: 'active',
-    size: 'lg',
-    bg: 'ink',
-  },
-  {
     date: '2026-04-28',
     when: 'ab 15:00',
     title: 'Mach das Kreativquartier bunter.',
