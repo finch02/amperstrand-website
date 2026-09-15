@@ -45,6 +45,13 @@
     box-shadow: 0 20px 40px -24px rgba(10,10,10,.15);
   }
   .map-frame { position: absolute; inset: 0; z-index: 1; border: 0; width: 100%; height: 100%; }
+  /* Auf Touch-Geraeten schluckt der Maps-iframe sonst die Wischgeste: man scrollt mit
+     dem Finger ueber die Karte und die Seite bleibt haengen. Dort ist die Karte daher
+     ein reines Standbild; zum Navigieren fuehrt der "Groesser"-Button zu Google Maps. */
+  @media (hover: none) and (pointer: coarse) {
+    .map-frame { pointer-events: none; }
+    .map-actions a { padding: 12px 18px; font-size: 12px; }
+  }
   .map-overlay {
     position: absolute; left: 20px; top: 20px; z-index: 400;
     background: var(--ink); color: var(--paper);
