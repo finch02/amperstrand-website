@@ -33,14 +33,14 @@
   ],
   "redirects": [
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "has": [
         {
           "type": "host",
           "value": "www.amperstrand-ffb.de"
         }
       ],
-      "destination": "https://amperstrand-ffb.de/:path*",
+      "destination": "https://amperstrand-ffb.de/$1",
       "permanent": true
     }
   ]
