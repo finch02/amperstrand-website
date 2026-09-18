@@ -431,7 +431,7 @@ const FOOTER_HTML = `
       </div>
       <div class="footer-bottom">
         <span>© 2026 AMPERSTRAND Gastro & Event UG (haftungsbeschränkt)</span>
-        <span>Teil vom Kreativquartier Aumühle/Lände</span>
+        <span>Im Kreativquartier Aumühle/Lände</span>
       </div>
     </div>
   </footer>
