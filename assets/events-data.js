@@ -127,17 +127,6 @@ window.AMPERSTRAND_EVENTS = [
     signup: 'https://docs.google.com/forms/d/1uI3I2dYmzUdndNY6hqjExo-csqZ99l8I42a3rPqh1_A/viewform',
   },
   {
-    date: '2026-09-24',
-    when: '19:00 – 22:00',
-    title: 'Pub-Quiz.',
-    desc: 'Teams bilden, Fragen knacken, kalte Getränke. Kommt zu zweit, zu fünft oder allein — Teams finden sich vor Ort.',
-    tags: ['Quiz', 'Teams'],
-    location: 'Amperstrand',
-    status: 'active',
-    size: 'sm',
-    bg: 'deep',
-  },
-  {
     date: '2026-04-28',
     when: 'ab 15:00',
     title: 'Mach das Kreativquartier bunter.',
