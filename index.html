@@ -625,7 +625,7 @@
       Dein Stadtstrand.
     </h1>
 
-    <p class="hero-sub reveal" data-delay="120">
+    <p class="hero-sub reveal" data-delay="120" data-hero-sub>
       Miteinander. Einfach. Schöner.
     </p>
 
@@ -638,7 +638,7 @@
     </div>
 
     <div class="hero-meta reveal" data-delay="320">
-      <span>Saison 2026 · 01. Mai — 30. Sep</span>
+      <span data-hero-season>Saison 2026 · 01. Mai — 30. Sep</span>
       <span>·</span>
       <span>Bullachstraße 27 · 82256 FFB</span>
     </div>
@@ -856,7 +856,21 @@
 <div data-mount-footer></div>
 
 <script src="assets/events-data.js?v=2"></script>
-<script src="assets/shared.js?v=20"></script>
+<script src="assets/shared.js?v=21"></script>
+<script>
+  /* Winterpause: Hero sagt direkt, dass Saisonende ist und wann's weitergeht.
+     Daten kommen aus window.AMPERSTRAND_SEASON in shared.js. */
+  (function(){
+    if (!window.isOffseason || !window.isOffseason()) return;
+    const c = window.AMPERSTRAND_SEASON;
+    const year = c.nextStart.slice(0, 4);
+    const sub = document.querySelector('[data-hero-sub]');
+    if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonende.</strong> Danke für den Sommer — wir sehen uns ' + c.nextLabel + ' ' + year + ' wieder.';
+    const season = document.querySelector('[data-hero-season]');
+    if (season) season.textContent = 'Winterpause · Saison ' + year + ' ab ' + c.nextLabel;
+    document.documentElement.classList.add('is-offseason');
+  })();
+</script>
 <script>
   /* Instagram-Kacheln: assets/insta/insta.json wird vom Cron-Job mitgeschrieben
      (scripts/fetch-instagram.mjs) und hängt an jede Kachel den echten Post-Link
@@ -944,7 +958,7 @@
       green:  ['open',    o => `Geöffnet · ${o.sub.replace('Geöffnet ','')}`],
       amber:  ['limited', o => 'Wetterabhängig'],
       red:    ['closed',  o => 'Ruhetag'],
-      grey:   ['closed',  o => 'Saison ab 01.05.']
+      grey:   ['closed',  o => o.sub || 'Saison ab 01.05.']
     };
 
     let winStart = 0;   // Index des ersten sichtbaren Tages
@@ -967,7 +981,7 @@
     }
 
     function fmtLabel(o) {
-      const stateLabels = { green: 'Geöffnet', amber: 'Wetterabhängig', red: 'Geschlossen', grey: 'Vor Saisonstart' };
+      const stateLabels = { green: 'Geöffnet', amber: 'Wetterabhängig', red: 'Geschlossen', grey: o.sub || 'Vor Saisonstart' };
       let statusText;
       const now = nowState(o);
       if (now) {

@@ -90,6 +90,23 @@ window.loadAmpelData = loadAmpelData;
 window.dateKey = dateKey;
 
 // Build N-day window starting from "today" (param for testing), merged with CSV data
+// ============ SAISON ============
+// Zwischen Saisonende und nächstem Saisonstart ist Winterpause: Ampel grau,
+// Status-Pill "Saisonpause", Startseite zeigt den Hinweis im Hero.
+// Nächstes Jahr nur diese drei Werte anpassen.
+window.AMPERSTRAND_SEASON = {
+  lastDay: '2026-09-20',     // letzter Öffnungstag der Saison
+  nextStart: '2027-05-01',   // ab hier gilt wieder der normale Plan
+  nextLabel: 'Anfang Mai',   // so steht der Wiederstart auf der Seite
+};
+window.isOffseason = function(d = new Date()) {
+  const c = window.AMPERSTRAND_SEASON;
+  const day = new Date(d); day.setHours(0,0,0,0);
+  const last = new Date(c.lastDay + 'T00:00:00');
+  const next = new Date(c.nextStart + 'T00:00:00');
+  return day > last && day < next;
+};
+
 window.buildAmpelWindow = async function({ totalDays = 21, startDate = null } = {}) {
   const days = ['Mo','Di','Mi','Do','Fr','Sa','So'];
   const monthsShort = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
@@ -106,7 +123,9 @@ window.buildAmpelWindow = async function({ totalDays = 21, startDate = null } = 
     // Default fallback: Sonntag Ruhetag, sonst geöffnet, vor 1. Mai grey
     const mayStart = new Date(d.getFullYear(), 4, 1).getTime();
     let cls, sub;
-    if (row) {
+    if (window.isOffseason(d) && !(row && (row.cls === 'green' || row.cls === 'amber'))) {
+      cls = 'grey'; sub = 'Saisonpause';
+    } else if (row) {
       cls = row.cls;
       sub = row.note
         ? (cls === 'green' ? formatNoteAsSub(row.note) : row.note)
@@ -125,7 +144,7 @@ window.buildAmpelWindow = async function({ totalDays = 21, startDate = null } = 
       cls, sub,
       dateObj: d,
       isToday: i === 0,
-      fromSheet: !!row
+      fromSheet: !!row && cls !== 'grey'
     });
   }
   return out;
@@ -275,7 +294,11 @@ async function applyLiveStatusFromSheet() {
     const sheetToKey = { green: 'open', red: 'closed', amber: 'weather', grey: 'preseason' };
     const dow = (today.getDay() + 6) % 7;
     let key;
-    if (row) {
+    if (window.isOffseason(today) && !(row && (row.cls === 'green' || row.cls === 'amber'))) {
+      key = 'preseason';
+      STATUS_STATES.preseason.label = 'Saisonpause';
+      STATUS_STATES.preseason.sub = 'ab ' + window.AMPERSTRAND_SEASON.nextLabel;
+    } else if (row) {
       key = sheetToKey[row.cls] || 'closed';
     } else {
       // Kein Sheet-Eintrag: Mo-Mi Ruhetag, sonst offen, vor 01.05. preseason

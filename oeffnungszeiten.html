@@ -194,14 +194,15 @@
 </section>
 
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=20"></script>
+<script src="assets/shared.js?v=21"></script>
 <script>
 (async function(){
   // 1) Forecast 7-Tage-Ampel
   const out = await window.buildAmpelWindow({ totalDays: 7 });
   const stateLabels = { green: 'Geöffnet', red: 'Geschlossen', amber: 'Vielleicht', grey: 'Vor Saison' };
+  const dayLabel = o => o.cls === 'grey' ? (o.sub || stateLabels.grey) : null;
   document.getElementById('forecastDays').innerHTML = out.map(o => {
-    const hrs = (o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || '—');
+    const hrs = dayLabel(o) || ((o.fromSheet && o.sub) ? o.sub : (stateLabels[o.cls] || '—'));
     return `
     <div class="ampel-day ${o.cls} ${o.isToday?'today':''}">
       <div class="wd">${o.isToday?'heute':o.wd}</div>
@@ -233,7 +234,12 @@
   const dotColors = { open: 'green', soon: 'amber', closed: 'red', weather: 'amber', preseason: 'blue' };
 
   let key, sub = '';
-  if (row) {
+  const offseason = window.isOffseason && window.isOffseason(todayKey) && !(row && (row.cls === 'green' || row.cls === 'amber'));
+  if (offseason) {
+    key = 'preseason';
+    labels.preseason = 'Saisonpause';
+    sub = 'Wir sehen uns ' + window.AMPERSTRAND_SEASON.nextLabel + ' ' + window.AMPERSTRAND_SEASON.nextStart.slice(0,4) + ' wieder';
+  } else if (row) {
     key = sheetToKey[row.cls] || 'closed';
   } else {
     const mayStart = new Date(today.getFullYear(), 4, 1).getTime();
@@ -251,7 +257,7 @@
     sub = (row && row.note) || (dow <= 2 ? 'Ruhetag' : '');
   } else if (key === 'weather') {
     sub = (row && row.note) || 'siehe Instagram';
-  } else {
+  } else if (!offseason) {
     sub = (row && row.note) || '';
   }
 
@@ -262,7 +268,7 @@
   if (lblEl) lblEl.textContent = labels[key] || labels.closed;
   if (subEl) subEl.textContent = sub;
   if (dotEl) dotEl.className = 'dot ' + (dotColors[key] || 'red');
-  const pillLabels = { open: 'Geöffnet', soon: 'Öffnet bald', closed: 'Geschlossen', weather: 'Vielleicht', preseason: 'Preseason' };
+  const pillLabels = { open: 'Geöffnet', soon: 'Öffnet bald', closed: 'Geschlossen', weather: 'Vielleicht', preseason: offseason ? 'Winterpause' : 'Preseason' };
   if (pillLblEl) pillLblEl.textContent = pillLabels[key] || 'Geschlossen';
 
   // STAND-Zeile auf jetzt setzen
