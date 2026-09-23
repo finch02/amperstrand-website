@@ -94,6 +94,10 @@
     line-height: 1.5;
     opacity: .85;
   }
+  /* Winterpause: Saisonende-Satz auf Desktop in einer Zeile */
+  @media (min-width: 821px) {
+    .is-offseason .hero-sub { max-width: none; white-space: nowrap; }
+  }
   .hero-meta {
     display: flex; gap: 24px; flex-wrap: wrap;
     margin-top: 40px; font-family: var(--font-mono); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; opacity: .7;
