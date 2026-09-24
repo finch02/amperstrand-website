@@ -860,7 +860,7 @@
 <div data-mount-footer></div>
 
 <script src="assets/events-data.js?v=3"></script>
-<script src="assets/shared.js?v=23"></script>
+<script src="assets/shared.js?v=24"></script>
 <script>
   /* Winterpause: Hero sagt direkt, dass Saisonende ist und wann's weitergeht.
      Daten kommen aus window.AMPERSTRAND_SEASON in shared.js. */
@@ -883,9 +883,9 @@
       const dm = String(next.d.getDate()).padStart(2,'0') + '.' + String(next.d.getMonth()+1).padStart(2,'0') + '.';
       line2 = 'Im Winter sind wir trotzdem da — nächstes Event: <a href="events.html" style="color:inherit;text-underline-offset:3px">' + esc(next.title.replace(/\.$/, '')) + ', ' + wd[next.d.getDay()] + ' ' + dm + '</a>';
     } else if (c.winterEvents) {
-      line2 = 'Ganz weg sind wir im Winter aber nicht: <a href="events.html" style="color:inherit;text-underline-offset:3px">ein paar Events sind in Planung</a>.';
+      line2 = 'Auch diesen Winter haben wir noch <a href="events.html" style="color:inherit;text-underline-offset:3px">das ein oder andere Event</a> geplant — Infos folgen bald.';
     }
-    if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonende.</strong> Danke für den Sommer — die Bar macht Winterpause bis ' + c.nextLabel + ' ' + year + '.' + (line2 ? '<br>' + line2 : '');
+    if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonpause.</strong> Danke für den Sommer — die Bar macht Winterpause bis ' + c.nextLabel + ' ' + year + '.' + (line2 ? '<br>' + line2 : '');
     const season = document.querySelector('[data-hero-season]');
     if (season) season.textContent = 'Winterpause · Saison ' + year + ' ab ' + c.nextLabel;
     document.documentElement.classList.add('is-offseason');
@@ -936,8 +936,8 @@
       const winter = window.AMPERSTRAND_SEASON && window.AMPERSTRAND_SEASON.winterEvents;
       if (winter && window.isOffseason && window.isOffseason()) {
         set('[data-ev-kicker]', 'Winter');
-        set('[data-ev-title]', 'Events in Planung.');
-        set('[data-ev-cta]', '→ Termine folgen · Alle Events');
+        set('[data-ev-title]', 'Das ein oder andere Event.');
+        set('[data-ev-cta]', '→ Infos folgen bald · Alle Events');
       } else {
         set('[data-ev-kicker]', 'Archiv');
         set('[data-ev-title]', 'Gerade keine Termine.');
