@@ -143,6 +143,17 @@
     .hero-inner { padding-top: 72px; }
   }
 
+  /* Desktop: Hero-Inhalt endet immer oberhalb der Wellen. Die Wellen-Box ist
+     max(22vh, 180px) hoch, die sichtbaren Linien beginnen etwa ab ihrem oberen Drittel.
+     Reicht die Höhe nicht, wächst der Hero (min-height) statt dass die Adresse
+     unter den Wellen verschwindet. */
+  @media (min-width: 821px) {
+    .hero-inner { padding-bottom: calc(max(22vh, 180px) * .62) !important; }
+    .is-offseason .hero-sub { margin-top: 24px; }
+    .is-offseason .hero-actions { margin-top: 28px; }
+    .is-offseason .hero-meta { margin-top: 26px; }
+  }
+
   /* ENGRAVED INFO STRIP */
   .strip {
     background: var(--ink); color: var(--paper);
