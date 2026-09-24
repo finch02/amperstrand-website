@@ -153,6 +153,11 @@
     .is-offseason .hero-actions { margin-top: 28px; }
     .is-offseason .hero-meta { margin-top: 26px; }
   }
+  /* Hohe Desktop-Viewports (zentrierter Hero): Inhalt nie über die fixierte
+     Ampel-Pille schieben — Mindestabstand oben, sonst wächst der Hero. */
+  @media (min-width: 821px) and (min-height: 881px) {
+    .hero-inner { padding-top: 64px; }
+  }
   /* Niedrige Laptop-Viewports (z. B. MacBook, ~830px): Headline an der Höhe
      deckeln, damit der ganze Hero samt Adresse in den ersten Bildschirm passt. */
   @media (min-width: 821px) and (max-height: 880px) {
