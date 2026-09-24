@@ -194,7 +194,7 @@
 </section>
 
 <div data-mount-footer></div>
-<script src="assets/shared.js?v=21"></script>
+<script src="assets/shared.js?v=22"></script>
 <script>
 (async function(){
   // 1) Forecast 7-Tage-Ampel
@@ -238,7 +238,7 @@
   if (offseason) {
     key = 'preseason';
     labels.preseason = 'Saisonpause';
-    sub = 'Wir sehen uns ' + window.AMPERSTRAND_SEASON.nextLabel + ' ' + window.AMPERSTRAND_SEASON.nextStart.slice(0,4) + ' wieder';
+    sub = 'Bar wieder ab ' + window.AMPERSTRAND_SEASON.nextLabel + ' ' + window.AMPERSTRAND_SEASON.nextStart.slice(0,4) + (window.AMPERSTRAND_SEASON.winterEvents ? ' · im Winter gibt\'s Events' : '');
   } else if (row) {
     key = sheetToKey[row.cls] || 'closed';
   } else {

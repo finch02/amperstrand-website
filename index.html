@@ -94,8 +94,8 @@
     line-height: 1.5;
     opacity: .85;
   }
-  /* Winterpause: Saisonende-Satz auf Desktop in einer Zeile */
-  @media (min-width: 821px) {
+  /* Winterpause: jede Zeile des Saisonende-Hinweises auf breitem Desktop ohne Umbruch */
+  @media (min-width: 1100px) {
     .is-offseason .hero-sub { max-width: none; white-space: nowrap; }
   }
   .hero-meta {
@@ -859,8 +859,8 @@
 
 <div data-mount-footer></div>
 
-<script src="assets/events-data.js?v=2"></script>
-<script src="assets/shared.js?v=21"></script>
+<script src="assets/events-data.js?v=3"></script>
+<script src="assets/shared.js?v=22"></script>
 <script>
   /* Winterpause: Hero sagt direkt, dass Saisonende ist und wann's weitergeht.
      Daten kommen aus window.AMPERSTRAND_SEASON in shared.js. */
@@ -869,7 +869,23 @@
     const c = window.AMPERSTRAND_SEASON;
     const year = c.nextStart.slice(0, 4);
     const sub = document.querySelector('[data-hero-sub]');
-    if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonende.</strong> Danke für den Sommer — wir sehen uns ' + c.nextLabel + ' ' + year + ' wieder.';
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    // Zweite Zeile: steht schon ein konkreter Winter-Termin in events-data.js,
+    // wird der genannt — sonst der allgemeine Hinweis aus AMPERSTRAND_SEASON.winterEvents.
+    const today = new Date(); today.setHours(0,0,0,0);
+    const next = (window.AMPERSTRAND_EVENTS || [])
+      .map(e => ({ ...e, d: new Date(e.date + 'T00:00:00') }))
+      .filter(e => e.d.getTime() >= today.getTime())
+      .sort((a, b) => a.d - b.d)[0];
+    let line2 = '';
+    if (next) {
+      const wd = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+      const dm = String(next.d.getDate()).padStart(2,'0') + '.' + String(next.d.getMonth()+1).padStart(2,'0') + '.';
+      line2 = 'Im Winter sind wir trotzdem da — nächstes Event: <a href="events.html" style="color:inherit;text-underline-offset:3px">' + esc(next.title.replace(/\.$/, '')) + ', ' + wd[next.d.getDay()] + ' ' + dm + '</a>';
+    } else if (c.winterEvents) {
+      line2 = 'Im Winter sind trotzdem ein paar Events geplant: <a href="events.html" style="color:inherit;text-underline-offset:3px">' + esc(c.winterEvents) + '</a>';
+    }
+    if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonende.</strong> Danke für den Sommer — die Bar macht Winterpause bis ' + c.nextLabel + ' ' + year + '.' + (line2 ? '<br>' + line2 : '');
     const season = document.querySelector('[data-hero-season]');
     if (season) season.textContent = 'Winterpause · Saison ' + year + ' ab ' + c.nextLabel;
     document.documentElement.classList.add('is-offseason');
@@ -917,9 +933,16 @@
       .sort((a, b) => a.d - b.d);
 
     if (!upcoming.length) {
-      set('[data-ev-kicker]', 'Archiv');
-      set('[data-ev-title]', 'Keine Events mehr in 2026.');
-      set('[data-ev-cta]', '→ Vergangene Events ansehen');
+      const winter = window.AMPERSTRAND_SEASON && window.AMPERSTRAND_SEASON.winterEvents;
+      if (winter && window.isOffseason && window.isOffseason()) {
+        set('[data-ev-kicker]', 'Winter · in Planung');
+        set('[data-ev-title]', winter);
+        set('[data-ev-cta]', '→ Termine folgen · Alle Events');
+      } else {
+        set('[data-ev-kicker]', 'Archiv');
+        set('[data-ev-title]', 'Gerade keine Termine.');
+        set('[data-ev-cta]', '→ Vergangene Events ansehen');
+      }
       return;
     }
 
