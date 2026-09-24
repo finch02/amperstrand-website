@@ -885,7 +885,7 @@
     } else if (c.winterEvents) {
       line2 = 'Auch diesen Winter haben wir noch <a href="events.html" style="color:inherit;text-underline-offset:3px">das ein oder andere Event</a> geplant — Infos folgen bald.';
     }
-    if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonpause.</strong> Danke für den Sommer — die Bar macht Winterpause bis ' + c.nextLabel + ' ' + year + '.' + (line2 ? '<br>' + line2 : '');
+    if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonpause.</strong> Danke für den Sommer — die Bar öffnet wieder ' + c.nextLabel + ' ' + year + '.' + (line2 ? '<br>' + line2 : '');
     const season = document.querySelector('[data-hero-season]');
     if (season) season.textContent = 'Winterpause · Saison ' + year + ' ab ' + c.nextLabel;
     document.documentElement.classList.add('is-offseason');
