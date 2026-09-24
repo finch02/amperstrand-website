@@ -860,7 +860,7 @@
 <div data-mount-footer></div>
 
 <script src="assets/events-data.js?v=3"></script>
-<script src="assets/shared.js?v=22"></script>
+<script src="assets/shared.js?v=23"></script>
 <script>
   /* Winterpause: Hero sagt direkt, dass Saisonende ist und wann's weitergeht.
      Daten kommen aus window.AMPERSTRAND_SEASON in shared.js. */
@@ -883,7 +883,7 @@
       const dm = String(next.d.getDate()).padStart(2,'0') + '.' + String(next.d.getMonth()+1).padStart(2,'0') + '.';
       line2 = 'Im Winter sind wir trotzdem da — nächstes Event: <a href="events.html" style="color:inherit;text-underline-offset:3px">' + esc(next.title.replace(/\.$/, '')) + ', ' + wd[next.d.getDay()] + ' ' + dm + '</a>';
     } else if (c.winterEvents) {
-      line2 = 'Im Winter sind trotzdem ein paar Events geplant: <a href="events.html" style="color:inherit;text-underline-offset:3px">' + esc(c.winterEvents) + '</a>';
+      line2 = 'Ganz weg sind wir im Winter aber nicht: <a href="events.html" style="color:inherit;text-underline-offset:3px">ein paar Events sind in Planung</a>.';
     }
     if (sub) sub.innerHTML = '<strong style="font-weight:600">Saisonende.</strong> Danke für den Sommer — die Bar macht Winterpause bis ' + c.nextLabel + ' ' + year + '.' + (line2 ? '<br>' + line2 : '');
     const season = document.querySelector('[data-hero-season]');
@@ -935,8 +935,8 @@
     if (!upcoming.length) {
       const winter = window.AMPERSTRAND_SEASON && window.AMPERSTRAND_SEASON.winterEvents;
       if (winter && window.isOffseason && window.isOffseason()) {
-        set('[data-ev-kicker]', 'Winter · in Planung');
-        set('[data-ev-title]', winter);
+        set('[data-ev-kicker]', 'Winter');
+        set('[data-ev-title]', 'Events in Planung.');
         set('[data-ev-cta]', '→ Termine folgen · Alle Events');
       } else {
         set('[data-ev-kicker]', 'Archiv');

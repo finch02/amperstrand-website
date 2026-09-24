@@ -98,10 +98,10 @@ window.AMPERSTRAND_SEASON = {
   lastDay: '2026-09-20',     // letzter Öffnungstag der Saison
   nextStart: '2027-05-01',   // ab hier gilt wieder der normale Plan
   nextLabel: 'Anfang Mai',   // so steht der Wiederstart auf der Seite
-  // Was im Winter trotzdem läuft (Bar zu, Events ja). Taucht im Hero, in der
-  // Events-Kachel, auf der Events-Seite und bei den Öffnungszeiten auf,
-  // solange kein konkreter Termin in events-data.js steht. Leer = nichts geplant.
-  winterEvents: 'Weihnachtsmarkt, Lagerfeuer & Co.',
+  // true = Bar zu, aber im Winter sind Events in Planung (allgemeiner Hinweis im
+  // Hero, in der Events-Kachel und bei den Öffnungszeiten, solange kein
+  // konkreter Termin in events-data.js steht). false = nichts geplant.
+  winterEvents: true,
 };
 window.isOffseason = function(d = new Date()) {
   const c = window.AMPERSTRAND_SEASON;
